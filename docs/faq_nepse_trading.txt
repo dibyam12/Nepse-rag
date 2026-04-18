@@ -1,0 +1,141 @@
+NEPSE Trading FAQs
+==================
+
+This file contains common questions NEPSE investors ask and concise,
+consistent answers for the AI to use.
+
+1. What are the trading hours in NEPSE?
+---------------------------------------
+NEPSE’s regular trading session typically runs from 11:00 AM to 3:00 PM
+on working trading days (currently Sunday to Thursday or Sunday to Friday,
+depending on official notifications). There is usually a pre-open session
+before 11:00 AM for opening price discovery and a short closing phase
+near 3:00 PM for final price formation. Official circulars should be
+checked for the latest exact timings and holiday lists.
+
+2. What is T+2 settlement?
+--------------------------
+T+2 means trades are fully settled two working days after the trade date.
+
+- On T (trade day), buy and sell orders match on NEPSE.
+- On T+1, buyers must ensure funds are available with their brokers, and
+  sellers must authorize share delivery (e.g., via E-DIS).
+- On T+2, shares are credited to buyers’ Demat accounts and funds are
+  credited to sellers’ bank accounts.
+
+3. Can I sell shares I bought today?
+------------------------------------
+In a delivery-based market like NEPSE, you normally need to receive
+shares into your Demat account before you can sell them. Same-day buy
+and sell (pure intraday trading) is generally not allowed unless you
+already had deliverable shares to sell. In practice, you cannot rely on
+“buy today, sell today” like in some other markets.
+
+4. Can I do short selling in NEPSE?
+-----------------------------------
+No. Short selling (selling borrowed shares you do not own) is not allowed
+in NEPSE under current regulations. All trades are effectively
+delivery-based. To sell, you must hold the shares in your Demat account
+or acquire them in time for settlement.
+
+5. How do circuit breakers and price bands work?
+-----------------------------------------------
+Circuit breakers protect the market from extreme intraday moves.
+
+- Daily Price Band:
+  - Each stock has a maximum daily price movement limit (for example,
+    a percentage range around the previous close). If the stock reaches
+    the upper or lower limit, it cannot trade beyond that price.
+- Index-Based Circuit Breaker:
+  - The NEPSE index has intraday thresholds (for example, a halt if it
+    moves beyond a certain percentage within a specified time, and
+    full-day closure if a higher threshold is reached).
+Exact percentages, time windows, and differences by stock type (e.g.,
+equity vs mutual funds) are defined in official NEPSE/SEBON circulars and
+may change over time, so they must be checked from official sources.
+
+6. How do I read the NEPSE floorsheet?
+--------------------------------------
+The floorsheet is a trade report showing executed transactions.
+
+Common columns include:
+- Symbol: The stock’s trading symbol.
+- Buyer / Seller Broker: Broker IDs of parties to the trade.
+- Quantity: Number of shares traded.
+- Rate: Trade price per share.
+- Amount: Total traded value (Rate × Quantity).
+Floorsheet analysis helps investors see which brokers are active on the
+buy or sell side and whether large trades are happening at specific
+price levels.
+
+7. What do LTP, 52-Week High/Low, and WACC mean?
+------------------------------------------------
+- LTP (Last Traded Price):
+  - The most recent executed trade price for a stock.
+- 52-Week High / 52-Week Low:
+  - The highest and lowest prices at which the stock has traded in the
+    last one year (approximate 52-week period).
+- WACC (Weighted Average Cost of Capital):
+  - A finance term (used more in valuation than daily trading) that
+    measures the average return a company must pay its capital providers
+    (debt and equity). It is not a NEPSE-specific indicator but can be
+    used in fundamental valuation analysis.
+
+8. What are the broker commission rates?
+----------------------------------------
+Broker commission in NEPSE is charged according to slab-based rates
+approved by SEBON.
+
+- For small trades, the percentage commission is higher.
+- As trade size increases, the commission percentage typically decreases.
+- In addition to broker commission, investors pay NEPSE transaction fees,
+  SEBON regulatory fees, and DP/settlement charges.
+Exact current slabs and rates should be checked from SEBON or broker
+websites, as they can change over time.
+
+9. What is the difference between the MeroShare app and broker TMS?
+-------------------------------------------------------------------
+- MeroShare:
+  - Provided by CDSC via Depository Participants (DPs).
+  - Used mainly for Demat management, applying for IPO/FPO/rights
+    through ASBA, viewing portfolio and transaction history, and
+    handling E-DIS for share delivery.
+- Broker TMS (Trading Management System):
+  - Provided by individual brokers.
+  - Used to place buy/sell orders, view live market depth, trading
+    status, and execute trades on NEPSE.
+In simple terms, MeroShare is your Demat and IPO portal, while TMS is
+your actual trading platform.
+
+10. Why do technical indicators sometimes give false signals in NEPSE?
+----------------------------------------------------------------------
+NEPSE has characteristics that can confuse indicators:
+
+- Low liquidity and irregular volume in many scrips.
+- Sudden jumps due to news, corporate actions, or circuit limits.
+- Gaps caused by book closures, dividends, or bonus/rights adjustments.
+
+Because of this, indicators like RSI, MACD, and Bollinger Bands should
+be combined with volume, corporate action context, and sector sentiment
+instead of being used blindly.
+
+11. How should I use this NEPSE AI assistant?
+---------------------------------------------
+The NEPSE AI assistant is designed to:
+
+- Explain rules, indicators, and basic concepts.
+- Help interpret general scenarios (e.g., how a bonus share affects
+  price, what T+2 means).
+- Support learning and backtesting logic.
+
+It is not a licensed financial advisor and does not provide personalized
+investment recommendations or guarantee profit. Users should consult
+qualified professionals and official documents before making decisions.
+
+12. Does the system use real-time data?
+---------------------------------------
+The AI’s static knowledge base is combined with external data sources
+(e.g., databases or APIs) wherever possible. However, response accuracy
+depends on the freshness and reliability of those sources. Always
+double-check critical values like current price, index level, and latest
+corporate actions from official NEPSE, SEBON, or broker platforms.

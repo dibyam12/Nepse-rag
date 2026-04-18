@@ -1,0 +1,119 @@
+NEPSE Trading Rules and Regulations
+==================================
+
+1. Trading Days and Sessions
+----------------------------
+- Trading Days: NEPSE generally operates from Sunday to Thursday (or Sunday to Friday depending on the latest NEPSE circulars); Saturdays and declared public holidays are non-trading days.
+- Pre-Open Session: Around 10:30 AM – 10:45 AM, used to discover the opening price based on aggregated buy and sell orders; trades execute only at the end of this session.
+- Regular Trading Session: 11:00 AM – 3:00 PM is the main continuous trading window where most orders are matched.
+- Closing / Post-Close Phase: A short period near 3:00 PM used for closing price formation and final adjustments as per NEPSE’s operational directives.
+- After-Market Order (AMO): New rules allow investors to place orders outside regular market hours (round-the-clock order placement), but execution still occurs only during trading hours once the feature is fully implemented.
+
+2. Price Limits and Circuit Breakers
+------------------------------------
+- Daily Price Range for Individual Stocks:
+  - Under revised regulations, the daily price fluctuation limit for individual company shares has been increased from ±10% to ±15% relative to the previous day’s closing price.
+  - This 15% band applies over the full trading day, allowing faster price discovery and higher intraday volatility.
+
+- Pre-Open Session Price Band:
+  - During the pre-open session (around 10:30 AM – 10:45 AM), the allowable price movement is widened to ±5% from the previous close, up from the earlier ±2% band.
+  - This broader band is designed to set a more realistic opening price and reduce frequent opening “price locks.”
+
+- Intraday Order Price Band:
+  - During the regular trading session, there is a narrower price band (around ±3% relative to the last traded price) for order entry, intended to prevent erroneous or excessively far off-market orders; exact thresholds are defined in NEPSE’s trading bylaws and technical circulars.
+
+- Market-Wide Index Circuit Breakers:
+  - First Halt: If the NEPSE index moves ±5% within the first two hours of trading (11:00 AM – 1:00 PM), trading is halted for 15 minutes.
+  - Full-Day Closure Threshold: If, after trading resumes, the index reaches a total intraday movement of ±8% at any time during the session, trading is halted and the market is closed for the rest of the day.
+  - These reforms replace the earlier three-tier system (4%, 5%, 6%) with a simpler two-tier framework.
+
+3. Settlement and Delivery (T+2)
+--------------------------------
+- Settlement Cycle:
+  - NEPSE follows a T+2 settlement cycle: trades executed on day T are fully settled two working days later (T+2).
+- Process:
+  - T (Trade Day): Orders are matched on NEPSE; trade details are sent to CDS & Clearing Ltd. (CDSC) for clearing.
+  - T+1: Buyers must ensure funds are available with their brokers; sellers must authorize share transfer (e.g., via E-DIS) so that securities move to the broker/clearing pool.
+  - T+2: CDSC completes final clearing and settlement; buyers receive shares into their Demat accounts, and sellers receive funds into their linked bank accounts.
+- Penalties:
+  - Failure to deliver securities or funds on time can trigger close-out procedures, penalties, and potential trading restrictions, as per NEPSE/CDSC/broker association rules.
+
+4. Lot Size and Odd-Lot Trading
+-------------------------------
+- Board Lot (Normal Trading Unit):
+  - For securities with face value Rs 10, the standard trading lot (board lot) is 100 units.
+  - For securities with face value Rs 100, the standard lot is 10 units.
+  - For securities with face value Rs 1,000, the standard lot is 1 unit.
+- Odd-Lot Trading:
+  - Any order quantity lower than the defined board-lot size is treated as an odd lot.
+  - NEPSE allows trading of small quantities (for example, 1–9 units for Rs 10 face value shares) through a separate odd-lot market.
+  - Odd-lot orders are visible in a separate section of the market depth and generally do not determine the official closing price or index value.
+  - Investors holding more than the board-lot quantity are expected to trade primarily in normal lots; misuse of odd-lot facilities can be subject to regulatory scrutiny.
+
+5. Broker Commission and Transaction Charges
+--------------------------------------------
+- SEBON-Approved Broker Commission Slabs (Equity):
+  - Up to Rs 50,000: 0.36% of the transaction amount.
+  - Rs 50,000 – 500,000: 0.33%.
+  - Rs 500,000 – 2,000,000: 0.31%.
+  - Rs 2,000,000 – 10,000,000: 0.27%.
+  - Above Rs 10,000,000: 0.24%.
+- Other Exchange and Regulatory Fees:
+  - The total amount you see as “brokerage” usually includes NEPSE exchange commission and SEBON regulatory fees as per prevailing circulars.
+  - Additional small charges such as SEBON transaction fee, DP (Depository Participant) charges per settlement, and bank transfer fees may apply.
+
+6. Short Selling and Trading Style
+----------------------------------
+- Short Selling:
+  - Conventional short selling (selling shares you have borrowed but do not own) is not permitted in NEPSE under current SEBON and NEPSE regulations.
+- Delivery-Based Market:
+  - NEPSE operates primarily as a delivery-based market; sellers must hold shares in their Demat accounts at the time of sale or by settlement.
+  - Same-day buy and sell (intraday squaring off) is only permissible within the constraint that you have or acquire deliverable holdings—naked short positions are not allowed.
+
+7. Margin Trading
+-----------------
+- Regulatory Framework:
+  - Margin trading (purchasing securities partly with borrowed funds from brokers or merchant bankers) is governed by SEBON’s Margin Lending Directives and NEPSE’s Margin Trading Procedures (including the recent Margin Trading Directive 2082 and Margin Trading Facilities Procedure 2082).
+- Key Features:
+  - Only qualifying securities (meeting criteria such as minimum public float, profitability, net worth, listing history, and liquidity) are eligible as marginable collateral.
+  - Investors must maintain a minimum initial margin (for example, around 30% of the value of purchased securities; exact percentages are set by directives and brokers).
+  - If the equity in a margin account falls below maintenance margin, brokers issue margin calls; failure to meet calls can trigger forced selling of pledged securities.
+  - A single client (or group of related clients) cannot exceed specified exposure limits as a percentage of a broker’s total margin lending portfolio.
+  - Margin loans are typically sanctioned for up to one year, subject to renewal and regulatory limits.
+
+8. Foreign Investment (FDI and Portfolio Flows)
+-----------------------------------------------
+- Legal Framework:
+  - Foreign investment in Nepal is primarily governed by the Foreign Investment and Technology Transfer Act (FITTA) 2019 and related regulations.
+  - The general minimum foreign investment threshold for most sectors is NPR 20 million for new investments.
+- Sectoral Restrictions and Caps:
+  - While there is no single universal upper cap on foreign equity, certain sectors have explicit restrictions or are entirely closed to foreign investors as per the Negative List and sectoral laws.
+- Investment in Listed Companies:
+  - Foreign investors can invest in public companies, including NEPSE-listed securities, after securing approvals from the Department of Industry or Investment Board Nepal and obtaining Nepal Rastra Bank (NRB) consent for foreign currency inflow.
+  - Repatriation of dividends, capital gains, and sale proceeds is allowed under NRB regulations, subject to tax clearance and adherence to approved investment structures.
+
+9. Trading System and Order Matching
+------------------------------------
+- Trading Platform:
+  - NEPSE uses an electronic order-driven system (NEPSE Automated Trading System, NATS) for matching orders.
+- Order Types and Priority:
+  - Orders are generally matched on a price–time priority basis: best price orders are matched first; among orders at the same price, earlier orders take precedence.
+  - Investors can use various order types as supported by the TMS (Trading Management System), such as limit orders and, when enabled, AMO orders placed outside market hours.
+
+10. Investor Protection and Compliance
+--------------------------------------
+- KYC and Account Requirements:
+  - Investors must complete KYC and open Demat accounts with licensed Depository Participants, and then open trading accounts with SEBON-licensed brokers to access NEPSE.
+- Regulatory Oversight:
+  - The Securities Board of Nepal (SEBON) is the main regulator overseeing securities markets; NEPSE operates the exchange; CDSC handles clearing and settlement; NRB regulates foreign exchange and banking interfaces.
+- Misconduct and Penalties:
+  - Activities such as market manipulation, insider trading, circular trading, dissemination of false information, and misuse of margin or odd-lot facilities can lead to investigation, fines, suspension, or other sanctions.
+
+11. Disclaimer
+--------------
+- This document is a simplified and generalized summary of key NEPSE trading rules and regulations for informational and system-use purposes only.
+- For legally binding and up-to-date provisions, always refer to:
+  - Official NEPSE “Securities Trading Operation Regulations” and related bylaws.
+  - SEBON directives, circulars, and margin lending regulations.
+  - NRB foreign exchange and investment-related circulars.
+  - Relevant acts such as FITTA, Companies Act, and other sectoral laws.

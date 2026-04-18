@@ -1,0 +1,143 @@
+SEBON Circulars (Summary)
+=========================
+
+This file summarizes key SEBON (Securities Board of Nepal) circulars, directives, and
+regulatory themes relevant to NEPSE trading and this system’s vector RAG.
+
+1. Circuit Breaker and Price Band Regulations
+---------------------------------------------
+- SEBON periodically issues circulars defining:
+  - Daily price movement limits (e.g., ±15% from previous close for individual stocks).
+  - Index-based circuit breaker thresholds (e.g., intraday trading halts if NEPSE Index
+    moves beyond certain percentages within specified time windows).
+- Objectives:
+  - Protect investors from panic-driven crashes or irrational spikes.
+  - Allow time for information digestion during extreme volatility.
+- Practical Impact:
+  - Trading may halt temporarily or for the rest of the day if index thresholds are hit.
+  - Many indicators (RSI, MACD, ATR, Bollinger Bands) behave differently on such days,
+    which the system must treat as edge cases.
+
+2. IPO, FPO, and Rights Issue Guidelines
+----------------------------------------
+- SEBON’s “Securities Registration and Issuance Regulations” and related circulars cover:
+  - Eligibility criteria for companies to issue IPOs, FPOs, and right shares.
+  - Minimum paid-up capital, profitability, and disclosure requirements.
+  - Allotment rules (e.g., minimum kitta per applicant, pro-rata distribution).
+  - Timelines for application, allotment, and listing on NEPSE.
+- Book Building Process:
+  - SEBON has introduced book-building mechanisms for certain large or qualified IPOs.
+  - Merchant bankers and issue managers must follow specific pricing, bidding, and
+    disclosure procedures.
+- Practical Impact:
+  - New listings and follow-on offers affect sector supply, index composition, and
+    historical price continuity (stock splits, bonuses, rights adjustments).
+
+3. Demat Account and KYC Requirements
+-------------------------------------
+- SEBON mandates:
+  - All investors must hold securities in electronic (dematerialized) form via licensed
+    Depository Participants (DPs).
+  - Completion of KYC (Know Your Customer) documentation before trading.
+- Circular topics include:
+  - Standardized KYC forms and periodic KYC renewal.
+  - Linking Demat accounts to bank accounts for automatic settlement.
+  - Use of electronic platforms (MeroShare) for E-DIS and corporate action requests.
+- Practical Impact:
+  - Non-compliant or inactive KYC status can block order placement or settlement.
+  - Automated settlement flows (T+2) depend on correct Demat-bank linkage.
+
+4. Margin Trading Facility Directives
+-------------------------------------
+- SEBON’s Margin Trading Facility directives define:
+  - Who can provide margin trading (licensed brokers and merchant bankers).
+  - Minimum net worth and capital requirements for margin providers.
+  - Eligible stocks:
+    - Minimum free-float and paid-up capital.
+    - Sufficient liquidity and listing history.
+    - Positive net worth and profitability criteria.
+  - Margin parameters:
+    - Initial margin (e.g., at least around 30% of market value).
+    - Maintenance margin thresholds and margin-call procedures.
+    - Maximum exposure to a single client or related group.
+- Practical Impact:
+  - Margin-eligible scripts tend to show stronger volume and volatility.
+  - Forced selling during margin calls can create sudden spikes in volume and price moves,
+    affecting technical indicators and backtests.
+
+5. Broker Commission and Fee Structure
+--------------------------------------
+- SEBON circulars periodically revise stock broker commission slabs:
+  - Slab-based percentage rates depending on transaction size (e.g., different
+    rates for trades ≤ 50,000; 50,000–500,000; above 10,000,000, etc.).
+  - Caps on maximum brokerage charges per trade.
+- Additional Fees:
+  - SEBON regulatory fee and NEPSE transaction fee.
+  - Clearing and settlement charges.
+  - DP charges for Demat and settlement.
+- Practical Impact:
+  - Net profitability of strategies must account for total transaction costs, not
+    just raw price changes.
+  - High commission burden can erode the edge of high-frequency or low-margin strategies.
+
+6. Foreign Investment and Repatriation Rules
+--------------------------------------------
+- SEBON coordinates with the Department of Industry and Nepal Rastra Bank to regulate:
+  - Foreign portfolio investment in listed companies (NEPSE scripts).
+  - Foreign Direct Investment (FDI) thresholds and sector-specific restrictions.
+  - Requirements for approval, registration, and reporting of foreign inflows.
+  - Rules for repatriation of dividends and capital gains in foreign currency.
+- Practical Impact:
+  - Changes in foreign investment limits or eligibility can alter demand for certain
+    sectors (e.g., banks, hydropower), impacting long-term trend behavior.
+  - Large foreign inflows or outflows may cause unusual volume spikes and trend shifts.
+
+7. Disclosure, Corporate Governance, and Insider Trading
+-------------------------------------------------------
+- SEBON’s circulars and codes of conduct address:
+  - Timely disclosure of price-sensitive information (bonuses, rights, mergers,
+    major investments, board changes).
+  - Corporate governance standards and reporting obligations of listed companies.
+  - Prohibition and penalties for insider trading, market manipulation, and
+    circular trading.
+- Practical Impact:
+  - Delayed or sudden disclosures can cause gaps in price and volume, which indicators
+    may misinterpret as normal technical signals.
+  - News-driven moves should be tagged as such in backtests wherever possible.
+
+8. Mutual Funds, Debentures, and Other Instruments
+--------------------------------------------------
+- SEBON issues specific guidelines for:
+  - Mutual funds and collective investment schemes (CIS).
+  - Debentures, preference shares, and other fixed-income or hybrid instruments.
+  - Listing, trading, and disclosure norms for these instruments.
+- Practical Impact:
+  - Different instruments exhibit different volatility and liquidity profiles; the
+    system should not apply equity-oriented indicator thresholds blindly to all
+    instruments.
+  - Sector and instrument mix on NEPSE affects overall index behavior.
+
+9. T+2 Settlement and Risk Management Circulars
+-----------------------------------------------
+- SEBON and NEPSE coordinate rules on:
+  - Transition and adherence to T+2 settlement.
+  - Risk management framework for brokers, clearing members, and CDSC.
+  - Use of collateral, default funds, and penalty structures.
+- Practical Impact:
+  - Settlement failures can lead to close-out trades and abnormal price/volume bars.
+  - Such bars must be treated as anomalies or flagged as special events during
+    model training.
+
+10. 24-Hour Order Placement and System Reforms
+----------------------------------------------
+- Recent SEBON and NEPSE reforms introduce:
+  - The ability to place orders round the clock (outside trading hours), which will
+    be queued and executed during market sessions.
+  - Updated circuit breaker rules, improved risk controls, and technology standards
+    for brokers’ trading systems.
+- Practical Impact:
+  - Order flow becomes more continuous, though execution remains restricted to
+    trading hours.
+  - Pre-market and post-market order buildup can affect opening gaps and early-session
+    volatility, which RSI, MACD, and other indicators must account for during
+    backtesting.

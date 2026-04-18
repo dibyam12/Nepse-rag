@@ -1,0 +1,37 @@
+# Django core
+Django>=4.2,<5.0
+djangorestframework>=3.14,<4.0
+django-cors-headers>=4.3,<5.0
+channels>=4.0,<5.0
+daphne>=4.0,<5.0
+
+# Configuration
+python-decouple>=3.8,<4.0
+
+# Database drivers
+psycopg2-binary>=2.9,<3.0
+
+# Data processing
+pandas>=2.1,<3.0
+pandas_ta>=0.3.14b1
+
+# RAG & AI
+llama-index>=0.10
+langgraph>=0.0.30
+chromadb>=0.4
+
+# Embeddings
+sentence-transformers>=2.2
+
+# HTTP & scraping
+httpx>=0.27,<1.0
+beautifulsoup4>=4.12,<5.0
+
+# Search
+duckduckgo-search>=5.0
+
+# Logging
+python-json-logger>=2.0,<3.0
+
+# Utilities
+python-dateutil>=2.8,<3.0

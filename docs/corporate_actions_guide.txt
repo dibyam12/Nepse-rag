@@ -1,0 +1,151 @@
+NEPSE Corporate Actions Guide
+=============================
+
+This file explains common corporate actions in NEPSE and how they affect
+prices, charts, and technical indicators (important for both traders and AI).
+
+1. Bonus Shares
+---------------
+Bonus shares are free additional shares issued to existing shareholders
+out of accumulated profits or reserves.
+
+- Example:
+  - 20% bonus means you receive 20 new shares for every 100 shares held.
+- Price Adjustment on Ex-Date:
+  - On the ex-bonus date, the theoretical price is adjusted downward so
+    that total market value remains roughly the same (ignoring sentiment).
+  - Approximate adjusted price:
+    - Adjusted Price ≈ Old Price / (1 + Bonus %)
+    - Example: Old Price = Rs 1,000, Bonus = 20% → Adjusted Price ≈ 1,000 / 1.2 ≈ Rs 833.
+- Investor Impact:
+  - Number of shares increases; per-share price drops.
+  - Total investment value stays nearly unchanged in theory, but market
+    reaction can be positive or negative.
+- NEPSE / CDSC Announcements:
+  - Bonus decisions are announced through company notices on NEPSE’s
+    website and CDSC / DP notifications.
+- AI / Indicator Impact:
+  - Historical prices should be adjusted for bonus events; otherwise EMA,
+    RSI, MACD, and other indicators will show artificial gaps.
+  - When backtesting, always use adjusted data so that signals around
+    the bonus date are meaningful.
+
+2. Rights Shares
+----------------
+Rights shares give existing shareholders the right to buy additional
+shares, usually at a discount, within a fixed time period and ratio.
+
+- Example:
+  - 1:2 rights at Rs 100 means you can buy 1 new share for every 2 shares
+    you hold, paying Rs 100 per rights share.
+- Theoretical Ex-Rights Price (TERP) Formula:
+  - Suppose:
+    - P = Cum-rights market price before rights.
+    - N = Number of existing shares.
+    - R = Rights price (issue price for rights shares).
+    - M = Number of new rights shares offered.
+  - Then:
+    - TERP ≈ (P × N + R × M) / (N + M)
+  - This gives the approximate theoretical price after rights issue.
+- Price Behavior:
+  - When rights are announced, price reacts based on dilution, discount
+    level, and sentiment.
+  - Around the ex-rights date, price can gap down towards TERP.
+- NEPSE / CDSC Notices:
+  - Rights issue details (ratio, price, book closure date, payment
+    instructions) are published on NEPSE and CDSC portals and conveyed
+    through DPs.
+- AI / Indicator Impact:
+  - Price and volume around rights issue dates can be erratic.
+  - Historical data should be adjusted for rights factor; otherwise
+    indicators will treat the mechanical price change as a real trend
+    reversal.
+
+3. Cash Dividends
+-----------------
+Cash dividends are cash payments made to shareholders out of profits.
+
+- Example:
+  - 20% cash dividend on a Rs 100 face value share = Rs 20 per share.
+- Key Dates:
+  - Book Closure / Record Date:
+    - Shareholders on record by this date are eligible for the dividend.
+  - Ex-Dividend Date:
+    - On or around this date, the stock trades without dividend
+      entitlement; price often gaps down by roughly the dividend amount.
+- Dividend Yield in Nepal Context:
+  - Dividend Yield (%) ≈ (Annual Cash Dividend per Share / Current Market Price) × 100
+  - Example:
+    - Dividend = Rs 20 per share, Current Price = Rs 800 →
+      Yield ≈ (20 / 800) × 100 = 2.5%.
+- AI / Indicator Impact:
+  - RSI, MACD, and other indicators may show a sharp drop on the
+    ex-dividend candle; the system should recognize this as a dividend
+    adjustment, not pure selling pressure.
+  - For long-term analysis, adjusted close data including dividends gives
+    a more realistic performance picture.
+
+4. Stock Splits and Face Value Changes
+--------------------------------------
+A stock split increases the number of shares by reducing the face value
+proportionally.
+
+- Example:
+  - 1:10 split (from Rs 100 to Rs 10 face value) multiplies share count
+    by 10 and divides the price by 10.
+- Reasons:
+  - Improve liquidity.
+  - Make the stock “look cheaper” to small investors.
+- AI / Indicator Impact:
+  - Like bonus shares, splits require full historical price and volume
+    adjustment.
+  - Without adjustment, long-term charts will show large artificial gaps
+    and break trend indicators.
+
+5. Book Closure and Record Dates
+--------------------------------
+Book closure is the period when a company closes its shareholder register
+to determine eligible shareholders for dividends, bonuses, or rights.
+
+- Practical Impact:
+  - Investors must hold shares before the book closure / record date to
+    be eligible for the announced benefit.
+  - Trading volume can rise before book closure as investors try to
+    qualify for dividends or bonuses.
+- How Events Are Announced:
+  - Book closure and record dates are published:
+    - On the official NEPSE website (company news / notices).
+    - Through CDSC and Depository Participants to Demat holders.
+- AI / Indicator Impact:
+  - Sudden spikes in volume before book closure and price adjustments
+    afterwards are normal; models should not treat them purely as
+    bullish or bearish events.
+
+6. Special Events: Mergers, Acquisitions, and Delistings
+--------------------------------------------------------
+Companies may merge, be acquired, or get delisted.
+
+- Mergers / Acquisitions:
+  - Shareholders might receive shares of the new merged entity or cash,
+    based on approved swap ratios.
+  - Trading can be volatile around announcements and approvals.
+- Delisting:
+  - Shares are removed from NEPSE; investors may need to exit before
+    delisting or follow specific exit procedures.
+- AI / Indicator Impact:
+  - For backtesting, data around such events should be tagged as special
+    and sometimes excluded from generic strategy evaluation.
+  - The system should avoid giving long-term trading signals for
+    companies under confirmed delisting or merger into another entity.
+
+7. How to Treat Corporate Actions in NEPSE AI
+---------------------------------------------
+For a NEPSE-focused AI system:
+
+- Always prefer adjusted historical price data (accounting for bonus,
+  rights, splits, and dividends) in backtests and indicator calculations.
+- Tag important corporate action dates in metadata so retrieval and
+  explanations can clearly mention why price/volume behaved unusually.
+- When answering user queries, clearly distinguish between:
+  - “Price fell because of dividend or rights adjustment” and
+  - “Price fell because of negative sentiment or heavy selling.”
