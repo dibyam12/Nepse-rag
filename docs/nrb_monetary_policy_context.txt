@@ -1,0 +1,147 @@
+NRB Monetary Policy Context for NEPSE
+=====================================
+
+This file explains how Nepal Rastra Bank’s (NRB) monetary policy works
+and how it typically affects NEPSE, especially banking and interest-
+sensitive sectors.
+
+1. What is Monetary Policy?
+---------------------------
+Monetary policy is the framework and set of tools used by Nepal Rastra
+Bank (NRB) to manage liquidity, interest rates, inflation, and overall
+financial stability in the economy.
+
+Key objectives include:
+- Maintaining price stability (controlling inflation).
+- Supporting sustainable economic growth.
+- Preserving financial sector stability and adequate liquidity.
+
+2. Main Policy Tools NRB Uses
+-----------------------------
+NRB uses several instruments to influence interest rates and liquidity.
+
+a) Policy Rate / Repo Rate
+--------------------------
+- The policy rate (often the repo rate) is the benchmark short-term
+  interest rate that NRB uses to inject liquidity into the banking
+  system via repo operations.
+- When NRB raises the policy rate:
+  - Borrowing costs for banks increase.
+  - Lending rates to businesses and households tend to rise.
+  - Credit growth can slow, and economic activity may cool.
+- When NRB reduces the policy rate:
+  - Banks can access cheaper funds.
+  - Lending rates may fall.
+  - Credit growth and investment may pick up.
+
+b) Interest Rate Corridor
+-------------------------
+NRB usually sets an “interest rate corridor” with three key rates:
+- Standing Liquidity Facility (SLF) rate:
+  - Upper bound; the rate at which banks can borrow overnight from NRB.
+- Policy / Repo rate:
+  - Middle of the corridor; the main policy signal.
+- Standing Deposit Facility (SDF) or similar rate:
+  - Lower bound; rate at which banks can deposit surplus funds at NRB.
+
+This corridor guides interbank market rates and indirectly influences
+deposit and lending rates of commercial banks.
+
+c) Cash Reserve Ratio (CRR) and Statutory Liquidity Ratio (SLR)
+---------------------------------------------------------------
+- CRR:
+  - The minimum percentage of deposits that banks must maintain as cash
+    reserves with NRB.
+- SLR:
+  - The minimum percentage of deposits that banks must hold in liquid
+    assets (such as government securities) in addition to CRR.
+
+When NRB raises CRR/SLR:
+- Banks have less money to lend.
+- Liquidity tightens and interest rates can rise.
+
+When NRB lowers CRR/SLR:
+- Banks have more lendable funds.
+- Liquidity improves and lending rates may ease.
+
+d) Open Market Operations (OMOs)
+--------------------------------
+- NRB conducts repo, reverse repo, deposit collection, and other
+  operations to inject or absorb liquidity as needed.
+- Frequent OMOs smooth out short-term liquidity swings without always
+  changing the headline policy rate.
+
+3. How Monetary Policy Affects NEPSE
+------------------------------------
+
+a) Banking and Financial Stocks
+-------------------------------
+- Policy rate hikes, tighter CRR/SLR, or liquidity-absorbing actions
+  can:
+  - Increase funding costs for banks.
+  - Compress net interest margins if lending rates cannot be raised as
+    quickly.
+  - Slow credit growth and profitability.
+- Policy easing (rate cuts, liquidity injections) can:
+  - Improve loan growth.
+  - Support lower deposit and lending rates.
+  - Boost earnings if asset quality is stable.
+Because commercial banks form a large portion of NEPSE’s market
+capitalization, NRB decisions often move the overall index.
+
+b) Interest-Sensitive Sectors
+-----------------------------
+- Sectors relying on debt financing (like hydropower or manufacturing)
+  are affected by borrowing costs.
+- Higher interest rates make new projects more expensive and can reduce
+  valuations; lower rates do the opposite.
+- When NRB adopts an expansionary policy, these sectors may benefit
+  from cheaper credit and improved demand.
+
+c) Investor Sentiment and Liquidity
+-----------------------------------
+- Aggressive tightening (sharp rate hikes, strict credit controls) may
+  reduce risk appetite and lead to selling pressure in NEPSE.
+- Easing measures (rate cuts, relaxed credit conditions) often improve
+  sentiment and risk-taking, supporting equity inflows.
+- Monetary policy reviews and mid-term updates can trigger short-term
+  volatility as investors adjust expectations.
+
+4. Typical Questions the AI Should Answer Using This Context
+------------------------------------------------------------
+- “Why are banking stocks falling after NRB’s latest policy?”
+  - Possible reasons:
+    - Policy rate hike.
+    - Higher CRR or stricter lending rules.
+    - Concerns about asset quality or slower credit growth.
+- “How does a policy rate cut affect NEPSE?”
+  - Possible effects:
+    - Cheaper credit.
+    - Improved bank margins (if deposit rates adjust appropriately).
+    - Higher valuations for interest-sensitive sectors.
+- “What does the interest rate corridor mean for NEPSE?”
+  - It shows the range within which short-term rates are expected to
+    move, influencing banks’ funding costs and, indirectly, stock
+    valuations.
+
+5. Using NRB Policy in Models and Explanations
+----------------------------------------------
+For a NEPSE-focused AI and model pipeline:
+
+- Tag major NRB policy announcements (new monetary policy, quarterly
+  reviews) along the time axis of data.
+- When explaining big moves in banking and financial stocks, check
+  whether a policy change occurred around that period.
+- Consider using simple macro features (for example, policy rate level,
+  direction of last policy change) as additional inputs for long-horizon
+  models, especially for sector-level forecasts or risk analysis.
+
+6. Limitations
+--------------
+- Monetary policy is only one of many drivers; political events,
+  regulatory changes, global markets, and domestic credit conditions
+  also matter.
+- The impact of a given NRB decision can be delayed or muted depending
+  on transmission through the banking system.
+- Historical relationships between NRB policy and NEPSE performance may
+  change over time as the economy and market structure evolve.

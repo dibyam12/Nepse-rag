@@ -1,0 +1,17 @@
+[
+  {
+    "question": "What is the current RSI of NABIL?",
+    "expected_tools": ["sql_tool"],
+    "category": "indicator_query"
+  },
+  {
+    "question": "Compare NABIL with its sector peers",
+    "expected_tools": ["sql_tool", "graph_tool"],
+    "category": "comparison"
+  },
+  {
+    "question": "What are the latest news about NABIL?",
+    "expected_tools": ["news_tool"],
+    "category": "news_query"
+  }
+]

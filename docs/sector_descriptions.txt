@@ -1,0 +1,111 @@
+NEPSE Sector Descriptions
+=========================
+
+This file summarizes the main NEPSE sectors, their typical business activities,
+and how they often behave in the market context.
+
+Commercial Banks
+----------------
+Class “A” banks licensed by Nepal Rastra Bank (NRB). They are the largest and
+most systemically important financial institutions in Nepal, providing retail
+and corporate banking, loans, deposits, remittances, and trade finance.
+Their earnings and valuations are heavily influenced by interest rate policy,
+credit growth, non-performing loans, and NRB regulations. Large bank stocks
+often dominate NEPSE index movements.
+
+Development Banks
+-----------------
+Class “B” financial institutions focusing on development-oriented banking.
+They provide project financing, SME loans, and regional banking services,
+often with a focus on specific provinces or sectors. Development banks are
+smaller than commercial banks but can show higher growth and more volatility.
+Their performance is sensitive to NRB capital requirements and local economic activity.
+
+Finance Companies
+-----------------
+Class “C” financial institutions that offer hire purchase, term loans, consumer
+finance, and various credit facilities. They are typically smaller and more
+specialized than commercial or development banks. Finance company stocks
+can be more volatile, especially when liquidity cycles or regulatory changes
+affect their business models and risk profiles.
+
+Microfinance
+------------
+Microfinance institutions (MFIs) provide small loans, savings products, and
+financial services to low-income and rural clients. They focus on financial
+inclusion and group lending models. Microfinance stocks are known for high
+beta and sharp rallies or corrections, influenced by NRB directives, interest
+rate caps, and political or social policy changes.
+
+Hydropower
+----------
+Companies involved in hydroelectric power generation, transmission, or related
+infrastructure. Many are project-based, with long construction phases followed
+by revenue streams from Power Purchase Agreements (PPAs). Hydropower stocks
+are highly sensitive to project completion news, PPA terms, monsoon conditions,
+and government energy policy. This sector often shows thematic rallies when
+investor sentiment turns optimistic.
+
+Insurance (Life)
+----------------
+Life insurance companies regulated by Beema Samiti. They provide life insurance,
+endowment policies, term plans, and other long-term protection/savings products.
+Key drivers include premium growth, persistency ratios, investment returns,
+and regulatory reserving requirements. Life insurers may show long-term
+growth potential but can be volatile around bonus/share announcements and
+regulatory changes.
+
+Insurance (Non-Life)
+--------------------
+Non-life (general) insurance companies provide products such as motor, fire,
+marine, health, and property insurance. Their earnings depend on underwriting
+discipline, claims ratios, and investment income. Non-life insurers often react
+to major events (natural disasters, changes in motor insurance rules) and
+adjust their pricing and reserves accordingly.
+
+Manufacturing & Processing
+--------------------------
+Companies engaged in industrial production, such as cement, steel, food and
+beverages, pharmaceuticals, and other processed goods. Their performance is
+linked to construction demand, input costs (e.g., raw materials, energy),
+exchange rates, and overall economic growth. Stocks in this sector may be
+cyclical and sensitive to infrastructure spending and industrial policy.
+
+Hotels & Tourism
+----------------
+Listed hotels, resorts, and tourism-related companies serving domestic and
+international travelers. Their revenue is driven by tourist arrivals, room
+occupancy rates, average room prices, and tourism policy. External shocks
+(e.g., pandemics, natural disasters, geopolitical issues) can significantly
+impact this sector, leading to high earnings volatility.
+
+Trading
+-------
+Companies involved primarily in trading activities, such as importing and
+distributing goods, consumer products, or industrial inputs. Their margins
+depend on import costs, currency fluctuations, and competitive dynamics.
+Trading companies can be sensitive to customs policies, tax changes, and
+changes in consumer or industrial demand.
+
+Investment
+----------
+Investment companies, holding companies, and entities that primarily invest
+in other securities or projects. Their reported earnings often reflect
+changes in the value of their investment portfolios, dividend income, and
+realized/unrealized gains. These stocks may track broader market trends but
+can trade at discounts or premiums to their underlying net asset value (NAV).
+
+Others
+------
+Companies that do not neatly fit into the above categories. This may include
+specialized service providers, technology-related firms, conglomerates with
+diverse operations, and niche businesses. Their behavior varies widely
+depending on individual business models, governance, and growth prospects.
+
+(Optionally) Mutual Funds / Collective Investment
+-------------------------------------------------
+Although not always grouped as a separate “sector” in older classifications,
+mutual funds and collective investment schemes (CIS) listed on NEPSE invest
+in diversified portfolios of equities and fixed-income securities. Their
+market prices can trade at discounts or premiums to NAV and are driven by
+overall market sentiment, fund performance, and investor demand for diversified exposure.

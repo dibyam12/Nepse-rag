@@ -1,0 +1,167 @@
+NEPSE / SEBON Glossary
+======================
+
+This file defines important terms for NEPSE-focused AI responses.
+
+NEPSE
+-----
+Nepal Stock Exchange, the main securities exchange in Nepal where listed
+shares, mutual funds, and some debt instruments are traded electronically.
+
+SEBON
+-----
+Securities Board of Nepal, the regulator overseeing the securities market.
+It issues directives, approves public issues, regulates brokers, and
+protects investor interests.
+
+CDSC
+----
+Central Depository System & Clearing Ltd. Handles clearing, settlement,
+and depository (Demat) services for securities transactions in NEPSE.
+
+NRB
+---
+Nepal Rastra Bank, the central bank of Nepal. It regulates the banking
+system, foreign exchange, and monetary policy. Its policies directly
+affect Class A, B, and C financial institutions and, indirectly, NEPSE.
+
+Demat Account
+-------------
+An electronic account where securities are held in dematerialized form.
+Required for trading in NEPSE. Opened with a licensed Depository
+Participant (DP).
+
+T+2 Settlement
+--------------
+A settlement cycle where trades executed on day T are settled two working
+days later (T+2), with shares and funds exchanged via brokers and CDSC.
+
+Board Lot
+---------
+The standard trading unit (number of shares) for normal market trades.
+For example, 100 units for Rs 10 face value shares.
+
+Odd-Lot
+-------
+A trade with quantity smaller than the defined board lot. Traded through
+a separate odd-lot mechanism.
+
+Circuit Breaker
+---------------
+A pre-defined limit on price or index movement that, when hit, triggers
+a trading halt or closure to prevent extreme volatility.
+
+Daily Price Band
+----------------
+The allowed range for a stock’s price movement during a session, usually
+defined as a percentage (for example, ±15%) of the previous day’s
+closing price.
+
+Margin Trading
+--------------
+Buying securities partly with borrowed funds provided by brokers or
+merchant bankers under SEBON and NEPSE rules.
+
+Bonus Share
+-----------
+Free share issued to existing shareholders, usually expressed as a
+percentage of current holdings (for example, 20% bonus).
+
+Rights Share
+------------
+Share that existing shareholders have the right to purchase at a
+specified ratio and price, usually at a discount, to raise new capital.
+
+Cash Dividend
+-------------
+Cash distributed to shareholders out of profits, usually expressed as a
+percentage of face value or as an amount per share.
+
+Stock Split
+-----------
+Corporate action that increases the number of shares by reducing the
+face value proportionally (for example, 1:10 split).
+
+Face Value
+----------
+The nominal value of a share (for example, Rs 10 or Rs 100) stated in
+company documents, used as a base for dividends and corporate actions.
+
+RSI
+---
+Relative Strength Index, a momentum oscillator that measures the speed
+and magnitude of recent price changes.
+
+MACD
+----
+Moving Average Convergence Divergence, a trend-following momentum
+indicator based on EMAs.
+
+EMA
+---
+Exponential Moving Average, a moving average that gives more weight to
+recent data.
+
+Bollinger Bands
+---------------
+Volatility bands plotted above and below a moving average, used to
+assess overbought/oversold conditions and volatility squeezes.
+
+ATR
+---
+Average True Range, a volatility indicator based on the range of price
+movement including gaps.
+
+OBV
+---
+On-Balance Volume, a cumulative volume indicator that adds volume on
+up days and subtracts it on down days.
+
+VWAP
+----
+Volume Weighted Average Price, the average price of a security for a
+period weighted by volume, often used as an intraday benchmark.
+
+Beta
+----
+A measure of a stock’s volatility relative to the market index. Beta
+greater than 1 indicates higher volatility than the index; less than 1
+indicates lower volatility.
+
+NEPSE Alpha
+-----------
+A third-party analytics platform providing charts, indicators, and data
+visualizations for NEPSE stocks.
+
+Mero Lagani
+-----------
+A financial portal offering NEPSE-related data, news, charts, and
+portfolio tools.
+
+ShareSansar
+-----------
+A financial news and data website focusing on NEPSE, IPOs, and company
+announcements.
+
+Fiscal Year Format (Nepal)
+--------------------------
+Nepal uses a Bikram Sambat (BS) fiscal year notation, for example
+“2081/82”, which roughly corresponds to mid-2024 to mid-2025 in the
+Gregorian calendar. Fiscal years typically run from mid-July to mid-July.
+
+Nepali Months (BS) and Approximate Mapping
+------------------------------------------
+Some common Nepali months and rough Gregorian mapping:
+
+- Shrawan: mid-July to mid-August
+- Bhadra: mid-August to mid-September
+- Ashwin: mid-September to mid-October
+- Kartik: mid-October to mid-November
+- Mangsir: mid-November to mid-December
+- Poush: mid-December to mid-January
+- Magh: mid-January to mid-February
+- Falgun: mid-February to mid-March
+- Chaitra: mid-March to mid-April
+- Baishakh: mid-April to mid-May
+- Jestha: mid-May to mid-June
+- Ashadh: mid-June to mid-July

@@ -1,0 +1,205 @@
+Technical Indicator Explanations
+=================================
+
+This file explains the key technical indicators used in the system for NEPSE stocks.
+Each section includes: core idea, default/typical settings, how traders interpret it,
+and NEPSE-specific edge cases (low liquidity, circuit limits, gap moves, etc.).
+
+1. RSI (Relative Strength Index)
+--------------------------------
+RSI is a momentum oscillator that measures the speed and magnitude of recent price changes.
+
+- Formula (conceptual): 
+  RSI = 100 - [100 / (1 + RS)], where RS = Average Gain / Average Loss over N periods.
+- Typical Settings:
+  - Period: 14 days (standard on NEPSE daily charts)
+  - Range: 0 to 100
+- Interpretation:
+  - Overbought zone: RSI > 70 (price may be stretched to the upside, potential reversal or consolidation)
+  - Oversold zone: RSI < 30 (price may be stretched to the downside, potential bounce or reversal)
+  - Bullish divergence: Price makes a lower low but RSI makes a higher low (downtrend losing strength)
+  - Bearish divergence: Price makes a higher high but RSI makes a lower high (uptrend losing strength)
+- NEPSE Edge Cases:
+  - In strong bull runs (e.g., hydropower or microfinance rallies), RSI can stay above 70 for weeks;
+    treating every overbought reading as a sell signal can cause premature exits.
+  - Many illiquid NEPSE stocks have flat days or sporadic large moves, which can create noisy RSI values
+    and false signals.
+  - Circuit limits (e.g., ±15% daily band) can push RSI to extremes quickly; a single limit-up or limit-down
+    day can distort the oscillator for several sessions.
+
+2. MACD (Moving Average Convergence Divergence)
+-----------------------------------------------
+MACD is a trend-following momentum indicator that shows the relationship between two EMAs.
+
+- Core Components:
+  - MACD Line = EMA(12) - EMA(26)
+  - Signal Line = 9-period EMA of the MACD Line
+  - Histogram = MACD Line - Signal Line (visualizes distance/strength of momentum)
+- Interpretation:
+  - Bullish crossover: MACD Line crosses above Signal Line → momentum turning up.
+  - Bearish crossover: MACD Line crosses below Signal Line → momentum turning down.
+  - Zero-line cross: MACD moving from negative to positive (or vice versa) suggests trend change.
+- NEPSE Edge Cases:
+  - Because many NEPSE stocks trend slowly and then jump sharply, MACD can lag during sudden
+    breakouts or breakdowns; by the time a crossover appears, the move may already be extended.
+  - Sideways or low-volume phases (common in thinly traded scrips) generate many small crossovers,
+    leading to whipsaws and false signals.
+  - Circuit-limit days can create large gaps that make MACD histogram spike for a few candles
+    without a sustainable trend behind it.
+
+3. EMA (Exponential Moving Average)
+-----------------------------------
+EMA tracks the average price but gives more weight to recent data, making it more responsive than SMA.
+
+- Conceptual Formula:
+  - EMA_today = α * Price_today + (1 - α) * EMA_yesterday,
+    where α = 2 / (N + 1) and N is the period.
+- Common NEPSE Settings:
+  - EMA-20: Short-term trend (about one trading month).
+  - EMA-50: Medium-term trend.
+  - EMA-200: Long-term trend/primary trend filter.
+- Interpretation:
+  - Price above EMA-20 and EMA-50: bullish bias; dips towards EMAs may be buying zones.
+  - Price below EMA-20 and EMA-50: bearish bias; rallies to EMAs may be selling zones.
+  - “Golden Cross”: Short EMA (e.g., 20) crosses above longer EMA (e.g., 50) → bullish signal.
+  - “Death Cross”: Short EMA crosses below longer EMA → bearish signal.
+- NEPSE Edge Cases:
+  - Illiquid stocks with frequent gaps and long upper/lower wicks can make EMAs less smooth and
+    more prone to sudden flips.
+  - Corporate actions like bonus shares, right issues, and stock splits can distort past prices if
+    not properly adjusted, causing misleading EMA signals.
+  - On very slow-moving scrips, EMAs may stay flat for long periods and add little insight.
+
+4. Bollinger Bands
+------------------
+Bollinger Bands are volatility bands placed above and below a moving average.
+
+- Components:
+  - Middle Band: 20-day Simple Moving Average (SMA).
+  - Upper Band: Middle Band + (2 × standard deviation of price over 20 days).
+  - Lower Band: Middle Band - (2 × standard deviation of price over 20 days).
+- Interpretation:
+  - Price near or above Upper Band: market may be overextended; risk of pullback.
+  - Price near or below Lower Band: market may be oversold; risk of bounce.
+  - Band squeeze (bands contract): period of low volatility, often preceding a sharp move.
+  - Band expansion: high volatility, often after a breakout or breakdown.
+- NEPSE Edge Cases:
+  - Due to daily price limits, many NEPSE stocks show prolonged narrow ranges followed by sudden
+    limit-up/limit-down moves; bands may stay squeezed for a long time and then expand abruptly.
+  - Thinly traded stocks often show price “jumping” between bands without real liquidity; touching
+    an upper band in such stocks does not always imply institutional buying.
+  - During news-driven spikes (e.g., bonus announcements), price can walk the upper band for many
+    days, so selling solely because price hits the band can be premature.
+
+5. Bollinger Band Width (BBW)
+-----------------------------
+Bollinger Band Width (BBW) quantifies the distance between the upper and lower Bollinger Bands
+relative to the middle band.
+
+- Concept:
+  - BBW = (Upper Band – Lower Band) / Middle Band
+- Interpretation:
+  - Low BBW values: low volatility; potential consolidation and upcoming breakout.
+  - High BBW values: high volatility; often after strong moves or during news events.
+- NEPSE Edge Cases:
+  - In NEPSE, BBW can remain low for extended periods when a stock is stuck in a narrow range
+    with low volume; breakouts from such ranges can be sharp but not always sustainable.
+  - Circuit-limit moves can cause BBW to spike for 1–2 candles without establishing a durable trend.
+  - On illiquid stocks, a few random trades can artificially widen bands and distort BBW readings.
+
+6. ATR (Average True Range)
+---------------------------
+ATR measures market volatility by capturing the full range of price movement, including gaps.
+
+- Conceptual Formula:
+  - True Range (TR) = max(High - Low, |High - Previous Close|, |Low - Previous Close|)
+  - ATR = moving average of TR over N periods (commonly 14 days).
+- Interpretation:
+  - Rising ATR: increasing volatility; larger potential daily moves.
+  - Falling ATR: decreasing volatility; smaller daily moves.
+  - Traders often use ATR to set dynamic stop-loss levels (e.g., 1.5 × ATR below entry price for long positions).
+- NEPSE Edge Cases:
+  - Because of upper/lower circuit limits, a single limit-up or limit-down day can massively increase TR
+    and temporarily inflate ATR.
+  - Illiquid scrips with sporadic trades can show artificially high or low ATR that does not reflect
+    true tradable volatility.
+  - In some NEPSE stocks, price barely moves for many days; ATR becomes very small, making ATR-based
+    stops unrealistically tight.
+
+7. OBV (On-Balance Volume)
+---------------------------
+OBV is a volume-based indicator that cumulatively adds or subtracts volume depending on price direction.
+
+- Conceptual Formula:
+  - If today’s close > yesterday’s close → OBV = previous OBV + today’s volume.
+  - If today’s close < yesterday’s close → OBV = previous OBV - today’s volume.
+  - If today’s close = yesterday’s close → OBV = previous OBV.
+- Interpretation:
+  - Rising OBV: buying pressure; volume confirming an uptrend.
+  - Falling OBV: selling pressure; volume confirming a downtrend.
+  - Price-OBV divergence: if price is flat or falling but OBV rises, it may indicate hidden accumulation.
+- NEPSE Edge Cases:
+  - Many NEPSE stocks have very low daily volume; even a single large trade can cause big OBV jumps,
+    which may not represent sustained accumulation or distribution.
+  - When price does not change due to no trades or freeze at circuit limit, OBV may remain flat despite
+    latent supply or demand.
+  - Right shares, bonus shares, and promoter block trades can produce unusual volume spikes that distort OBV.
+
+8. VWAP (Volume Weighted Average Price)
+---------------------------------------
+VWAP is the average price of a stock traded during the day, weighted by volume.
+
+- Concept:
+  - VWAP = (Sum of Price × Volume for all trades in a day) / (Total Volume of the day).
+- Uses:
+  - Intraday benchmark: compares current price vs. VWAP to see if buyers are paying above or below
+    the day’s average.
+  - Institutional trading: large investors aim to execute near VWAP to minimize market impact.
+- Interpretation:
+  - Price above VWAP: intraday bullish bias; buyers paying a premium relative to average traded price.
+  - Price below VWAP: intraday bearish bias.
+- NEPSE Edge Cases:
+  - Not all NEPSE data feeds expose tick-level or full intraday data; approximated VWAP based on OHLC
+    can lose accuracy.
+  - In very illiquid stocks with only a few trades, VWAP can be heavily skewed by a single large order.
+  - Circuit-limit days often show very one-sided trading; VWAP may sit close to the limit price and
+    not provide meaningful “fair value” information.
+
+9. Stochastic Oscillator
+------------------------
+The Stochastic Oscillator compares a stock’s closing price to its price range over a set period.
+
+- Components:
+  - %K = (Current Close - Lowest Low) / (Highest High - Lowest Low) × 100 over N periods.
+  - %D = moving average of %K (usually 3-period SMA).
+- Typical Settings:
+  - 14, 3, 3 (N = 14 periods, 3-period smoothing, 3-period signal).
+- Interpretation:
+  - Overbought: %K or %D above 80.
+  - Oversold: %K or %D below 20.
+  - Bullish signal: %K crosses above %D in the oversold region.
+  - Bearish signal: %K crosses below %D in the overbought region.
+- NEPSE Edge Cases:
+  - In trending NEPSE stocks, the oscillator can remain overbought or oversold for long periods; counter-
+    trend trades solely based on Stochastic can fail repeatedly.
+  - Illiquid stocks with large gaps between highs and lows can make %K swing wildly even on low volume.
+  - Daily price limits can cause the indicator to pin to extremes for consecutive days.
+
+10. Beta (Market Sensitivity)
+-----------------------------
+Beta measures a stock’s volatility relative to the overall market (e.g., NEPSE Index).
+
+- Concept:
+  - Beta ≈ Covariance(stock, index) / Variance(index).
+- Interpretation:
+  - Beta > 1: stock is more volatile than the market (tends to move more than the index).
+  - Beta ≈ 1: stock moves roughly in line with the index.
+  - Beta < 1: stock is less volatile than the market.
+  - Beta < 0: stock tends to move inversely to the market.
+- NEPSE Edge Cases:
+  - Many NEPSE stocks have limited historical data or long periods of illiquidity, making Beta estimates
+    unstable or statistically weak.
+  - Sector concentration (e.g., heavy weight of banks, hydropower) can cause multiple stocks to move
+    together, inflating correlation and Beta.
+  - Regulatory changes, new IPOs, and sudden sentiment shifts can quickly change a stock’s Beta over
+    short windows; using a fixed long-term Beta can be misleading.
