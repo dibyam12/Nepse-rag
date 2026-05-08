@@ -4,7 +4,15 @@ NEPSE AI Research Assistant is an AI-powered web assistant that answers question
 
 > **Disclaimer**: This project is for EDUCATIONAL AND RESEARCH PURPOSES ONLY. It does not provide financial advice.
 
-## Features (Phase 1)
+## Recent Features & Updates
+
+### Phase 4 & 5 (Agentic RAG & UI Polish)
+- **Multi-Provider LLM Fallback**: Prioritized routing (Groq → Google AI Studio → OpenRouter → Ollama) for high availability.
+- **Intelligent Routing**: Queries are routed between `sql_tool`, `graph_tool`, `vector_tool`, and `news_tool` to balance token budgets.
+- **LLM Metadata Tracking**: Displays the active LLM provider and real-time token usage estimations directly in the chat footer.
+- **Polished Responsive UI**: Seamlessly aligned chat interface featuring auto-expanding input fields without scrollbars, and single-line symbol dropdowns.
+
+### Phase 1 (Data Foundation)
 - **On-Demand Data Architecture**: Direct integration with a production Neon DB (PostgreSQL) to fetch live OHLCV stock data on demand.
 - **Dynamic Indicators**: Computes technical indicators (RSI, MACD, EMA, Bollinger Bands, ATR, OBV, VWAP, Beta) in-memory using `pandas_ta`, avoiding local data bloat.
 - **Caching Layer**: Implements multi-tiered caching for OHLCV data, indicators, LLM responses, and news to optimize performance and reduce database hits.
@@ -21,29 +29,58 @@ NEPSE AI Research Assistant is an AI-powered web assistant that answers question
 
 ## Setup Instructions
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/dibyam12/Nepse-rag.git
-   cd Nepse-rag
-   ```
+### 1. Backend Setup
+The backend uses Django, Daphne (for SSE streaming), and LlamaIndex.
 
-2. Create a virtual environment and install dependencies:
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-3. Configure environment variables:
-   Copy `.env.example` to `.env` and fill in your keys (e.g., `NEON_DATABASE_URL`).
+Configure your environment variables:
+Copy `backend/.env.example` to `backend/.env` and fill in your API keys (Groq, Neon DB, etc.).
 
-4. Apply migrations and load sample data:
-   ```bash
-   python manage.py migrate
-   python manage.py load_sample_data
-   ```
+Apply migrations:
+```bash
+python manage.py migrate
+```
 
-5. Run the development server:
-   ```bash
-   python manage.py runserver
-   ```
+### 2. Frontend Setup
+The frontend is a React application powered by Vite.
+
+```bash
+cd frontend
+npm install
+```
+
+## Running the Application
+
+You must run the backend and frontend simultaneously in two separate terminals.
+
+**Terminal 1: Start the Backend (Daphne)**
+*Note: Do not use `manage.py runserver`. You must use Daphne for Server-Sent Events (SSE) streaming to work.*
+```bash
+cd backend
+venv\Scripts\activate
+python -m daphne -b 127.0.0.1 -p 8000 nepse_project.asgi:application
+```
+
+**Terminal 2: Start the Frontend (Vite)**
+```bash
+cd frontend
+npm run dev
+```
+
+## Useful Commands
+
+### Clearing the Django Cache
+If you notice the agent returning stale data or skipping live web searches, it's likely serving a cached response. The backend uses a file-based cache that survives server restarts.
+
+To forcefully clear the cache yourself, open a terminal and run:
+```bash
+cd backend
+venv\Scripts\activate
+python manage.py shell -c "from django.core.cache import cache; cache.clear()"
+```

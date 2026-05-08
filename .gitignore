@@ -1,5 +1,5 @@
 # Python
-__pycache__/
+backend/__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -9,15 +9,16 @@ build/
 *.egg
 
 # Virtual environment
-venv/
-env/
-.venv/
+backend/venv/
+backend/env/
+backend/.venv/
 
 # Django
-db.sqlite3
-db.sqlite3-journal
+backend/db.sqlite3
+backend/db.sqlite3-journal
 
 # Environment
+backend/.env
 .env
 
 # IDE
@@ -31,10 +32,10 @@ db.sqlite3-journal
 Thumbs.db
 
 # Project specific (persisted data — git-ignored)
-indexes/
-chroma_db/
-logs/
-django_cache/
+backend/indexes/
+backend/chroma_db/
+backend/logs/
+backend/django_cache/
 *.jsonl
 
 # Node (frontend)
