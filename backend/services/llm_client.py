@@ -32,19 +32,31 @@ logger = logging.getLogger('nepse_rag')
 
 # ── System Prompt (prepended to every LLM call) ──────────────
 SYSTEM_PROMPT = (
-    "You are a NEPSE (Nepal Stock Exchange) research assistant.\n\n"
-    "When the context contains stock data (prices, indicators, news), "
-    "present those specific numbers directly and clearly.\n\n"
-    "When no news is available in context, say exactly: "
-    "'No recent news was found for this symbol.'\n\n"
-    "NEVER invent or suggest URLs, website names, or sources "
-    "that are not explicitly present in the context provided. "
-    "Do NOT mention merolagani.com, sharesansar.com, or nepsealpha.com "
-    "unless they appear in the context.\n\n"
-    "Do NOT invent prices, RSI values, or news headlines.\n\n"
-    "Be concise. Lead with numbers first, then explain what they mean.\n\n"
-    "Always end your response with exactly this line:\n"
-    "DISCLAIMER: This is for educational purposes only. Not financial advice."
+    "You are a NEPSE (Nepal Stock Exchange) AI research assistant. "
+    "Respond like a premium Bloomberg terminal — direct, data-driven, zero fluff.\n\n"
+    "## MANDATORY Rules (violating ANY of these is UNACCEPTABLE):\n"
+    "1. Each 'SQL DATA:' block in the context IS the stock's current price. "
+    "State the close value as the latest price. "
+    "NEVER say 'no price data' or 'limited information' if SQL DATA exists for that symbol.\n"
+    "2. If there are SQL DATA blocks for MULTIPLE symbols (e.g., NABIL and NICA), "
+    "you MUST present price data for ALL of them. Skipping ANY symbol's data is WRONG.\n"
+    "3. DO NOT explain what indicators mean. No definitions. No theory. "
+    "Wrong: 'RSI is a momentum indicator that measures...' "
+    "Right: 'RSI: 51.0 — neutral' "
+    "Only explain if user says 'what is RSI' or 'explain MACD'.\n"
+    "4. NEVER invent prices, indicators, news, or URLs not in context.\n"
+    "5. For news: if only a headline exists with no summary, just show the headline "
+    "and source. NEVER write '[context unclear]', '[no context]', or similar placeholders.\n"
+    "6. The UI already shows a PriceCard with LTP/Volume/Range and a SignalsTable "
+    "with RSI/MACD/EMA/BB. Do NOT repeat these exact numbers in your text. "
+    "Instead, provide a brief 1-2 sentence ANALYSIS or commentary on what the data means "
+    "for the stock (e.g., 'NABIL is trading near its 52-week high with neutral momentum').\n\n"
+    "## Format:\n"
+    "Your response should be a brief, professional synthesis of the stock's status.\n"
+    "- **Price & Trend**: Provide a 1-2 sentence analysis combining price action and indicator momentum.\n"
+    "- **News**: If news exists, summarize the overall sentiment in 1 sentence. DO NOT list individual news articles (the UI shows them).\n"
+    "- **Comparison**: ONLY if there are multiple stocks in the context, provide a brief comparison of their performance.\n\n"
+    "Always end with: \n\nDISCLAIMER: This is for educational purposes only. Not financial advice."
 )
 
 # ── Provider Configuration ────────────────────────────────────
@@ -90,7 +102,7 @@ PROVIDERS = [
 
 # ── call_llm ──────────────────────────────────────────────────
 
-async def call_llm(prompt: str, max_tokens: int = 500) -> tuple[str, str]:
+async def call_llm(prompt: str, max_tokens: int = 800) -> tuple[str, str]:
     """
     Calls LLM using the fallback chain.
 
@@ -266,12 +278,12 @@ async def _call_provider(
 def build_rag_prompt(
     question: str,
     tool_outputs: list[str],
-    max_input_tokens: int = 2000,
+    max_input_tokens: int = 3000,
 ) -> str:
     """
     Assembles the final RAG prompt from tool outputs.
 
-    Enforces a 2,000 token budget. If over budget, truncates the
+    Enforces a 3,000 token budget. If over budget, truncates the
     longest tool output by 20% iteratively. Never truncates the question.
 
     Args:
@@ -301,9 +313,14 @@ def build_rag_prompt(
         return (
             f"=== CONTEXT ===\n{context}\n=== END CONTEXT ===\n\n"
             f"QUESTION: {question}\n\n"
-            "Answer based only on the context above. "
-            "Include specific numbers (RSI, price, volume) where available.\n"
-            "List all sources at the end."
+            "INSTRUCTIONS: Using ONLY the context above, answer concisely.\n"
+            "- The UI already displays a PriceCard, SignalsTable, and a News Section with the actual headlines.\n"
+            "- Do NOT list LTP, Volume, Range, RSI, MACD, EMA, BB values as bullet points.\n"
+            "- Do NOT list news headlines as bullet points.\n"
+            "- Instead, provide a 2-3 sentence SYNTHESIS combining price action, indicator momentum, and news sentiment.\n"
+            "- NEVER include a 'Compare' or 'Comparison' section unless multiple stocks were queried.\n"
+            "- NEVER explain what indicators mean or how they work.\n"
+            "- NEVER write '[context unclear]' or similar placeholders.\n"
         )
 
     def _estimate_tokens(text: str) -> int:
@@ -352,7 +369,7 @@ def build_rag_prompt(
 # ── stream_llm ────────────────────────────────────────────────
 
 async def stream_llm(
-    prompt: str, max_tokens: int = 500
+    prompt: str, max_tokens: int = 800
 ) -> AsyncGenerator[str | tuple, None]:
     """
     Streaming LLM call with fallback chain.

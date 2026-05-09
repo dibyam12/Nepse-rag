@@ -1,0 +1,288 @@
+# fundamental_analysis_guide.txt
+# NEPSE AI Research Assistant — Fundamental Analysis Knowledge Base
+# Purpose: Guide the AI in answering fundamental analysis questions about NEPSE stocks.
+# This file is part of the docs/ vector knowledge base.
+# Last Updated: 2026-05-09
+# Sources: nepsetrading.com, sharesansar.com, nepsealpha.com, nrb.org.np
+
+=============================================================================
+SECTION 1: WHAT IS FUNDAMENTAL ANALYSIS IN NEPSE CONTEXT?
+=============================================================================
+
+Fundamental analysis evaluates a company's financial health, profitability,
+and valuation to determine its intrinsic worth. In NEPSE, it focuses on:
+
+1. EARNINGS POWER — How much profit does the company generate?
+2. GROWTH — Is profit growing quarter over quarter / year over year?
+3. VALUATION — Is the stock priced fairly relative to earnings?
+4. ASSET QUALITY — For banks: how clean is the loan book?
+5. CAPITAL ADEQUACY — For banks: does the bank meet NRB requirements?
+6. DIVIDEND HISTORY — What is the track record of cash/stock dividends?
+
+Unlike technical analysis (which times entries and exits), fundamental
+analysis answers: "Is this company worth owning for the long term?"
+
+Nepal Rastra Bank (NRB) is the central bank and primary regulator of Nepal's
+banking sector. SEBON (Securities Board of Nepal) regulates the securities market.
+
+=============================================================================
+SECTION 2: KEY FUNDAMENTAL METRICS AND HOW TO INTERPRET THEM
+=============================================================================
+
+--- EPS (Earnings Per Share) ---
+Formula: Net Profit ÷ Total Outstanding Shares
+What it means: Profit earned per share. Higher is better.
+NEPSE Context: Strong EPS for commercial banks is Rs 20+. 
+Banks below Rs 10 EPS are considered weak performers.
+NEPSE Banking Average (Q2 FY2082/83): ~Rs 17
+Best in class: NABIL (Rs 35.18), EBL (Rs 30.86), SCB (Rs 27.35)
+
+--- P/E Ratio (Price to Earnings) ---
+Formula: LTP ÷ Annualized EPS
+What it means: How many rupees investors pay for Rs 1 of earnings.
+NEPSE Context:
+  - Commercial banks sector average P/E: 15.80
+  - NEPSE overall P/E: 38.32 (as of late 2025)
+  - Global healthy range: 15-20
+  - P/E below 12 may indicate undervaluation (or weak earnings expectations)
+  - P/E above 40 suggests overvaluation or very low current earnings
+Important: Very high P/E (e.g., NICA at 190) usually means EPS is nearly zero,
+not that the stock is exceptionally valuable.
+
+--- ROE (Return on Equity) ---
+Formula: Net Profit ÷ Total Shareholders' Equity × 100
+What it means: How efficiently management uses shareholder capital.
+NEPSE Context: ROE above 15% is strong. Below 5% is weak.
+Strong banks in Nepal: NABIL (14.93%), EBL (13.13%), SCB (12.96%)
+
+--- NAV / Book Value Per Share ---
+Formula: Total Equity ÷ Total Outstanding Shares
+What it means: The theoretical per-share value of the company's net assets.
+NEPSE Context: If LTP is significantly above NAV, the stock may be overvalued.
+P/B = LTP ÷ NAV. NEPSE banking sector average P/B: 1.51 (reasonably valued).
+
+--- NPM (Net Profit Margin) ---
+Formula: Net Profit ÷ Total Revenue × 100
+What it means: Percentage of revenue that becomes profit.
+NEPSE Context: Strong NPM for banks is above 35%.
+Best: NABIL (44.56%), SCB (44.58%), EBL (40.31%)
+
+--- NPL Ratio (Non-Performing Loan Ratio) ---
+Formula: Non-Performing Loans ÷ Total Loans × 100
+What it means: Percentage of loans that borrowers are not repaying.
+NEPSE Context: Lower is better. NRB regulatory limit: 5%.
+Excellent: EBL (0.68%), NABIL (3.37%)
+Warning zone: Above 5% — regulatory concern
+
+--- Capital Adequacy Ratio (CAR) ---
+Formula: Capital ÷ Risk-Weighted Assets × 100
+What it means: Regulatory requirement to absorb losses.
+NRB Minimum: 11% for commercial banks
+Banking sector average: 12.61%
+
+--- Dividend Yield ---
+Formula: (Dividend per Share ÷ LTP) × 100
+What it means: Annual return from dividends alone.
+NEPSE banks typically distribute cash dividends of 10-30% of face value (Rs 100).
+NABIL declared 12.5% cash dividend for FY2081/82 = Rs 12.50 per share.
+At LTP of 530, yield = 12.50/530 = 2.36%
+
+--- Distributable Profit ---
+The amount of profit legally available to distribute as dividends,
+after regulatory deductions (loan loss provisions, capital reserve requirements).
+A high distributable profit is a positive indicator for dividend prospects.
+NABIL Q3 FY2082/83 distributable profit: Rs 4.37 Billion (+52.17% YoY)
+
+=============================================================================
+SECTION 3: HOW TO RESPOND TO FUNDAMENTAL ANALYSIS QUERIES
+=============================================================================
+
+When a user asks "fundamental analysis of NABIL" or "tell me the fundamentals of X":
+
+STEP 1 — CURRENT PRICE SNAPSHOT (from SQL tool data)
+State LTP, change, 52W range, market cap if available.
+
+STEP 2 — PROFITABILITY METRICS
+EPS, ROE, NPM — compare to sector average.
+
+STEP 3 — VALUATION METRICS
+P/E and P/B — are these above or below sector average?
+State whether the stock appears overvalued, fairly valued, or undervalued.
+
+STEP 4 — ASSET QUALITY (for banks)
+NPL ratio, Capital Adequacy Ratio.
+
+STEP 5 — RECENT FINANCIAL RESULTS (from news tool)
+Latest quarterly results — net profit, growth rate, distributable profit.
+
+STEP 6 — DIVIDEND HISTORY
+Most recent dividend declared. Yield at current price.
+
+STEP 7 — TECHNICAL SNAPSHOT (brief, 1-2 lines)
+RSI and MACD signal only. "Currently showing neutral momentum with bullish MACD."
+
+STEP 8 — DISCLAIMER
+"DISCLAIMER: This is for educational purposes only. Not financial advice."
+
+=============================================================================
+SECTION 4: NABIL BANK (NABIL) — COMPLETE FUNDAMENTAL PROFILE
+=============================================================================
+
+Company: Nabil Bank Limited
+Symbol: NABIL
+Sector: Commercial Banks (Class A BFI)
+Listed: November 24, 1985 (one of Nepal's oldest listed banks)
+Paid-Up Capital: Rs 27.05 Billion (Q3 FY2082/83), Rs 32.05 Billion (post-rights)
+Market Cap: ~Rs 142.86 Billion
+
+--- Q3 FY2082/83 Financial Results (Published April 27, 2026) ---
+Net Profit: Rs 6.76 Billion (+33.92% YoY)
+Distributable Profit: Rs 4.37 Billion (+52.17% YoY)
+Net Interest Income: Rs 12.45 Billion (+3.36% YoY)
+Operating Profit: Rs 9.61 Billion (+26.09% YoY)
+NPL Ratio: 3.37% (improved from 4.96% previous year — strong improvement)
+
+--- Q2 FY2082/83 Key Ratios ---
+EPS: Rs 35.18 — #1 among all 18 commercial banks
+P/E Ratio: 13.86 — Below sector average of 15.80 (undervalued on P/E basis)
+ROE: 14.93% — #1 among all 18 commercial banks
+NAV: Rs 235.64
+Net Profit Margin: 44.56% — Joint #1 with SCB
+Quality Score: 75.95 (A-grade — only A-rated commercial bank in Nepal)
+
+--- Dividend History ---
+FY2081/82: 12.5% cash dividend (Rs 12.50 per share)
+FY2080/81: 20% total (stock + cash)
+AGM: 41st AGM held January 2026
+
+--- Recent Corporate Events ---
+- Q3 FY2082/83 results published April 2026 (strong growth)
+- New Chairman elected at January 2026 AGM
+- Data breach allegations denied (April 26, 2026)
+- New strategic vision "Panchatattva Philosophy" announced (April 2026)
+- Merger: Nabil Bank acquired Nepal Bangladesh Bank (NBB) in October 2025
+
+--- Investment Summary ---
+NABIL is Nepal's #1 commercial bank by EPS, ROE, and NPM. Its P/E of 13.86
+is below the sector average (15.80), making it relatively undervalued on earnings.
+The improving NPL ratio (from 4.96% to 3.37%) confirms improving asset quality.
+The merger with NBB adds scale. Strong dividend history supports long-term holding.
+
+=============================================================================
+SECTION 5: NICA BANK (NICA) — FUNDAMENTAL PROFILE
+=============================================================================
+
+Company: NIC Asia Bank Limited
+Symbol: NICA
+Sector: Commercial Banks (Class A BFI)
+28th AGM: Held May 4, 2026
+
+--- Q2 FY2082/83 Key Ratios ---
+EPS: Rs 1.76 — Very weak (17th out of 18 commercial banks)
+P/E Ratio: 190.01 — Extremely high due to low EPS (not a quality signal)
+ROE: 0.89% — Very low
+NAV: Rs 198.33
+Net Profit Margin: 4.51% — Very low
+
+--- Technical Data ---
+LTP: Rs 353 (as of April 2026 data)
+52W Range: Rs 304.50 — Rs 428.40
+Volume: High (115,093 shares/session — among the most liquid banks)
+
+--- Notes ---
+NICA's weak Q2 fundamentals are significantly below sector average.
+Its high trading volume makes it popular with short-term traders.
+Long-term investors should await improved quarterly results before investing.
+
+=============================================================================
+SECTION 6: SECTOR-LEVEL FUNDAMENTAL DATA
+=============================================================================
+
+--- Commercial Banks Sector (as of Q2 FY2082/83) ---
+Total listed commercial banks: 18 (20 BFIs including development-stage)
+Sector P/E: 15.80 (lowest among all NEPSE sectors — best valued)
+Sector P/B: 1.51
+Banking Sub-Index Level: ~1,444 (May 2026)
+Sector NPL average: 5.42%
+NRB Capital Adequacy minimum: 11%
+Banking sector accounts for: ~30-40% of daily NEPSE trading volume
+
+--- Hydropower Sector Fundamental Factors ---
+Key metrics for hydropower analysis:
+  1. Installed capacity (MW) vs actual generation (GWh)
+  2. Plant Load Factor (PLF) — efficiency of power generation
+  3. Power Purchase Agreement (PPA) terms with NEA — tariff and duration
+  4. Debt-to-Equity ratio — hydropower is capital-intensive
+  5. Seasonal cash flow variation — dry season (Jan-May) vs wet season
+  6. Revenue recognition timing — linked to NEA payment schedule
+
+Hydropower sub-index: ~Rs 701 billion market cap (2nd largest sector on NEPSE)
+Total listed hydropower companies: 90+ as of 2025
+Key hydropower stocks: NHPC, HIDCL, CHCL, NGPL, SJCL, UPPER, API
+
+--- NEPSE Market Context (March 2026) ---
+Total listed companies: 284
+Market Capitalization: Rs 4,435 billion (Rs 4.43 Trillion)
+NEPSE Index: ~2,641-2,931 (range in Q1-Q2 2026)
+Market Cap to GDP: 72.62%
+Trading hours: Sunday–Thursday, 11:00 AM – 3:00 PM
+Settlement: T+2
+NRB Repo Rate: 4.25%
+NRB Bank Rate: 5.75%
+Average Fixed Deposit Rate: 5.18%
+Average Lending Rate: 7.00%
+
+=============================================================================
+SECTION 7: HOW TO IDENTIFY OVER/UNDERVALUATION IN NEPSE
+=============================================================================
+
+Step 1 — Compare P/E to sector average
+  - Stock P/E below sector average = potentially undervalued
+  - Stock P/E above sector average = potentially overvalued or high-growth expected
+
+Step 2 — Compare P/B to 1.0
+  - P/B below 1.0 = trading below book value (potential deep value)
+  - P/B 1.0–2.0 = fairly valued for banks
+  - P/B above 3.0 = premium pricing, requires strong ROE justification
+
+Step 3 — ROE vs Cost of Equity
+  - If ROE > 12%, stock may justify a P/B above 1.5
+  - If ROE < 5%, even low P/B may not be attractive
+
+Step 4 — EPS Growth Trend
+  - Compare current EPS to same quarter last year (YoY growth)
+  - Consistent 15%+ EPS growth = strong quality signal
+
+Step 5 — NPL Trend (for banks)
+  - Declining NPL ratio = improving asset quality = positive
+  - Rising NPL = credit risk concern = negative signal
+
+=============================================================================
+SECTION 8: DATA SOURCES FOR FUNDAMENTAL DATA IN NEPAL
+=============================================================================
+
+Primary sources (use these when fetching via news_tool):
+  - sharesansar.com/company/{SYMBOL} — quarterly results, announcements
+  - merolagani.com/CompanyDetail.aspx?symbol={SYMBOL} — ratios, announcements
+  - nepsealpha.com/stocks/{SYMBOL}/info — technicals + fundamentals
+  - nepalipaisa.com/company/{SYMBOL} — dividend history, AGM notices
+  - eng.bajarkochirfar.com — English-language fundamental analysis articles
+  - nepsetrading.com — sector analysis, screener reports
+  - ictframe.com — quarterly result summaries
+
+For regulatory data:
+  - nrb.org.np — Nepal Rastra Bank monetary policy, banking data
+  - sebon.gov.np — SEBON circulars, IPO prospectuses
+
+DISCLAIMER: All fundamental data has a publication date. Always check if data
+is from the latest quarterly report. NEPSE companies publish quarterly unaudited
+results and annual audited results. Q1=mid-Aug, Q2=mid-Nov, Q3=mid-May, Q4=mid-Aug.
+Nepal's fiscal year runs from Shrawan to Ashadh (mid-July to mid-July).
+
+=============================================================================
+DISCLAIMER
+=============================================================================
+All information in this document is for educational and research purposes only.
+This is NOT financial advice. Past performance does not guarantee future returns.
+Investing in NEPSE stocks involves risk, including possible loss of principal.
+Always consult a licensed financial advisor before making investment decisions.

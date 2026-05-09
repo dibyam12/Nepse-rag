@@ -1,7 +1,7 @@
 # NEPSE AI Research Assistant — Project Status Tracker
 
-> **Last Updated**: 2026-05-05  
-> **Team**: 4 students (BE Computer Engineering, Final Year)  
+> **Last Updated**: 2026-05-09
+> **Team**: 4 students (BE Computer Engineering, Final Year)
 > **Purpose**: Educational & Research — NOT financial advice
 
 ---
@@ -15,7 +15,7 @@
 | 3 | RAG System (Vector + Graph) | COMPLETE | 100% |
 | 4 | Agentic LLM Orchestration (LangGraph) | COMPLETE | 100% |
 | 5 | Frontend (React + Vite) | COMPLETE | 100% |
-| 6 | Evaluation & Documentation | NOT STARTED | 0% |
+| 6 | Evaluation & Documentation | IN PROGRESS | 5% |
 
 ---
 
@@ -34,7 +34,7 @@
 - [x] Django REST Framework + CORS configured
 
 ### Key Files
-- `services/neon_client.py` — Read-only Neon DB connection
+- `services/neon_client.py` — Read-only Neon DB connection (sync `execute_neon_query`)
 - `services/db_service.py` — Data access layer
 - `services/indicators.py` — Technical indicator computation
 - `services/cache_service.py` — Caching helpers
@@ -50,14 +50,16 @@
   - [x] DuckDuckGo — **FALLBACK, WORKING** (free, unlimited, uses `ddgs` package)
   - [ ] Google Custom Search — DISABLED (403 error, needs fresh API key setup)
   - [ ] SerpAPI — DISABLED (429 error, credits exhausted, needs new account)
-- [x] NEPSE site-prioritized DuckDuckGo search (searches sharesansar, merolagani, nepsealpha, sharehubnepal, nepalipaisa, bajarkochirfar, nepalytix, moneymitra FIRST)
+- [x] NEPSE site-prioritized DuckDuckGo search (searches 12 top Nepali financial portals FIRST with expanded results)
+- [x] **Direct Page Scraping Fallback** (`scrape_direct_pages`): Assures fresh announcements are pulled even if search engines miss them.
 - [x] Article content extraction (`fetch_article()` using httpx + BeautifulSoup4)
-- [x] News scrapers (`services/news_scraper.py`): ShareSansar + MeroLagani (HTML may need selector updates)
+- [x] News scrapers (`services/news_scraper.py`): ShareSansar + MeroLagani + Direct scraping
 - [x] `get_news_for_symbol()` — orchestrates search + scraping, deduplicates, persists to `NewsEvent` model
+- [x] **Indian source blacklist** — 12-domain filter applied after dedup to block Indian financial news sites
 - [x] Async-safe DB persistence using `sync_to_async`
-- [x] Test endpoint: `GET /api/test/news/?symbol=NABIL`
+- [x] Query routing upgraded to send fundamental data queries ("EPS", "Profit", etc.) to the `full_agent` which hits the news scraper.
 
-### Test Results (2026-05-05)
+### Test Results (2026-05-08)
 | Provider | Status | Notes |
 |----------|--------|-------|
 | NewsAPI | WORKING (2 results) | Primary provider |
@@ -73,6 +75,7 @@
 | SBL | 3 | nepsealpha, merolagani, sharesansar |
 | HIDCL | 3 | merolagani, sharesansar, sharehubnepal |
 | NLIC | 3 | merolagani, nepsealpha, sharesansar |
+| NHPC | 3 | nepsealpha, merolagani, sharesansar (Indian sources now filtered) |
 
 ### Known Issues / TODO for Phase 2
 - [ ] Fix Google CSE: Create new API key + enable Custom Search API in GCP console
@@ -82,7 +85,7 @@
 
 ### Key Files
 - `services/web_search.py` — Unified search with fallback chain
-- `services/news_scraper.py` — Scrapers + `get_news_for_symbol()`
+- `services/news_scraper.py` — Scrapers + `get_news_for_symbol()` + Indian source blacklist
 - `.env` — API keys (NewsAPI working, others commented out)
 
 ---
@@ -93,7 +96,7 @@
 - [x] Vector RAG using LlamaIndex + ChromaDB (`services/vector_rag.py`)
   - [x] Ingests `docs/*.txt` domain knowledge files (512 token chunks reduced to 256 for token budget)
   - [x] Sentence Transformers for local CPU embeddings (`all-MiniLM-L6-v2`)
-  - [x] Lazy loading on first query to prevent slow Django startup
+  - [x] Lazy loading + module-level singleton — model loads once per Daphne process (~9s cold start, then cached for lifetime of process)
 - [x] Graph RAG for entity relationships (`services/graph_rag.py`)
   - [x] Built manually from SQLite without LLM extraction to save tokens
   - [x] Stock → Sector, Stock → Index, and Stock → Peer relationships
@@ -104,9 +107,9 @@
 - [x] Caching added for Vector and Graph responses (`services/cache_service.py`)
 - [x] Test endpoints under `/api/rag/`
 
-### Test Results (2026-05-06)
-- **Graph Index**: Built successfully in 0.1s (521 stock nodes, 9 sectors, 614 edges).
-- **Vector Index**: Built successfully in 33.4s (9 documents -> 67 chunks). The `sentence-transformers` model is now downloaded and cached locally.
+### Test Results (2026-05-08)
+- **Graph Index**: Built successfully in 0.1s (521 stock nodes, 9 sectors, 614 edges)
+- **Vector Index**: Built successfully in 33.4s (9 documents → 67 chunks); subsequent queries: <1s (warm cache)
 
 ### Key Files
 - `services/vector_rag.py` — LlamaIndex + ChromaDB integration
@@ -122,18 +125,38 @@
 
 ### What Was Done
 - [x] LLM fallback chain (`services/llm_client.py`): Groq → Google AI → OpenRouter → Ollama
+  - [x] Ollama at `http://localhost:11434/v1/chat/completions` with model `llama3.2:3b`
+  - [x] Priority 4 — activates only when all cloud providers fail
 - [x] LangGraph agent workflow (`services/agent.py`)
   - [x] Query routing logic (vector, sql, graph, news, full_agent)
   - [x] Agentic tools: `sql_tool`, `graph_tool`, `vector_tool`, `news_tool`
-  - [x] Parallel tool execution for `full_agent`
+  - [x] Parallel tool execution for `full_agent` route
+  - [x] `_fetch_52w_range()` uses `loop.run_in_executor` wrapping sync `execute_neon_query` (async crash fix)
+  - [x] Stale data detection — falls back to web search when Neon DB data > 3 days old
+  - [x] Web price fallback uses `_current_month_year()` for temporally fresh queries
 - [x] Conversation memory and chat history (via Django models)
-- [x] Streaming responses via Server-Sent Events (SSE) and `StreamingHttpResponse`
-- [x] Active LLM tracking and Token usage accounting
+- [x] Streaming responses via SSE (`StreamingHttpResponse`) — "Task destroyed" warning fixed
+- [x] Active LLM tracking and token usage accounting
+
+### Bug Fixes Applied (2026-05-08)
+| Bug | Fix |
+|-----|-----|
+| `_fetch_52w_range` psycopg2 async crash | `loop.run_in_executor(None, lambda: execute_neon_query(...))` |
+| Indian NHPC articles in news results | `INDIAN_SOURCES_BLACKLIST` 12-domain filter in `news_scraper.py` |
+| "Task was destroyed but pending" SSE warning | `loop.shutdown_asyncgens()` + `GeneratorExit` handler in `views.py` |
+
+### Bug Fixes Applied (2026-05-09)
+| Bug | Fix |
+|-----|-----|
+| Search API returning static profile pages | Modified DDG queries to use `after:2026-01-01` to force recent news articles |
+| Overly aggressive path-depth filter blocking valid articles | Replaced heuristic with explicit case-insensitive `skip_patterns` matched to actual stock symbols |
+| Symbol Context Lost on follow-up queries | Frontend (`chatStore.js`): extracted `lastSymbol` from `signals.price_cards`. Backend (`views.py`): injected `(regarding {symbol_hint})` and re-classified query. |
+| Left sidebar totally hidden on desktop | Fixed `QueryHistory.jsx` CSS to use `-ml-72` for smooth collapse and removed `md:hidden` from `ChatWindow.jsx` toggle button |
 
 ### Key Files
 - `services/llm_client.py` — Multi-provider fallback chain and SSE parsing
-- `services/agent.py` — LangGraph agent orchestration
-- `apps/agent/views.py` — Chat streaming endpoints
+- `services/agent.py` — LangGraph agent orchestration (patched)
+- `apps/agent/views.py` — Chat streaming endpoints (patched)
 
 ---
 
@@ -143,27 +166,42 @@
 - [x] Vite + React 18 setup with Tailwind CSS
 - [x] State management with Zustand (`useChatStore`, `useThemeStore`)
 - [x] Responsive Chat UI with streaming messages and markdown rendering
-- [x] Intelligent Symbol Dropdown with searchable stocks
+- [x] Intelligent auto-detected symbol chip (replaces footer dropdown) for stateless queries
 - [x] Dynamic LLM tracking display in chat footer (Provider + Token usage)
-- [x] UI component replacements: `PriceCard`, Indicator Grid (`SignalsTable`), Styled Empty States (`NewsSection`), Pill Source Chips (`CitationList`)
+- [x] `PriceCard` — close price, % change, day range, 52W range, VWAP
+- [x] `SignalsTable` (Indicator Grid) — RSI/MACD/EMA/BB status badges with color coding
+- [x] `NewsFeed` — auto-expanding list of headlines with source attribution and date
+- [x] `CitationList` — pill-shaped source chips with icons (DB / Graph / Doc / Web)
 - [x] Light/Dark mode toggling
 - [x] User Authentication UI (Login/Register)
 
 ### Key Files
-- `frontend/src/components/ChatWindow.jsx` — Main chat UI
-- `frontend/src/store/chatStore.js` — Streaming and state management
-- `frontend/src/components/SymbolDropdown.jsx` — Market symbol selector
+- `frontend/src/components/ChatWindow.jsx` — Main chat UI (now uses context-aware symbol chip)
+- `frontend/src/store/chatStore.js` — Streaming, state management, and conversational symbol persistence
+- `frontend/src/components/SignalsTable.jsx` — Indicator grid
+- `frontend/src/components/NewsSection.jsx` — News list with empty state
+- `frontend/src/components/CitationList.jsx` — Source citation pills
 
 ---
 
-## Phase 6: Evaluation & Documentation — NOT STARTED
+## Phase 6: Evaluation & Documentation — IN PROGRESS
 
 ### Planned Work
-- [ ] RAG evaluation metrics (faithfulness, relevancy, answer quality)
+- [ ] RAG evaluation metrics (faithfulness, relevancy, answer quality) using RAGAS framework
 - [ ] Agent evaluation (tool selection accuracy, multi-step reasoning)
-- [ ] Performance benchmarks (latency, cache hit rates)
-- [ ] Final project report and documentation
-- [ ] Disclaimer on every LLM response
+- [ ] Performance benchmarks: baseline established — full_agent ~36s, sql_graph ~18s, cache hit ~0.1s
+- [ ] LLM comparison table for report: Groq Llama vs Gemini vs Ollama llama3.2:3b
+- [ ] Final project report write-up
+- [ ] DISCLAIMER visible on every LLM response ✅ already appended in `agent.py` and `views.py`
+
+### Architecture Decisions to Document
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| LLMs | API + Ollama fallback | No GPU; RAG compensates for domain knowledge gap |
+| Vector DB | ChromaDB | Zero-config, free, native LlamaIndex support, sufficient for 67 chunks |
+| ASGI Server | Daphne | Required for async SSE; WSGI servers are synchronous |
+| Local LLM | Ollama llama3.2:3b | OpenAI-compatible, no API key, offline resilience |
+| Price DB | Neon (read-only) | Production DB — app never writes market data |
 
 ---
 
@@ -174,11 +212,12 @@
 |-----|--------|-------|
 | `NEON_DATABASE_URL` | CONFIGURED | Read-only Neon PostgreSQL |
 | `NEWSAPI_KEY` | WORKING | Primary search provider |
-| `GROQ_API_KEY` | CONFIGURED | For Phase 4 LLM chain |
-| `GOOGLE_AI_API_KEY` | CONFIGURED | For Phase 4 LLM chain |
-| `OPENROUTER_API_KEY` | CONFIGURED | For Phase 4 LLM chain |
+| `GROQ_API_KEY` | CONFIGURED | Priority 1 LLM |
+| `GOOGLE_AI_API_KEY` | CONFIGURED | Priority 2 LLM |
+| `OPENROUTER_API_KEY` | CONFIGURED | Priority 3 LLM |
 | `GOOGLE_CSE_API_KEY` | DISABLED | 403 error |
 | `SERPAPI_KEY` | DISABLED | 429, credits exhausted |
+| `HF_TOKEN` | OPTIONAL | Suppresses HuggingFace rate-limit warnings on first model load |
 
 ### Dependencies (requirements.txt)
 - Django 4.2+, DRF, Channels, Daphne
@@ -188,9 +227,13 @@
 - newsapi-python, serpapi, google-api-python-client (search providers)
 - python-decouple, psycopg2-binary
 - python-json-logger (logging)
+- langgraph, llama-index-core, llama-index-vector-stores-chroma, llama-index-embeddings-huggingface
+- chromadb, sentence-transformers
+
+> **Note**: Ollama is NOT a pip package. Install from https://ollama.com/download, then `ollama pull llama3.2:3b`.
 
 ### Project Structure
-```
+```text
 nepse_rag/
 ├── apps/
 │   ├── nepse_data/    # Models: Stock, OHLCV, Indicator, NewsEvent
@@ -198,19 +241,20 @@ nepse_rag/
 │   ├── agent/         # Agent app (Phase 4)
 │   └── api/           # REST endpoints
 ├── services/
-│   ├── neon_client.py     # Neon DB connection (Phase 1)
+│   ├── neon_client.py     # Neon DB — sync execute_neon_query (Phase 1)
 │   ├── db_service.py      # Data access layer (Phase 1)
 │   ├── indicators.py      # Technical indicators (Phase 1)
 │   ├── cache_service.py   # Caching layer (Phase 1)
 │   ├── web_search.py      # Web search fallback chain (Phase 2)
-│   ├── news_scraper.py    # News scraping pipeline (Phase 2)
-│   ├── vector_rag.py      # Vector RAG (Phase 3)
+│   ├── news_scraper.py    # News scraping + Indian source blacklist (Phase 2)
+│   ├── vector_rag.py      # Vector RAG — LlamaIndex + ChromaDB (Phase 3)
 │   ├── graph_rag.py       # Graph RAG (Phase 3)
-│   ├── query_router.py    # Query routing (Phase 3)
-│   ├── llm_client.py      # LLM client & stream handling (Phase 4)
-│   └── agent.py           # Agent orchestration via LangGraph (Phase 4)
+│   ├── query_router.py    # Rule-based intent routing (Phase 3)
+│   ├── llm_client.py      # LLM fallback chain + stream handling (Phase 4)
+│   └── agent.py           # LangGraph agent + fixes (Phase 4)
 ├── frontend/          # React + Vite application (Phase 5)
 ├── docs/              # Domain knowledge (9 files)
+├── indexes/           # graph_store.json + ChromaDB data
 ├── logs/              # JSONL logs
 ├── nepse_project/     # Django settings
 ├── .env               # API keys
@@ -221,14 +265,53 @@ nepse_rag/
 
 ## Change Log
 
+### 2026-05-09 — UI Polish & Response Quality Improvements
+- **Frontend UI Redesign**: Fixed missing `style.css` import in `main.jsx` and completely rewrote the chat UI to use a premium, card-based design with colored tool chips, a `PriceCard` with a 3-column meta grid, an indicator `SignalsTable`, and type-colored citation chips. Also fixed contrast issues for disclaimer and token row text in light/dark mode.
+- **Backend Response Quality (`services/llm_client.py`)**: Rewrote the `SYSTEM_PROMPT` to enforce structured output (summary tables, numbered lists, bold headers) and explicitly instructed the LLM not to ignore SQL tool output. Increased `max_tokens` (500 → 800) and `max_input_tokens` (2000 → 3000) to support detailed, Perplexity-style responses.
+- **Agent Data Enrichment (`services/agent.py`)**: Added `symbol` and `date` to the `sql_tool` signals dictionary for the frontend. Formatted raw SQL dictionary output into explicit, human-readable sentences for better LLM comprehension.
+- **News Scraper Fixes (`services/news_scraper.py` & `services/web_search.py`)**: Added `publishedAt` fallback mapping for web search results. Wrapped the DuckDuckGo `loop.run_in_executor` call with `asyncio.wait_for` (timeout 5.0s) to prevent the `news_tool` from hanging the SSE stream indefinitely when blocked.
+- **Query Router Optimization (`services/query_router.py`)**: Added logic to explicitly block the `vector_tool` from firing on pure data/price intent queries (`PRICE_DATA_KEYWORDS`), preventing irrelevant definitional context from confusing the LLM.
+
+### 2026-05-09 — Compare Route & Multi-Symbol Fixes
+- **Query Router Priority (`services/query_router.py`)**: Moved `ROUTE_COMPARE` check above `ROUTE_FULL_AGENT` — compare is more specific (≥2 symbols or explicit keywords like "compare", "vs") and should not be overridden by generic `FULL_AGENT_KEYWORDS` ("show", "news"). Added `news_tool` to the `ROUTE_COMPARE` tools list so news is fetched alongside comparisons. Blocked `vector_tool` unconditionally for COMPARE route.
+- **Multi-Symbol SSE Streaming (`apps/agent/views.py`)**: Rewrote the SSE retrieval loop to iterate ALL extracted symbols (not just the first one). Both `sql_tool` and `graph_tool` now run for every symbol in the query. `news_tool` is called concurrently via `asyncio.gather()` for all symbols (not sequentially). Signals are now sent as an ARRAY for multi-symbol queries, enabling multi-card rendering.
+- **News Pipeline Speed (`services/agent.py` & `services/news_scraper.py`)**: Reduced `news_tool` timeout from 20s → 12s. In `news_scraper.py`, **completely removed `_safe_fetch` full-text article fetching** — this was the #1 bottleneck (4-8s per query). ShareSansar/MeroLagani scraper results have no `snippet` field, so they always triggered the fetch. Now uses headline as fallback summary. Also made DB persist fire-and-forget via `asyncio.create_task()` so it doesn't block the response.
+- **System Prompt (`services/llm_client.py`)**: Rewritten with MANDATORY rules using forceful language (Groq/Llama compliance): explicitly forbids explaining indicators ("Wrong: 'RSI is a momentum indicator...' Right: 'RSI: 51.0 — neutral'"), requires ALL SQL DATA blocks to be presented, uses "violating ANY of these is UNACCEPTABLE" phrasing.
+- **Frontend Multi-Card (`MessageBubble.jsx`)**: Signals can now be an array. Renders a `PriceCard` for EACH symbol in multi-symbol queries (e.g., side-by-side NABIL and NICA cards).
+- **NABIL PriceCard Missing Fix (`services/agent.py`)**: Fixed critical bug where `sql_tool` returned empty signals `{}` when web price extraction returned `raw_text` instead of a numeric close. The early return on line 235 (`return text, citations, {}`) was removed — now uses DB data with a stale note instead.
+- **DDG Source Label Fix (`services/web_search.py` & `NewsSection.jsx`)**: DuckDuckGo results now extract the actual domain name from the URL (e.g., "sharesansar.com") instead of showing "DuckDuckGo" as the source. Frontend also has a fallback domain extractor.
+- **News Symbol Attribution (`agent.py` & `NewsSection.jsx`)**: Added `symbol` field to news citations. NewsSection now shows "Latest News — NICA & NABIL" instead of just one symbol.
+- **Vector Tool Blocking Fix (`apps/agent/views.py`)**: Changed vector_tool execution from route-based check (`if route in (ROUTE_FULL_AGENT,...)`) to `if "vector_tool" in decision.tools_needed`. This respects the router's blocking logic — previously, even when `query_router.py` stripped vector_tool from `tools_needed`, views.py would still run it because it only checked the route name.
+- **Stock Name Cleanup (`load_sample_data.py`)**: Updated `get_or_create` loop to also fix `name` field when it contains "auto-created" — 58 stocks updated to proper names (e.g., "Nabil Bank Limited" instead of "NABIL (auto-created from Neon)"). This fixes PriceCard subtitle display AND news search quality.
+- **News Search Quality (`services/news_scraper.py`)**: Added sanitization to skip junk stock names containing "auto-created" in search queries. Now uses full company name (e.g., "NABIL Nabil Bank Limited Nepal May 2026") for more specific results.
+- **System Prompt v3 (`services/llm_client.py`)**: Added Rule 5 (never write "[context unclear]" placeholders) and Rule 6 (don't repeat PriceCard/SignalsTable numbers — provide analysis instead). Changed format to request commentary over raw data duplication.
+
+### 2026-05-08 — Bug Fixes (Phases 2, 4)
+
+#### services/agent.py
+- Fixed `_fetch_52w_range()` psycopg2 async crash — now uses `loop.run_in_executor(None, lambda: execute_neon_query(...))`, matching the sync pattern in `db_service.py`
+- Added `_current_month_year()` helper — web search queries now include current month ("May 2026") for temporally fresh results
+- Added 52-week high/low to `signals` dict returned by `sql_tool`
+
+#### services/news_scraper.py
+- Added `INDIAN_SOURCES_BLACKLIST` (12 domains) and `_is_nepse_article()` filter
+- Root cause: NewsAPI returned Indian NHPC articles from thehindubusinessline.com
+- Filter applied after deduplication, before DB persistence
+
+#### apps/agent/views.py
+- Fixed `Task was destroyed but it is pending!` SSE warning
+- Added `loop.run_until_complete(loop.shutdown_asyncgens())` in `_stream_events()` finally block
+- Added `GeneratorExit` handler calling `async_gen.aclose()` on client disconnect
+
 ### 2026-05-08 — Phase 4 & 5 Complete
 - Implemented LangGraph Agent Orchestration in `services/agent.py`
 - Implemented `services/llm_client.py` with multi-provider fallback (Groq, Gemini, OpenRouter, Ollama)
+- Ollama configured as Priority 4 with OpenAI-compatible `/v1/chat/completions` endpoint, model `llama3.2:3b`
 - Created fully responsive React + Vite frontend with Tailwind CSS
-- Added SSE streaming message capabilities with live typewriter effect
-- Integrated dynamic LLM token usage tracking directly in the frontend chat interface
-- Polished UI layout alignments and dynamic text box heights
-- Replaced raw text outputs with structured UI components (`PriceCard`, `SignalsTable` grid, `NewsSection`, pill-shaped `CitationList`)
+- Added SSE streaming with typewriter effect
+- Integrated dynamic LLM token usage tracking in chat footer
+- Replaced raw text outputs with structured components: `PriceCard`, `SignalsTable`, `NewsSection`, `CitationList`
+- Polished UI: auto-expanding textarea, single-line symbol dropdown, aligned header
 
 ### 2026-05-05 — Phase 2 Complete
 - Implemented `services/web_search.py` with 4-provider fallback chain

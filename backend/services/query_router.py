@@ -34,7 +34,9 @@ FULL_AGENT_KEYWORDS = [
     "increased", "happened", "affect", "because",
     "analysis", "outlook", "forecast", "should i buy", "worth",
     "what happened", "crash", "surge", "rally", "dump",
-    "status", "update", "market"
+    "status", "update", "market",
+    "fundamental", "eps", "profit", "npl", "earnings",
+    "balance sheet", "revenue", "pe ratio"
 ]
 
 COMPARE_KEYWORDS = [
@@ -137,8 +139,8 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
     Classifies query into one of 4 routes.
 
     Check order (most specific first):
-    1. ROUTE_FULL_AGENT  -> if any FULL_AGENT_KEYWORDS found
-    2. ROUTE_COMPARE     -> if any COMPARE_KEYWORDS found OR >=2 symbols
+    1. ROUTE_COMPARE     -> if any COMPARE_KEYWORDS found OR >=2 symbols
+    2. ROUTE_FULL_AGENT  -> if any FULL_AGENT_KEYWORDS found
     3. Definitional      -> if definitional pattern + no symbols -> vector_only
     4. ROUTE_SQL_GRAPH   -> if any SQL_GRAPH_KEYWORDS found
     5. ROUTE_VECTOR_ONLY -> default (educational, definitional)
@@ -161,8 +163,31 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
         if sym_upper not in symbols:
             symbols.insert(0, sym_upper)
 
+    # Evaluate definitional vs data patterns first for the _decide helper
+    PRICE_DATA_KEYWORDS = [
+        "price", "latest", "current", "today", "now", "close",
+        "data", "number", "value", "show"
+    ]
+    definitional_patterns = [
+        "what is", "what are", "what does", "define", "explain",
+        "meaning of", "how does", "how do", "tell me about",
+        "describe", "introduction to", "basics of",
+    ]
+    # "tell me about NABIL" = stock query, NOT definitional
+    # Only definitional when no symbols present (e.g., "what is RSI?")
+    is_definitional = any(pat in q_lower for pat in definitional_patterns) and not symbols
+    wants_data = any(kw in q_lower for kw in PRICE_DATA_KEYWORDS)
+
     # Helper to build and log decision
     def _decide(route, tools):
+        # Block vector_tool for COMPARE (never needed) or when explicitly asking
+        # for data/price/news without a definitional question
+        if "vector_tool" in tools:
+            if route == ROUTE_COMPARE:
+                tools = [t for t in tools if t != "vector_tool"]
+            elif not is_definitional and (wants_data or any(kw in q_lower for kw in ["news", "latest"])):
+                tools = [t for t in tools if t != "vector_tool"]
+
         decision = RouteDecision(route=route, symbols=symbols, tools_needed=tools)
         logger.info(
             "Query routed to %s: '%s' (symbols=%s)",
@@ -171,33 +196,18 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
         )
         return decision
 
-    # 1. Full agent — most expensive, most complete
+    # 1. Compare — HIGHEST priority (most specific: >=2 symbols or explicit keywords)
+    if any(kw in q_lower for kw in COMPARE_KEYWORDS) or len(symbols) >= 2:
+        return _decide(ROUTE_COMPARE, ["sql_tool", "graph_tool", "news_tool"])
+
+    # 2. Full agent — why/news/today with a single symbol
     if any(kw in q_lower for kw in FULL_AGENT_KEYWORDS):
         return _decide(ROUTE_FULL_AGENT,
                        ["sql_tool", "graph_tool", "news_tool", "vector_tool"])
 
-    # 2. Compare — two stocks side by side
-    if any(kw in q_lower for kw in COMPARE_KEYWORDS) or len(symbols) >= 2:
-        return _decide(ROUTE_COMPARE, ["sql_tool", "graph_tool"])
-
-    # Price/data keywords that override definitional routing
-    # Indicator names are removed from here so that "what is RSI" stays definitional
-    PRICE_DATA_KEYWORDS = [
-        "price", "latest", "current", "today", "now", "close",
-        "data", "number", "value", "show"
-    ]
-
     # 3. Definitional queries — "what is X", "explain X", "define X"
     #    Only route to vector_only if it's truly educational
     #    (no stock symbol AND no request for live data)
-    definitional_patterns = [
-        "what is", "what are", "what does", "define", "explain",
-        "meaning of", "how does", "how do", "tell me about",
-        "describe", "introduction to", "basics of",
-    ]
-    is_definitional = any(pat in q_lower for pat in definitional_patterns)
-    wants_data = any(kw in q_lower for kw in PRICE_DATA_KEYWORDS)
-
     if is_definitional and not symbols and not wants_data:
         return _decide(ROUTE_VECTOR_ONLY, ["vector_tool"])
 
@@ -205,6 +215,12 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
     if any(kw in q_lower for kw in SQL_GRAPH_KEYWORDS):
         return _decide(ROUTE_SQL_GRAPH, ["sql_tool", "graph_tool"])
 
-    # 5. Vector only — educational, definitional (default)
+    # 5. If symbols are present but no keyword matched, default to full_agent
+    #    "tell me about NABIL" → should still fetch SQL data + news
+    if symbols:
+        return _decide(ROUTE_FULL_AGENT,
+                       ["sql_tool", "graph_tool", "news_tool"])
+
+    # 6. Vector only — educational, definitional (default, no symbols)
     return _decide(ROUTE_VECTOR_ONLY, ["vector_tool"])
 

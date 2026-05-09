@@ -3,13 +3,12 @@ apps/agent/views.py
 Agent API views — Query + Streaming endpoints.
 
 Endpoints:
-  POST /api/query/        — Non-streaming full response
-  GET  /api/query/stream/ — SSE streaming response
+    POST /api/query/         — Non-streaming full response
+    GET  /api/query/stream/  — SSE streaming response
 
-FIXES:
-  - COMPARE route now iterates ALL extracted symbols (fixes NCCB being ignored)
-  - news_tool wrapped in asyncio.wait_for with correct TimeoutError handling
-  - Removed bare except Exception that was swallowing TimeoutError silently
+FIX: Added try/finally cleanup in _stream_events to suppress
+     "Task was destroyed but it is pending!" log noise when
+     a client disconnects mid-stream.
 """
 import asyncio
 import json
@@ -60,6 +59,7 @@ def _save_messages(request, question, symbol, result, conversation_id=None):
         role='user',
         content=question,
     )
+
     Message.objects.create(
         conversation=convo,
         role='assistant',
@@ -84,18 +84,18 @@ class QueryView(APIView):
     POST /api/query/
 
     Request body:
-      {
-        "question": "Why did NABIL fall today?",  (required)
-        "symbol":   "NABIL",                      (optional)
-        "conversation_id": 5                      (optional)
-      }
+        {
+            "question": "Why did NABIL fall today?",   (required)
+            "symbol": "NABIL",                         (optional)
+            "conversation_id": 5                       (optional)
+        }
 
     Response: Full JSON response matching API Response Format.
     """
 
     def post(self, request):
-        question = (request.data.get("question") or "").strip()
-        symbol = (request.data.get("symbol") or "").strip().upper()
+        question        = (request.data.get("question") or "").strip()
+        symbol          = (request.data.get("symbol") or "").strip().upper()
         conversation_id = request.data.get("conversation_id")
 
         if not question:
@@ -153,7 +153,6 @@ class QueryView(APIView):
         convo_id = _save_messages(
             request, question, symbol, result, conversation_id
         )
-
         if convo_id:
             result["conversation_id"] = convo_id
 
@@ -174,18 +173,18 @@ class StreamQueryView(View):
     Streams tokens as they arrive from the LLM.
 
     Event format:
-      data: {"type": "token",     "content": "Based"}
-      data: {"type": "signals",   "data": {...}}
-      data: {"type": "citations", "data": [...]}
-      data: {"type": "route",     "data": "full_agent"}
-      data: {"type": "tools",     "data": ["sql_tool", ...]}
-      data: {"type": "provider",  "data": "groq"}
-      data: {"type": "done"}
+        data: {"type": "token", "content": "Based"}
+        data: {"type": "signals", "data": {...}}
+        data: {"type": "citations", "data": [...]}
+        data: {"type": "route", "data": "full_agent"}
+        data: {"type": "tools", "data": ["sql_tool", ...]}
+        data: {"type": "provider", "data": "groq"}
+        data: {"type": "done"}
     """
 
     def get(self, request):
-        question = (request.GET.get("question") or "").strip()
-        symbol = (request.GET.get("symbol") or "").strip().upper()
+        question        = (request.GET.get("question") or "").strip()
+        symbol          = (request.GET.get("symbol") or "").strip().upper()
         conversation_id = request.GET.get("conversation_id")
 
         if not question:
@@ -198,7 +197,7 @@ class StreamQueryView(View):
             self._stream_events(request, question, symbol, conversation_id),
             content_type="text/event-stream",
         )
-        response["Cache-Control"] = "no-cache"
+        response["Cache-Control"]    = "no-cache"
         response["X-Accel-Buffering"] = "no"
         return response
 
@@ -206,7 +205,7 @@ class StreamQueryView(View):
         """
         Sync generator that wraps the async generator.
         FIX: loop.shutdown_asyncgens() in finally block prevents
-        'Task was destroyed but it is pending!' log noise.
+             'Task was destroyed but it is pending!' log noise.
         """
         loop = asyncio.new_event_loop()
         try:
@@ -224,14 +223,16 @@ class StreamQueryView(View):
                     # Client disconnected — cancel pending tasks cleanly
                     loop.run_until_complete(async_gen.aclose())
                     break
-                except Exception as e:
-                    logger.error(
-                        "SSE stream error: %s", e,
-                        extra={"event": "sse_stream_error"},
-                    )
-                    yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
-                    yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        except Exception as e:
+            logger.error(
+                "SSE stream error: %s", e,
+                extra={"event": "sse_stream_error"},
+            )
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
         finally:
+            # Cleanly shut down pending async generators to silence
+            # "Task was destroyed but it is pending!" warnings
             try:
                 loop.run_until_complete(loop.shutdown_asyncgens())
             except Exception:
@@ -251,10 +252,10 @@ class StreamQueryView(View):
 
         total_start = time.time()
 
-        # ── 1. Check cache first ──────────────────────────────────────────
+        # 1. Check cache first
         cached = get_cached_llm_response(question, symbol)
         if cached:
-            answer = cached.get("answer", "")
+            answer     = cached.get("answer", "")
             chunk_size = 10
             for i in range(0, len(answer), chunk_size):
                 chunk = answer[i:i + chunk_size]
@@ -274,117 +275,79 @@ class StreamQueryView(View):
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
-        # ── 2. Route the query ────────────────────────────────────────────
-        decision = classify_query(question)
-        
-        # If no symbol detected AND hint exists, inject and re-classify
-        if not decision.symbols and symbol:
-            enriched_question = f"{question} (regarding {symbol})"
-            decision = classify_query(enriched_question)
-            if not decision.symbols:
-                decision.symbols = [symbol]  # force it if still not detected
-            question = enriched_question  # pass enriched to LLM context
-            
-        route = decision.route
+        # 2. Route the query
+        decision = classify_query(question, symbol)
+        route    = decision.route
+        if not symbol and decision.symbols:
+            symbol = decision.symbols[0]
 
-        # Collect ALL symbols from decision + the URL param
-        all_symbols = list(decision.symbols)
-        if symbol and symbol not in all_symbols:
-            all_symbols.insert(0, symbol)
-        # Ensure symbol is set to first extracted if frontend didn't send one
-        if not symbol and all_symbols:
-            symbol = all_symbols[0]
+        # 3. Run retrieval tools
+        tools_called  = []
+        all_citations = []
+        signals       = {}
+        tool_outputs  = []
 
         from services.query_router import (
             ROUTE_VECTOR_ONLY, ROUTE_SQL_GRAPH,
             ROUTE_FULL_AGENT, ROUTE_COMPARE,
         )
 
-        # ── 3. Run retrieval tools ────────────────────────────────────────
-        tools_called = []
-        all_citations = []
-        all_signals_list = []  # List of signals dicts, one per symbol
-        tool_outputs = []
-
         if route in (ROUTE_SQL_GRAPH, ROUTE_FULL_AGENT, ROUTE_COMPARE):
-            # FIX: Iterate ALL symbols, not just the first one from the URL param
-            syms_to_fetch = all_symbols if all_symbols else ([symbol] if symbol else [])
-            for sym in syms_to_fetch:
-                if not sym:
-                    continue
-                sql_text, sql_cites, sql_signals = await sql_tool(sym)
+            if symbol:
+                sql_text, sql_cites, sql_signals = await sql_tool(symbol)
                 if sql_text:
                     tool_outputs.append(sql_text)
-                    if "sql_tool" not in tools_called:
-                        tools_called.append("sql_tool")
+                    tools_called.append("sql_tool")
                     all_citations.extend(sql_cites)
-                    if sql_signals:
-                        all_signals_list.append(sql_signals)
+                    signals = sql_signals
 
-                graph_text, graph_cites = await graph_tool(question, sym)
+                graph_text, graph_cites = await graph_tool(question, symbol)
                 if graph_text:
                     tool_outputs.append(graph_text)
-                    if "graph_tool" not in tools_called:
-                        tools_called.append("graph_tool")
+                    tools_called.append("graph_tool")
                     all_citations.extend(graph_cites)
 
         if route in (ROUTE_FULL_AGENT, ROUTE_COMPARE):
-            # FIX: Fetch news for ALL symbols CONCURRENTLY (not sequentially)
-            syms_to_fetch = [s for s in (all_symbols or ([symbol] if symbol else [])) if s]
-            if syms_to_fetch:
-                news_results = await asyncio.gather(
-                    *[
-                        asyncio.wait_for(news_tool(sym), timeout=15.0)
-                        for sym in syms_to_fetch
-                    ],
-                    return_exceptions=True,
-                )
-                for i, result in enumerate(news_results):
-                    sym = syms_to_fetch[i]
-                    if isinstance(result, asyncio.TimeoutError):
-                        logger.warning(
-                            "news_tool(%s): timed out in SSE stream", sym,
-                            extra={"event": "news_tool_sse_timeout", "symbol": sym},
-                        )
-                    elif isinstance(result, Exception):
-                        logger.warning(
-                            "news_tool(%s) error in SSE stream: %s", sym, result,
-                            extra={"event": "news_tool_sse_error", "symbol": sym},
-                        )
-                    else:
-                        news_text, news_cites = result
-                        if news_text:
-                            tool_outputs.append(news_text)
-                            if "news_tool" not in tools_called:
-                                tools_called.append("news_tool")
-                            all_citations.extend(news_cites)
+            if symbol:
+                try:
+                    news_text, news_cites = await news_tool(symbol)
+                    if news_text:
+                        tool_outputs.append(news_text)
+                        tools_called.append("news_tool")
+                        all_citations.extend(news_cites)
+                except Exception:
+                    pass
+                #     news_text, news_cites = await asyncio.wait_for(
+                #         news_tool(symbol), timeout=12.0
+                #     )
+                #     if news_text:
+                #         tool_outputs.append(news_text)
+                #         tools_called.append("news_tool")
+                #         all_citations.extend(news_cites)
+                # except asyncio.TimeoutError:
+                #     logger.warning("news_tool timed out in SSE stream for %s", symbol)
 
-        # Only run vector_tool if the router included it in tools_needed
-        if "vector_tool" in decision.tools_needed:
+        if route in (ROUTE_VECTOR_ONLY, ROUTE_FULL_AGENT):
             vec_text, vec_cites = await vector_tool(question)
             if vec_text:
                 tool_outputs.append(vec_text)
                 tools_called.append("vector_tool")
                 all_citations.extend(vec_cites)
 
-        # ── 4. Send route + tools before streaming starts ─────────────────
+        # 4. Send route + tools before streaming starts
         yield f"data: {json.dumps({'type': 'route', 'data': route})}\n\n"
         yield f"data: {json.dumps({'type': 'tools', 'data': tools_called})}\n\n"
 
-        # Send ALL signals (array for multi-symbol, single dict for single)
-        if all_signals_list:
-            signals_payload = all_signals_list if len(all_signals_list) > 1 else all_signals_list[0]
-            yield f"data: {json.dumps({'type': 'signals', 'data': signals_payload})}\n\n"
+        if signals:
+            yield f"data: {json.dumps({'type': 'signals', 'data': signals})}\n\n"
 
-        # ── 5. Build RAG prompt and stream LLM response ───────────────────
-        prompt = build_rag_prompt(question, tool_outputs)
-        full_answer = []
+        # 5. Build RAG prompt and stream LLM response
+        prompt       = build_rag_prompt(question, tool_outputs)
+        full_answer  = []
         provider_used = "unknown"
-        tokens_used = 0
-        # Use fewer tokens for single-symbol queries (UI cards show the data)
-        llm_max_tokens = 800 if route == ROUTE_COMPARE else 400
+        tokens_used  = 0
 
-        async for token in stream_llm(prompt, max_tokens=llm_max_tokens):
+        async for token in stream_llm(prompt):
             if isinstance(token, tuple) and token[0] == "__meta__":
                 provider_used = token[1]
                 if len(token) > 2:
@@ -400,7 +363,7 @@ class StreamQueryView(View):
             yield f"data: {json.dumps({'type': 'token', 'content': disclaimer_token})}\n\n"
             answer_text += disclaimer_token
 
-        # ── 6. Send citations + provider after streaming ──────────────────
+        # 6. Send citations + provider after streaming
         if all_citations:
             yield f"data: {json.dumps({'type': 'citations', 'data': all_citations})}\n\n"
 
@@ -408,36 +371,36 @@ class StreamQueryView(View):
 
         total_latency = int((time.time() - total_start) * 1000)
 
-        # ── 7. Cache the full response ────────────────────────────────────
+        # 7. Cache the full response
         full_response = {
-            "answer": answer_text,
-            "signals": all_signals_list[0] if all_signals_list else {},
-            "citations": all_citations,
-            "route_used": route,
-            "tools_called": tools_called,
-            "latency_ms": total_latency,
+            "answer":            answer_text,
+            "signals":           signals,
+            "citations":         all_citations,
+            "route_used":        route,
+            "tools_called":      tools_called,
+            "latency_ms":        total_latency,
             "llm_provider_used": provider_used,
-            "tokens_used": tokens_used,
+            "tokens_used":       tokens_used,
         }
         try:
             cache_llm_response(question, symbol, full_response, ttl=3600)
         except Exception:
             pass
 
-        # ── 8. Save to conversation history ───────────────────────────────
+        # 8. Save to conversation history
         _save_messages(request, question, symbol, full_response, conversation_id)
 
-        # ── 9. Done event ─────────────────────────────────────────────────
+        # 9. Done event
         yield f"data: {json.dumps({'type': 'done', 'latency_ms': total_latency})}\n\n"
 
         logger.info(
             "SSE stream complete: route=%s, tools=%s, provider=%s, %dms",
             route, tools_called, provider_used, total_latency,
             extra={
-                "event": "sse_query",
-                "question": question[:100],
-                "symbol": symbol,
-                "route": route,
+                "event":      "sse_query",
+                "question":   question[:100],
+                "symbol":     symbol,
+                "route":      route,
                 "latency_ms": total_latency,
             },
         )

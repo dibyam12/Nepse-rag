@@ -2,21 +2,20 @@
  * ChatWindow — Main chat interface.
  *
  * Top bar: title + disclaimer + auth + dark mode toggle.
- * Middle: scrollable message list.
- * Bottom: symbol dropdown + text input + send button.
+ * Middle: scrollable message list with premium styling.
+ * Bottom: symbol chip + text input + send button (kept as-is).
  */
 import { useState, useRef, useEffect } from 'react';
 import {
   Send, Menu, Sun, Moon, LogIn, LogOut, User,
-  TrendingUp, ShieldAlert,
+  TrendingUp, ShieldAlert, X
 } from 'lucide-react';
 import useChatStore from '../store/chatStore';
 import useThemeStore from '../store/themeStore';
 import MessageBubble from './MessageBubble';
-import SymbolDropdown from './SymbolDropdown';
 
 export default function ChatWindow({ onToggleSidebar, onOpenAuth }) {
-  const { messages, isLoading, sendMessage, user, logout } = useChatStore();
+  const { messages, isLoading, sendMessage, user, logout, lastSymbol, setLastSymbol } = useChatStore();
   const { isDark, toggle: toggleTheme } = useThemeStore();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -58,65 +57,69 @@ export default function ChatWindow({ onToggleSidebar, onOpenAuth }) {
       <header className="flex items-center gap-3 px-4 py-3
                          border-b border-surface-200 dark:border-surface-800
                          bg-white/80 dark:bg-surface-900/80 backdrop-blur-xl">
-        {/* Sidebar toggle */}
-        <button
-          onClick={onToggleSidebar}
-          className="p-2 rounded-xl btn-ghost"
-          id="sidebar-toggle"
-        >
-          <Menu size={18} />
-        </button>
-
-        {/* Title + disclaimer */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <TrendingUp size={20} className="text-brand-500 flex-shrink-0" />
-          <h1 className="text-base font-bold gradient-text truncate">
-            NEPSE AI Research Assistant
-          </h1>
-          <span className="hidden sm:flex items-center gap-1 badge badge-orange text-[10px] flex-shrink-0">
-            <ShieldAlert size={10} />
-            Educational Only
-          </span>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <button 
+            onClick={onToggleSidebar}
+            className="p-2 -ml-2 text-surface-500 hover:text-surface-900 dark:hover:text-surface-100 rounded-lg transition-colors"
+            title="Toggle Sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-brand-500/10 flex items-center justify-center border border-brand-500/20">
+              <TrendingUp className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+            </div>
+            <div>
+              <h1 className="font-semibold text-surface-900 dark:text-surface-50">NEPSE AI</h1>
+              <p className="text-[10px] text-surface-500 font-medium">Research Assistant</p>
+            </div>
+          </div>
         </div>
 
-        {/* Right actions */}
-        <div className="flex items-center gap-1">
-          {/* Dark mode toggle */}
+        <div className="flex items-center gap-2">
+          {/* Disclaimer Banner - Hidden on mobile */}
+          <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500" />
+            <span className="text-xs font-medium text-amber-700 dark:text-amber-500">Not financial advice</span>
+          </div>
+
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-xl btn-ghost"
-            title={isDark ? 'Light mode' : 'Dark mode'}
-            id="theme-toggle"
+            className="p-2 text-surface-500 hover:text-surface-900 dark:hover:text-surface-100
+                       hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-colors"
+            title="Toggle theme"
           >
-            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          {/* Auth */}
+          <div className="w-px h-4 bg-surface-200 dark:bg-surface-800 mx-1" />
+
           {user ? (
-            <div className="flex items-center gap-1">
-              <span className="hidden sm:block text-xs font-medium text-surface-600 dark:text-surface-400 px-2">
-                {user.username}
-              </span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 px-2.5 py-1.5 bg-surface-100 dark:bg-surface-800 rounded-lg">
+                <User className="w-3.5 h-3.5 text-surface-500" />
+                <span className="text-xs font-medium text-surface-700 dark:text-surface-300">
+                  {user.username}
+                </span>
+              </div>
               <button
                 onClick={logout}
-                className="p-2 rounded-xl btn-ghost text-surface-500"
+                className="p-2 text-surface-500 hover:text-red-600 dark:hover:text-red-400
+                           hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
                 title="Logout"
-                id="logout-btn"
               >
-                <LogOut size={16} />
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
           ) : (
             <button
               onClick={onOpenAuth}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl
-                         text-sm font-medium
-                         text-brand-600 dark:text-brand-400
-                         hover:bg-brand-50 dark:hover:bg-brand-900/20
-                         transition-colors"
-              id="login-btn"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium
+                         text-surface-700 dark:text-surface-200 hover:text-brand-600 dark:hover:text-brand-400
+                         hover:bg-brand-50 dark:hover:bg-brand-500/10 rounded-xl transition-colors"
             >
-              <LogIn size={14} />
+              <LogIn className="w-4 h-4" />
               <span className="hidden sm:inline">Login</span>
             </button>
           )}
@@ -124,7 +127,7 @@ export default function ChatWindow({ onToggleSidebar, onOpenAuth }) {
       </header>
 
       {/* ── Messages Area ──────────────────────────── */}
-      <main className="flex-1 overflow-y-auto px-4 py-6">
+      <main className="flex-1 overflow-y-auto px-4 py-6 chat-scroll">
         {messages.length === 0 ? (
           <EmptyState />
         ) : (
@@ -140,11 +143,17 @@ export default function ChatWindow({ onToggleSidebar, onOpenAuth }) {
                          bg-white/80 dark:bg-surface-900/80 backdrop-blur-xl
                          px-4 py-4">
         <div className="flex items-end justify-center gap-2 max-w-4xl mx-auto w-full">
-          <div className="flex-shrink-0">
-            <SymbolDropdown />
-          </div>
-          
-          <div className="flex-1 max-w-2xl relative">
+          <div className="flex-1 max-w-2xl relative flex flex-col gap-2">
+              {lastSymbol && (
+                <div className="absolute -top-10 left-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-500/20 shadow-sm">
+                    {lastSymbol}
+                    <button onClick={() => setLastSymbol(null)} className="hover:text-brand-900 dark:hover:text-brand-200 focus:outline-none rounded-full p-0.5 hover:bg-brand-200 dark:hover:bg-brand-500/30 transition-colors">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                </div>
+              )}
               <textarea
                 ref={textareaRef}
                 value={input}
@@ -193,47 +202,45 @@ export default function ChatWindow({ onToggleSidebar, onOpenAuth }) {
 
 function EmptyState() {
   const suggestions = [
-    'Show NABIL signals today',
-    'What is RSI and how to interpret it?',
-    'Compare NABIL and EBL sectors',
-    'Latest news about HIDCL',
+    { icon: '📈', title: 'Price + News', text: 'Tell me the price of NABIL today and the latest news' },
+    { icon: '⚖️', title: 'Compare Stocks', text: 'Compare NICA and NCCB fundamentals' },
+    { icon: '🏦', title: 'Sector Analysis', text: 'Top gainers in commercial banking today?' },
+    { icon: '📖', title: 'Learn Indicators', text: 'Explain RSI and what it means for HIDCL' },
   ];
   const { sendMessage, setSymbol } = useChatStore();
 
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-4">
-      <div className="mb-6">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600
-                        flex items-center justify-center shadow-lg shadow-brand-500/20 mb-4 mx-auto">
-          <TrendingUp size={28} className="text-white" />
-        </div>
-        <h2 className="text-xl font-bold text-surface-800 dark:text-surface-100 mb-2">
-          NEPSE AI Research Assistant
-        </h2>
-        <p className="text-sm text-surface-500 dark:text-surface-400 max-w-md">
-          Ask questions about Nepal Stock Exchange — prices, indicators,
-          sector analysis, news, and more.
-        </p>
+    <div className="welcome-screen">
+      {/* Logo */}
+      <div className="welcome-logo-wrap">
+        <svg viewBox="0 0 52 52" fill="none" width="52" height="52">
+          <rect x="4" y="4" width="18" height="18" rx="3" fill="currentColor" opacity="0.2"/>
+          <rect x="4" y="30" width="18" height="18" rx="3" fill="currentColor" opacity="0.5"/>
+          <rect x="30" y="4" width="18" height="18" rx="3" fill="currentColor" opacity="0.5"/>
+          <rect x="30" y="30" width="18" height="18" rx="3" fill="currentColor"/>
+          <path d="M13 13 L39 39" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" opacity="0.35"/>
+        </svg>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
-        {suggestions.map((q) => (
+      <h1 className="welcome-title">NEPSE AI Research Assistant</h1>
+      <p className="welcome-sub">
+        Ask questions about NEPSE stocks, technical indicators, sector data, and market news.
+        Powered by Graph RAG + Agentic RAG.
+      </p>
+
+      <div className="suggestion-grid">
+        {suggestions.map((s) => (
           <button
-            key={q}
+            key={s.text}
+            className="suggestion-card"
             onClick={() => {
-              // Extract symbol if present
-              const symbolMatch = q.match(/\b(NABIL|EBL|HIDCL|NICA|SBL|NLIC)\b/);
+              const symbolMatch = s.text.match(/\b(NABIL|EBL|HIDCL|NICA|SBL|NLIC|NCCB)\b/);
               if (symbolMatch) setSymbol(symbolMatch[0]);
-              sendMessage(q);
+              sendMessage(s.text);
             }}
-            className="px-4 py-3 rounded-xl text-left text-sm
-                       border border-surface-200 dark:border-surface-700
-                       hover:border-brand-400 dark:hover:border-brand-500
-                       hover:bg-brand-50/50 dark:hover:bg-brand-900/10
-                       text-surface-600 dark:text-surface-400
-                       transition-all duration-200"
           >
-            {q}
+            <div className="s-title">{s.icon} {s.title}</div>
+            <div className="s-text">{s.text}</div>
           </button>
         ))}
       </div>

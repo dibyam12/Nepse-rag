@@ -4,83 +4,175 @@ NEPSE AI Research Assistant is an AI-powered web assistant that answers question
 
 > **Disclaimer**: This project is for EDUCATIONAL AND RESEARCH PURPOSES ONLY. It does not provide financial advice.
 
+---
+
 ## Recent Features & Updates
 
-### Phase 4 & 5 (Agentic RAG & UI Polish)
-- **Multi-Provider LLM Fallback**: Prioritized routing (Groq → Google AI Studio → OpenRouter → Ollama) for high availability.
-- **Intelligent Routing**: Queries are routed between `sql_tool`, `graph_tool`, `vector_tool`, and `news_tool` to balance token budgets.
-- **LLM Metadata Tracking**: Displays the active LLM provider and real-time token usage estimations directly in the chat footer.
-- **Polished Responsive UI**: Seamlessly aligned chat interface featuring auto-expanding input fields without scrollbars, and single-line symbol dropdowns.
+### Phase 5 — UI Polish (2026-05-08)
+- **PriceCard component** — shows close price, % change, day range, 52W range, VWAP in a structured card
+- **Indicator Grid (SignalsTable)** — color-coded RSI/MACD/EMA/Bollinger status badges
+- **NewsSection** — styled empty state with direct links to ShareSansar and MeroLagani when no news found
+- **CitationList** — pill-shaped source chips with type icons (DB / Graph / Doc / Web)
 
-### Phase 1 (Data Foundation)
-- **On-Demand Data Architecture**: Direct integration with a production Neon DB (PostgreSQL) to fetch live OHLCV stock data on demand.
-- **Dynamic Indicators**: Computes technical indicators (RSI, MACD, EMA, Bollinger Bands, ATR, OBV, VWAP, Beta) in-memory using `pandas_ta`, avoiding local data bloat.
-- **Caching Layer**: Implements multi-tiered caching for OHLCV data, indicators, LLM responses, and news to optimize performance and reduce database hits.
-- **Background Keep-Alive**: Prevents serverless database cold starts to ensure fast, responsive queries.
-- **Dual Database Strategy**: Uses Neon DB for heavy read-only market data and local SQLite for managing application metadata, chat history, and configurations.
-- **Domain Knowledge Integration**: Contains comprehensive textual documentation covering NEPSE rules, sector overviews, SEBON circulars, and indicator explanations, ready for vector RAG.
+### Phase 4 — Agentic RAG (2026-05-08)
+- **Multi-Provider LLM Fallback**: Groq → Google AI Studio → OpenRouter → Ollama (Priority 1–4)
+- **Ollama Local Fallback**: Uses `llama3.2:3b` via OpenAI-compatible endpoint — no API key, offline resilient
+- **52-Week Range**: Fetched from Neon DB via `run_in_executor` to avoid psycopg2 async crash
+- **Stale Data Detection**: Falls back to web search when Neon DB data is > 3 days old
+- **LLM Metadata Tracking**: Displays active LLM provider + real-time token usage in chat footer
+- **Intelligent Routing**: Queries routed between `sql_tool`, `graph_tool`, `vector_tool`, `news_tool`
+
+### Phase 2 — News Pipeline (2026-05-05)
+- **Indian Source Blacklist**: Filters 12 Indian financial news domains to avoid cross-contamination (e.g. Indian NHPC results polluting NEPSE NHPC queries)
+- **On-Demand Architecture**: Direct Neon DB integration for live OHLCV data
+- **Dynamic Indicators**: RSI, MACD, EMA, Bollinger Bands, ATR, OBV, VWAP, Beta computed in-memory via `pandas_ta`
+- **Caching Layer**: Multi-tiered cache for OHLCV, indicators, LLM responses, and news
+- **Background Keep-Alive**: Prevents Neon DB cold starts
+
+---
 
 ## Tech Stack
-- **Backend**: Python 3.10+, Django 4.2+, Django REST Framework (DRF), Channels/Daphne
-- **Databases**: SQLite (Local Metadata), Neon PostgreSQL (Remote Read-Only Market Data)
-- **Data Processing**: pandas, pandas_ta
-- **RAG & Agents (Upcoming)**: LlamaIndex, LangGraph, ChromaDB, Sentence Transformers
-- **Frontend (Upcoming)**: Vite, React 18, Tailwind CSS, Zustand, TanStack Query
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Python 3.10+, Django 4.2+, DRF, Channels, Daphne |
+| Databases | SQLite (local metadata), Neon PostgreSQL (read-only market data) |
+| Data Processing | pandas, pandas_ta |
+| RAG | LlamaIndex, ChromaDB, Sentence Transformers (`all-MiniLM-L6-v2`) |
+| Agent | LangGraph |
+| LLMs (cloud) | Groq (Llama 3.3 70B), Google Gemini, OpenRouter |
+| LLM (local) | Ollama `llama3.2:3b` (CPU, OpenAI-compatible endpoint) |
+| Frontend | Vite, React 18, Tailwind CSS, Zustand |
+
+---
 
 ## Setup Instructions
 
-### 1. Backend Setup
-The backend uses Django, Daphne (for SSE streaming), and LlamaIndex.
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- [Ollama](https://ollama.com/download) installed on your system (for local LLM fallback)
+
+### 1. Ollama Setup (Local LLM Fallback)
+Ollama is an OS-level application — it is **not** a pip package.
+
+```bash
+# Download and install from https://ollama.com/download, then:
+ollama pull llama3.2:3b
+ollama serve   # keep this terminal running
+```
+
+### 2. Backend Setup
 
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate
+venv\Scripts\activate          # Windows
+# source venv/bin/activate      # Linux/macOS
 pip install -r requirements.txt
 ```
 
-Configure your environment variables:
-Copy `backend/.env.example` to `backend/.env` and fill in your API keys (Groq, Neon DB, etc.).
+Copy `.env.example` to `.env` and configure your keys:
+
+```env
+NEON_DATABASE_URL=postgresql://...
+NEWSAPI_KEY=your_newsapi_key
+GROQ_API_KEY=your_groq_key
+GOOGLE_AI_API_KEY=your_gemini_key
+OPENROUTER_API_KEY=your_openrouter_key
+# Optional: add HF_TOKEN to suppress HuggingFace rate-limit warnings
+```
 
 Apply migrations:
+
 ```bash
 python manage.py migrate
 ```
 
-### 2. Frontend Setup
-The frontend is a React application powered by Vite.
+Build the RAG indexes (one-time):
+
+```bash
+python scripts/build_graph_index.py
+python scripts/build_vector_index.py
+```
+
+### 3. Frontend Setup
 
 ```bash
 cd frontend
 npm install
 ```
 
+---
+
 ## Running the Application
 
-You must run the backend and frontend simultaneously in two separate terminals.
+Run backend and frontend in **two separate terminals**.
 
-**Terminal 1: Start the Backend (Daphne)**
-*Note: Do not use `manage.py runserver`. You must use Daphne for Server-Sent Events (SSE) streaming to work.*
+**Terminal 1 — Backend (Daphne)**
+
+> ⚠️ Do NOT use `manage.py runserver` — Daphne is required for SSE streaming.
+
 ```bash
 cd backend
 venv\Scripts\activate
 python -m daphne -b 127.0.0.1 -p 8000 nepse_project.asgi:application
 ```
 
-**Terminal 2: Start the Frontend (Vite)**
+**Terminal 2 — Frontend (Vite)**
+
 ```bash
 cd frontend
 npm run dev
 ```
 
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+---
+
+## LLM Fallback Chain
+
+| Priority | Provider | Model | Approx Speed | Free Limit |
+|----------|----------|-------|-------------|-----------|
+| 1 | Groq | Llama 3.3 70B | 1–2s | 30 req/min |
+| 2 | Google AI | Gemini | 2–3s | Free tier |
+| 3 | OpenRouter | Various | 2–4s | Free tier |
+| 4 | Ollama (local) | llama3.2:3b | 20–30s (CPU) | Unlimited |
+
+---
+
 ## Useful Commands
 
-### Clearing the Django Cache
-If you notice the agent returning stale data or skipping live web searches, it's likely serving a cached response. The backend uses a file-based cache that survives server restarts.
+### Clear Django Cache
+If the agent returns stale data or skips live web searches, it is serving a cached response.
+The backend uses a file-based cache that survives server restarts.
 
-To forcefully clear the cache yourself, open a terminal and run:
 ```bash
 cd backend
 venv\Scripts\activate
 python manage.py shell -c "from django.core.cache import cache; cache.clear()"
 ```
+
+### Rebuild Vector Index (after updating docs/)
+
+```bash
+python scripts/build_vector_index.py
+```
+
+### Rebuild Graph Index (after updating stock/sector data)
+
+```bash
+python scripts/build_graph_index.py
+```
+
+---
+
+## Architecture Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| LLMs | API LLMs + Ollama fallback | No GPU available; RAG pipeline compensates for domain knowledge gap |
+| Vector Store | ChromaDB | Zero-config embedded DB, free, native LlamaIndex support, sufficient for 67-chunk corpus |
+| ASGI Server | Daphne | Required for async SSE streaming; WSGI servers (Gunicorn) are synchronous |
+| Ollama | llama3.2:3b | OpenAI-compatible endpoint, no API key, offline resilience |
+| Neon DB | Read-only | Remote production DB — all writes go through the data provider, not the app |

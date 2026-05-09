@@ -1,0 +1,182 @@
+# insurance_sector_fundamentals.txt
+# NEPSE AI Research Assistant — Insurance Sector (Life + Non-Life) Guide
+# Purpose: Fundamental analysis for all listed life and non-life insurance companies.
+# Last Updated: 2026-05-09
+# Sources: nepsetrading.com, sharesansar.com, IAN, nepsealpha.com data
+
+=============================================================================
+SECTOR OVERVIEW
+=============================================================================
+
+Total Listed Insurance Companies: 24 (as of 2025)
+  - Life Insurance companies: ~12
+  - Non-Life Insurance companies: ~12
+Regulatory Body: Insurance Authority of Nepal (IAN, formerly Beema Samiti)
+Sub-Indices on NEPSE:
+  - Life Insurance Sub-Index (LIFEINSU): 12,313.32 (May 6, 2026)
+  - Non-Life Insurance Sub-Index: 11,470.35 (March 31, 2026)
+
+Both indices are significantly higher than the NEPSE composite (~2,700-2,900)
+because insurance stocks have high LTPs (Rs 600-2000+) relative to face value.
+
+Nepal Insurance Market Facts:
+  - Total Life Insurance premium collected (6 months FY2082/83): Rs 94.38 Billion
+    from 11,455,235 active policies
+  - Total Non-Life Insurance premium collected (6 months FY2082/83): Rs 23.67 Billion
+    from 1,420,548 active policies
+  - Insurance penetration remains LOW — significant growth runway ahead
+  - Mandatory insurance requirements expanding (vehicle, property)
+  - Growing health insurance contribution
+
+=============================================================================
+KEY METRICS FOR INSURANCE STOCKS
+=============================================================================
+
+--- LIFE INSURANCE METRICS ---
+
+1. EPS (Earnings Per Share)
+   Strong: Above Rs 30 | Moderate: Rs 15-30 | Weak: Below Rs 15
+
+2. Combined Ratio
+   Formula: (Claims + Operating Expenses) / Earned Premiums × 100
+   Below 100% = profitable underwriting (making money on insurance operations)
+   Above 100% = underwriting loss (relying on investment income to be profitable)
+   Ideal: 90-98%
+
+3. Solvency Margin
+   IAN Regulatory Minimum: 150%
+   Must maintain adequate capital to pay future claims
+   Higher solvency = more financially secure insurer
+
+4. Embedded Value (EV)
+   Present value of future profits + net asset value
+   The "true" valuation measure for life insurance companies
+   P/EV ratio is how life insurance stocks are valued globally
+
+5. Premium Growth Rate
+   YoY growth in gross written premium
+   Double-digit premium growth = positive for long-term earnings
+
+6. Investment Income
+   Life insurers hold large premium reserves invested in bonds and equities
+   A falling stock market directly erodes life insurers' book value
+   This is why life insurance stocks are correlated with NEPSE index moves
+
+--- NON-LIFE (GENERAL) INSURANCE METRICS ---
+
+1. EPS — Same interpretation as life insurance
+2. Combined Ratio — More important for non-life (short-tail liabilities)
+3. Premium Collection — Higher market share = competitive advantage
+4. Claims Ratio — Claims paid / Earned premiums × 100. Lower is better.
+5. Motor + Property % — Nepal non-life is predominantly motor (vehicle) and property
+
+=============================================================================
+LIFE INSURANCE COMPANIES — KEY DATA
+=============================================================================
+
+Note: Nepal fiscal year runs Shrawan-Ashadh (mid-July to mid-July).
+Insurance companies report quarterly to IAN.
+
+--- NLIC — Nepal Life Insurance Co. Ltd. (LARGEST by market cap) ---
+Symbol: NLIC
+Listed: January 22, 2003
+Market Cap: Rs 72.41 Billion (one of the largest non-bank companies on NEPSE)
+Paid-Up Capital: Rs 9.48 Billion
+EPS (Q2 FY2082/83): Rs 7.11
+P/E Ratio: ~104x (high due to large paid-up capital base)
+52W Range: Rs 702 — Rs 890
+LTP (May 2026): ~Rs 764
+P/B (Price to Book): 5.53x
+Book Value: Rs 138.14 per share
+Historical P/E median: ~45-50x (current ~79x = above median)
+EPS growth trend: Declined from peak (~Rs 42 TTM in Apr 2025 per GuruFocus data)
+
+--- LICN — Life Insurance Corporation (Nepal) Ltd. ---
+Symbol: LICN
+Subsidiary of: LIC India (government-backed)
+Perceived as: Safest life insurer due to Indian parent backing
+Higher investor confidence = higher P/B premium
+
+--- ALICL — Asian Life Insurance Co. Ltd. ---
+Symbol: ALICL
+ROE: ~11.41% (54% below its 10-year median of 25.05%)
+Trend: ROE has declined significantly over 5 years
+Note: Above-average ROE historically but declining recently
+
+--- KEY LIFE INSURANCE SYMBOLS ON NEPSE ---
+NLIC    — Nepal Life Insurance (largest)
+LICN    — Life Insurance Corporation Nepal
+ALICL   — Asian Life Insurance
+NLICL   — National Life Insurance
+PLICL   — Prime Life Insurance
+SJLIC   — Surya Jyoti Life Insurance
+CLBSL   — Citizen Life Insurance
+GMFBS   — (varies)
+
+=============================================================================
+NON-LIFE INSURANCE COMPANIES — KEY DATA
+=============================================================================
+
+Non-Life Sub-Index: 11,470.35 (March 31, 2026, +0.76%)
+
+--- Premium Collection Leaders (6 months FY2082/83) ---
+1. Shikhar Insurance (SICL): Rs 2.77 Billion (highest)
+2. Sagarmatha Lumbini Insurance (SLICL): Rs 2.61 Billion (133,022 policies)
+3. Others follow below Rs 2.5 Billion
+
+KEY NON-LIFE SYMBOLS ON NEPSE:
+NICL    — Nepal Insurance Co. Ltd.
+SICL    — Shikhar Insurance Company Ltd.
+PRIN    — Premier Insurance Company (Nepal)
+PLIC    — Prudential Insurance Company
+NIL     — Neco Insurance Ltd.
+HGI     — Himalayan General Insurance
+SGI     — Sagarmatha Insurance
+NBI     — Nepal Bangladesh Insurance
+SLICL   — Sagarmatha Lumbini Insurance
+
+=============================================================================
+HOW TO RESPOND TO INSURANCE QUERIES
+=============================================================================
+
+When user asks about an insurance stock:
+
+1. Quote LTP, 52W range, market cap
+2. State EPS, P/E, and whether P/E is above/below sector average
+3. For life insurance: mention investment portfolio sensitivity to NEPSE index
+4. For non-life: mention premium market share and combined ratio if available
+5. Note IAN regulatory environment — any new capital or solvency requirements
+6. Dividend history if available
+
+VALUATION CONTEXT:
+  Life insurance stocks typically trade at P/E of 30-80x in Nepal
+  Non-life insurance stocks typically trade at P/E of 20-50x
+  High P/E in insurance does NOT automatically mean overvalued —
+  embedded value, premium growth, and solvency margin matter more.
+
+RISK FACTORS SPECIFIC TO NEPAL INSURANCE:
+  - IAN revising solvency margin requirements → capital raising pressure
+  - Equity portfolio exposure → life insurer NAV moves with NEPSE index
+  - Premium growth slowdown in economic downturns
+  - Motor vehicle insurance saturation
+  - New entrants after liberalization may compress margins
+
+=============================================================================
+SECTOR PERFORMANCE (April 2026)
+=============================================================================
+
+Life Insurance Sub-Index decline: -2.02% on April 1, 2026
+  Reason: Finance Ministry capital market policy fears, equity portfolio concerns
+
+Non-Life Sub-Index gain: +0.76% on March 31, 2026
+  Reason: Motor vehicle and property premium growth, less equity sensitivity
+
+Overall: Life insurance stocks are more volatile than non-life due to equity exposure.
+
+=============================================================================
+DISCLAIMER
+=============================================================================
+All data is from Q2 FY2082/83 or Q1 FY2082/83 reports unless otherwise noted.
+This is for educational and research purposes only. Not financial advice.
+Insurance stocks require analysis of embedded value, solvency margin, and
+IAN regulatory context beyond simple EPS/P/E metrics.

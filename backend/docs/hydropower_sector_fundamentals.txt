@@ -1,0 +1,205 @@
+# hydropower_sector_fundamentals.txt
+# NEPSE AI Research Assistant — Hydropower Sector Guide
+# Purpose: Fundamental analysis knowledge base for all listed hydropower companies.
+# Last Updated: 2026-05-09
+# Sources: nepsetrading.com, nepalytix.com, investopaper.com, sharesansar.com
+
+=============================================================================
+SECTOR OVERVIEW
+=============================================================================
+
+Sector Name: Hydropower / Energy
+Total Listed on NEPSE: 91 companies (2025) — LARGEST sector by company count
+Market Cap: ~Rs 700 Billion+ (2nd largest sector on NEPSE)
+Daily Turnover Share: Often 40-50% of total NEPSE daily turnover
+Sub-Index: Hydropower Sub-Index
+Nepal's Hydropower Potential: 83,000 MW total (40,000 MW commercially viable)
+Installed Capacity (2025): ~3,000 MW operational
+Government Target: Export 10,000 MW to India by 2030
+
+WHY HYDROPOWER DOMINATES NEPSE:
+  - 91 listed companies vs 18 commercial banks
+  - IPOs consistently 100x+ oversubscribed
+  - 30-100% listing gains common for new IPOs
+  - Perceived as long-term growth sector
+  - Government priority sector (tax holidays, subsidies)
+  - Growing electricity demand (EVs, industrialization, export)
+
+INVESTOR PROFILE:
+  - Retail: Short-term trading, IPO gains
+  - Long-term: Stable PPAs = predictable cash flow after COD (Commercial Operation Date)
+
+=============================================================================
+KEY METRICS FOR HYDROPOWER STOCKS — COMPLETE GUIDE
+=============================================================================
+
+1. INSTALLED CAPACITY (MW)
+   The nameplate capacity of the power project in megawatts.
+   Larger capacity = more revenue potential.
+   Upper Tamakoshi (UPPER): 456 MW — largest single project in Nepal.
+   Most projects: 2-50 MW range. Projects above 100 MW are large.
+
+2. ACTUAL GENERATION (GWh — Gigawatt Hours)
+   Real electricity produced annually. Can be lower than theoretical max.
+   Seasonal variation: Wet season (June-November) = high generation.
+   Dry season (Dec-May) = low generation. Critical risk for run-of-river projects.
+   Reservoir projects have storage — more stable year-round generation.
+
+3. PLANT LOAD FACTOR (PLF)
+   Formula: (Actual Generation ÷ Maximum Possible Generation) × 100
+   Measures operational efficiency.
+   Strong PLF: above 55% | Average: 40-55% | Weak: below 40%
+   Run-of-river plants typically have lower PLF due to seasonal variation.
+   Reservoir/storage projects have higher, more stable PLF.
+
+4. POWER PURCHASE AGREEMENT (PPA)
+   Contract with Nepal Electricity Authority (NEA) for buying electricity.
+   KEY TERMS TO CHECK:
+   - Duration: 25-35 years typical
+   - Tariff rate (Rs per kWh): Wet season vs dry season pricing
+   - Price escalation clause: Annual inflation adjustment in tariff
+   - Take-or-pay clause: NEA pays even if grid can't absorb power
+   Companies with inflation-adjusted, long-term PPAs = highest cash flow certainty.
+
+5. COMMERCIAL OPERATION DATE (COD)
+   Date when the project started selling electricity.
+   Pre-COD companies: No revenue yet, pure speculation.
+   Post-COD companies: Revenue generating, can be analyzed fundamentally.
+   IMPORTANT: Many NEPSE-listed hydropower companies are pre-COD or early stage.
+   Do NOT apply traditional P/E analysis to pre-COD companies.
+
+6. DEBT-TO-EQUITY RATIO (D/E)
+   Hydropower is capital-intensive: projects financed 70% debt, 30% equity typically.
+   Moderate D/E (2:1 to 4:1) is normal for hydropower.
+   High D/E above 5:1 = financial pressure risk, especially during low output.
+   Interest burden during construction and early operation is significant.
+
+7. NET INTEREST MARGIN / DEBT SERVICE COVERAGE RATIO (DSCR)
+   DSCR = Operating Cash Flow ÷ Total Debt Service
+   DSCR above 1.2 = comfortable | Below 1.0 = cannot service debt from operations
+   Critical during dry season when cash flow is lowest.
+
+8. NEA PAYMENT RISK
+   NEA (Nepal Electricity Authority) is the sole buyer in Nepal.
+   NEA payment delays are common — creates cash flow risk for smaller projects.
+   Larger, older projects have better payment track records.
+   Electricity exports to India diversify revenue but require infrastructure.
+
+=============================================================================
+LISTED HYDROPOWER COMPANIES — PROJECT CAPACITY DATA
+=============================================================================
+
+LARGE PROJECTS (100 MW+):
+| Symbol | Company Name                    | Capacity (MW) | Status    |
+|--------|---------------------------------|---------------|-----------|
+| UPPER  | Upper Tamakoshi Hydropower Ltd  | 456.0         | Operating |
+| MBJC   | Madhya Bhotekoshi Jalavidyut    | 102.0         | Operating |
+| SJCL   | Sanima Jal Vidhyut (Sanima Mai) | 60.0+         | Operating |
+| GVL    | Green Ventures Ltd              | 52.4          | Operating |
+| GLH    | GreenLife Hydropower            | 40.0          | Operating |
+| BALEPHI| Balephi Hydropower              | 36.0          | Operating |
+
+MID-SIZE PROJECTS (10-100 MW):
+| Symbol | Company Name                    | Capacity (MW) | Notes             |
+|--------|---------------------------------|---------------|-------------------|
+| BPCL   | Butwal Power Company            | 12+9.4+30=51  | Multi-project     |
+| HPPL   | Himalayan Power Partner         | 27.0          | Operating         |
+| API    | Api Power Company               | 8+8.5=16.5    | Multi-project     |
+| AKPL   | Arun Kabeli Power               | 25.0          | Operating         |
+| LEC    | Liberty Energy Company          | 25.0          | Operating         |
+| HURJA  | Himalaya Urja Bikas Company     | 12+7=19       | Multi-project     |
+| NGPL   | Ngadi Group Power               | ~35           | Operating         |
+
+CHILIME GROUP (STATE-BACKED, PREMIUM):
+| Symbol | Company Name              | Capacity (MW) | Notes                |
+|--------|---------------------------|---------------|----------------------|
+| CHCL   | Chilime Hydropower Co Ltd | 22.1          | Government-backed,   |
+|        |                           |               | high dividend history|
+| HIDCL  | Hydroelectricity          | Investment    | Not a power project  |
+|        | Investment & Dev Company  | Company       | Invests in hydro     |
+
+SMALL PROJECTS (Under 10 MW):
+AKJCL (8.4MW), BARUN (4.45MW), BNHC (4.99MW), CHL (2+4MW),
+DHPL (4MW), GHL (4MW), JOSHI (3MW), KPCL (6MW), KKHC (4.36+2MW)
+Note: Small projects have limited revenue and are higher risk.
+
+=============================================================================
+TOP HYDROPOWER STOCKS — INVESTMENT PROFILES
+=============================================================================
+
+--- UPPER — Upper Tamakoshi Hydropower (Largest Project) ---
+Capacity: 456 MW — Nepal's largest private hydropower project
+Status: Fully operational
+Investment grade: High — large scale, government supported, NEA contracted
+Risk: State-owned project partners, Tamakoshi river seasonal variation
+52W Range: Rs 270-500+ (highly volatile)
+LTP context: Often traded at premium due to prestige/scale
+
+--- CHCL — Chilime Hydropower Company Limited ---
+Capacity: 22.1 MW (run of river on Chilime River)
+Promoter: Nepal Electricity Authority (government entity holds majority)
+Track Record: One of the most consistent dividend-paying hydropower companies
+EPS: Historically Rs 30-50+ range
+Strength: Government backing, proven cash flow, long PPA history
+Risk: Small project relative to market cap — premium valuation
+
+--- BPCL — Butwal Power Company Limited ---
+Multiple projects (total ~51 MW)
+One of Nepal's oldest listed hydropower companies
+Diversified project portfolio reduces single-project risk
+
+--- NHPC (NOT to be confused with India's NHPC) ---
+This likely refers to a Nepal-listed hydro entity.
+Check nepsealpha.com for current listing status.
+
+--- HIDCL — Hydroelectricity Investment and Development Company ---
+This is an INVESTMENT company, not a power project.
+HIDCL provides equity and debt financing to hydropower projects.
+Treats it like a fund/holding company, not a direct power producer.
+Revenue: Returns from invested hydropower projects.
+
+=============================================================================
+HOW TO RESPOND TO HYDROPOWER QUERIES
+=============================================================================
+
+For POST-COD (revenue generating) hydropower stocks:
+1. State project capacity (MW) and operational status
+2. Quote LTP, 52W range, volume
+3. Mention EPS if available (many small hydros have thin margins)
+4. P/E context: Hydro P/E varies wildly — 15x to 100x+ is normal
+5. Key question: Wet vs dry season generation profile
+6. Mention PPA terms if known
+
+For PRE-COD (construction phase) stocks:
+1. Clearly state "pre-commercial operation — no revenue yet"
+2. Valuation is speculative, based on future expected earnings
+3. Key risk: construction delays, cost overruns, NEA tariff approval
+4. Do NOT give P/E or EPS — these don't apply
+
+SEASONAL PATTERN (for all run-of-river plants):
+  June-November: High water flow = high generation = high revenue
+  December-May: Low water flow = reduced generation = cash flow pressure
+  NEPSE hydropower stocks tend to rise in anticipation of wet season.
+
+SECTOR VALUATION:
+  P/E: 20x-60x for quality operating plants
+  P/E: N/A or 100x+ for early-stage or pre-COD companies
+  P/B: 2x-5x typical
+
+=============================================================================
+NEPSE HYDROPOWER SECTOR TRADING PATTERNS
+=============================================================================
+
+- Hydropower dominates NEPSE daily turnover: often Rs 10-15 Billion/day of Rs 25B total
+- When NEPSE Hydropower Sub-Index moves, it moves the entire NEPSE index
+- Top 10 gainers/losers lists dominated by hydropower stocks most sessions
+- IPO oversubscription average: 100x-500x (extreme retail demand)
+- Post-listing behavior: 30-100% gains on first listing day, then volatile
+- Correlation: Wet season rainfall data = positive catalyst for hydro stocks
+
+=============================================================================
+DISCLAIMER
+=============================================================================
+Hydropower investments require understanding of seasonal cash flows, PPA structures,
+and construction risk. Pre-COD companies are speculative investments.
+This is for educational and research purposes only. Not financial advice.

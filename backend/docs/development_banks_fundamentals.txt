@@ -1,0 +1,122 @@
+# development_banks_fundamentals.txt
+# NEPSE AI Research Assistant — Development Banks (Class B BFI) Sector Guide
+# Purpose: Fundamental analysis knowledge for all 10 listed development banks.
+# Last Updated: 2026-05-09
+# Sources: nepsetrading.com Q2 2082/83 analysis, NRB data
+
+=============================================================================
+SECTOR OVERVIEW
+=============================================================================
+
+Sector Name: Development Banks
+NRB Classification: Class B Banking and Financial Institutions (BFIs)
+Total Listed on NEPSE: 10 (as of Q2 FY2082/83)
+Role: Bridge between commercial banks and microfinance.
+  Serve semi-urban and rural areas, small businesses, agriculture.
+Sub-Index: Development Banks
+Regulatory Body: Nepal Rastra Bank (NRB)
+Minimum Paid-Up Capital: Rs 2.5 Billion (national level)
+
+KEY CHARACTERISTICS vs COMMERCIAL BANKS:
+  + Higher Net Interest Margins (NIM): avg 4.4% vs 3.7% for commercial banks
+  + More room for operational efficiency improvement
+  - Smaller balance sheets and fewer product offerings
+  - Higher NPL risk exposure in semi-urban lending
+  - Less liquidity in share trading (smaller float)
+
+=============================================================================
+Q2 FY2082/83 COMPLETE FUNDAMENTAL RANKINGS — ALL 10 DEVELOPMENT BANKS
+=============================================================================
+
+| Rank | Symbol | Company Name            | Score | Grade | EPS (Rs) | ROE%  | P/E   | NIM%  | NPL%  | LTP (Rs) |
+|------|--------|-------------------------|-------|-------|----------|-------|-------|-------|-------|----------|
+| 1    | LBBL   | Lumbini Bikas Bank      | 63.95 | B     | 15.75    | 8.46  | 33.59 | 3.98  | 0.00  | 480      |
+| 2    | GBBL   | Garima Bikas Bank       | 61.95 | B     | 21.10    | 14.00 | 17.12 | 4.90  | 4.78  | 397      |
+| 3    | MNBBL  | Muktinath Bikas Bank    | 61.15 | B     | 16.63    | 11.54 | 17.10 | 4.78  | 3.75  | 363      |
+| 4    | MLBL   | Mahalaxmi Bikas Bank    | 61.05 | B     | 16.80    | 14.14 | 32.94 | 4.76  | 3.75  | 367      |
+| 5    | MDB    | Miteri Development Bank | 60.75 | B     | 9.37     | 6.96  | 48.23 | 4.06  | 0.45  | 640      |
+| 6    | KSBBL  | Kamana Sewa Bikas Bank  | 59.05 | B     | 20.43    | 13.56 | 24.94 | 4.50  | 4.10  | 457      |
+| 7    | SHINE  | Shine Resunga Dev Bank  | 55.55 | B     | 16.10    | 11.24 | 26.40 | 4.22  | 4.75  | 401      |
+| 8    | SADBL  | Shangrila Development   | 53.25 | C+    | 16.21    | 11.10 | 23.80 | 4.72  | 6.87  | 410      |
+| 9    | EDBL   | Excel Development Bank  | 49.95 | C+    | 14.17    | 8.42  | 33.83 | 4.28  | 7.07  | 595      |
+| 10   | JBBL   | Jyoti Bikas Bank        | 45.25 | C+    | 14.16    | 9.30  | 201.2 | 4.10  | 7.82  | 336      |
+
+SECTOR AVERAGES:
+  Average NIM: 4.4% (vs commercial bank avg 3.7%)
+  Average ROE: 10.9%
+  NPL Range: 0.00% (LBBL) to 7.82% (JBBL)
+  P/E Range: 17.1x (MNBBL) to 201.2x (JBBL — inflated by near-zero earnings base)
+  Quality Score Range: 45.25 to 63.95
+
+=============================================================================
+SECTOR PROFIT PERFORMANCE (FY2082/83 — 7 months, Shrawan to Magh)
+=============================================================================
+
+Collective sector net profit: Rs 4.004 Billion
+Banks in profit: 13 institutions
+Banks in loss: 4 institutions
+
+Top 5 By Profit:
+  1. Muktinath Bikas Bank (MNBBL): Rs 821.52 Million
+  2. Garima Bikas Bank (GBBL): Rs 779.44 Million
+  3. Shine Resunga Dev Bank (SHINE): Rs 518.23 Million
+  4. Kamana Sewa Bikas Bank (KSBBL): Rs 476.06 Million
+  5. Jyoti Bikas Bank (JBBL): Rs 385.69 Million
+
+NOTE: Karnali Development Bank (KDBL) has been declared a "problematic institution"
+by NRB and placed under direct NRB management. Trading is SUSPENDED. Do not include
+KDBL in analysis or comparisons.
+
+=============================================================================
+TOP STOCK PROFILES
+=============================================================================
+
+--- LBBL — Lumbini Bikas Bank (Safest Pick) ---
+Quality Score: 63.95 (B) — #1 in sector
+Unique Distinction: ONLY development bank with 0.00% NPL ratio
+EPS: Rs 15.75 | ROE: 8.46% | P/E: 33.59x | NIM: 3.98%
+Trade-off: Safety premium — P/E of 33.59x is expensive relative to sector avg
+Best For: Conservative, capital-preservation investors
+
+--- GBBL — Garima Bikas Bank (Value Pick) ---
+Quality Score: 61.95 (B) — #2 in sector
+Unique Distinction: Highest EPS (Rs 21.10), highest NIM (4.90%), 2nd lowest P/E
+EPS: Rs 21.10 | ROE: 14.00% | P/E: 17.12x | NIM: 4.90% | NPL: 4.78%
+Best For: Value investors seeking maximum earnings at minimum price
+
+--- MNBBL — Muktinath Bikas Bank (Balanced Pick) ---
+Quality Score: 61.15 (B) — #3 in sector
+Unique Distinction: Highest paid-up capital (Rs 7.05 Billion), lowest P/E (17.10x)
+EPS: Rs 16.63 | ROE: 11.54% | P/E: 17.10x | NIM: 4.78% | NPL: 3.75%
+Also: Top profit earner (Rs 821.52M in 7 months FY2082/83)
+Best For: Balanced risk-return investors
+
+=============================================================================
+KEY METRICS TO ANALYZE FOR DEVELOPMENT BANKS
+=============================================================================
+
+1. NPL RATIO — Most critical metric. NRB limit: 5%.
+   Anything above 5% is a regulatory concern.
+   LBBL (0%) and MDB (0.45%) are exceptional. JBBL (7.82%) and EDBL (7.07%) are concerning.
+
+2. NIM (Net Interest Margin) — Development banks should have NIM > 4%.
+   Higher NIM = better pricing power and operational efficiency.
+   GBBL (4.90%) leads. LBBL (3.98%) is below sector average.
+
+3. ROE — Target: Above 10%.
+   GBBL (14%) and MLBL (14.14%) are strongest.
+   MDB (6.96%) and LBBL (8.46%) are lower but may be acceptable given low NPL.
+
+4. P/E VALUATION — Sector average P/E is approximately 25-35x.
+   P/E below 20x = potential value opportunity.
+   MNBBL (17.1x) and GBBL (17.12x) are cheapest on P/E basis.
+   JBBL (201.2x) reflects near-zero net earnings — avoid for value investors.
+
+5. PAID-UP CAPITAL — National-level banks require Rs 2.5 Billion minimum.
+   Larger capital base generally = more stable, more regulatory compliant.
+
+=============================================================================
+DISCLAIMER
+=============================================================================
+All data is from Q2 FY2082/83 reports unless otherwise noted.
+This is for educational and research purposes only. Not financial advice.

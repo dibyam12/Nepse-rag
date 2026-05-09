@@ -1,0 +1,174 @@
+# microfinance_sector_fundamentals.txt
+# NEPSE AI Research Assistant — Microfinance Sector (Class D BFI) Guide
+# Purpose: Fundamental analysis for all listed microfinance companies.
+# Last Updated: 2026-05-09
+# Sources: nepsetrading.com, sharesansar.com, NRB quarterly data
+
+=============================================================================
+SECTOR OVERVIEW
+=============================================================================
+
+Sector Name: Microfinance
+NRB Classification: Class D BFIs (Laghubitta Bittiya Sanstha)
+Total Listed on NEPSE: ~50 companies (down from 55 in 2023 due to mergers)
+Regulatory Body: Nepal Rastra Bank (NRB)
+Mission: Financial inclusion — provide credit to underserved rural, semi-urban women.
+Minimum Paid-Up Capital: Rs 200 Million (national level)
+
+WHY MICROFINANCE STOCKS TRADE AT PREMIUM:
+  - Historically very HIGH EPS (Rs 40-100+) due to small equity base
+  - High ROE (15-30%) due to efficient capital deployment
+  - Government priority sector — subsidized refinancing from NRB
+  - Group lending model = lower default risk historically
+  - Target clients: rural women, small farmers (politically protected)
+
+CURRENT SECTOR CHALLENGES (2024-2026):
+  - Loan recovery issues in post-COVID economy
+  - Rising NPL / PAR (Portfolio at Risk) across sector
+  - NRB tightening capital requirements → forced mergers
+  - Industry-wide profit DECLINED 42.58% in recent periods
+  - Sector consolidation: 65 companies → ~50 through M&A
+  - Interest income under pressure from NRB rate caps on microfinance loans
+
+=============================================================================
+KEY METRICS FOR MICROFINANCE STOCKS
+=============================================================================
+
+1. EPS (Earnings Per Share)
+   Strong: Above Rs 40 | Moderate: Rs 20-40 | Weak: Below Rs 20
+   Note: Small equity base inflates EPS — always check PAR alongside EPS.
+
+2. PAR (Portfolio at Risk) / NPL Ratio
+   Formula: Loans overdue > 30 days ÷ Total Gross Loan Portfolio × 100
+   Critical indicator for microfinance.
+   Excellent: Below 3% | Acceptable: 3-5% | Concerning: Above 5% | Danger: Above 10%
+   Sector PAR increased significantly in 2023-2024 period.
+
+3. GLP (Gross Loan Portfolio)
+   Total amount of active loans outstanding.
+   Growing GLP with controlled PAR = healthy expansion.
+   Growing GLP with rising PAR = credit quality deterioration.
+
+4. ROE (Return on Equity)
+   Strong: Above 15% | Moderate: 10-15% | Weak: Below 10%
+
+5. Cost of Funds
+   Interest paid to depositors and borrowers of wholesale funds (NRB refinancing).
+   Lower cost of funds = better net interest margin.
+   NRB provides refinancing at subsidized rates to microfinance companies.
+
+6. Operating Efficiency Ratio
+   Operating costs ÷ Gross Income × 100.
+   Lower is better. Rural outreach increases costs.
+
+7. CAPITAL ADEQUACY RATIO (CAR)
+   NRB Minimum: 8% for microfinance
+   Adequate buffer above minimum = safer institution
+
+8. NUMBER OF ACTIVE BORROWERS
+   Scale measure. More borrowers = better diversification.
+   Also indicates social impact.
+
+9. FEMALE BORROWER %
+   Most national-level microfinance target 95%+ female borrowers.
+   NRB regulatory requirement for classification as microfinance BFI.
+
+=============================================================================
+MICROFINANCE COMPANIES — CATEGORY BREAKDOWN
+=============================================================================
+
+NATIONAL LEVEL MICROFINANCE (Operate across Nepal):
+These are the most established, highest quality in the sector.
+
+| Symbol | Company Name                              | Category |
+|--------|-------------------------------------------|----------|
+| CBBL   | Chhimek Laghubitta Bittiya Sanstha        | National |
+| NUBL   | Nirdhan Utthan Laghubitta Bittiya Sanstha | National |
+| SKBBL  | Sana Kisan Bikas Laghubitta               | National |
+| SWBBL  | Swabalamban Laghubitta Bittiya Sanstha    | National |
+| NMFBS  | National Laghubitta Bittiya Sanstha       | National |
+| NLBBL  | NMB Laghubitta Bittiya Sanstha            | National |
+| FOWAD  | Forward Microfinance Bittiya Sanstha      | National |
+| GILB   | Global IME Laghubitta Bittiya Sanstha     | National |
+| RMDC   | Rural Microfinance Dev Centre             | National |
+| FMDBL  | First Microfinance Dev Bank               | National |
+
+NOTABLE COMPANIES — HISTORICAL EPS DATA:
+| Symbol | Company                        | Historical EPS (FY2078/79) | Notes            |
+|--------|--------------------------------|---------------------------|------------------|
+| MLBSL  | Mahila Laghubitta              | Rs 101.76                 | Highest hist.    |
+| FOWAD  | Forward Microfinance           | Rs 100.11                 | High performer   |
+| NESDO  | Nesdo Sambridha                | Rs 87.04                  | High performer   |
+| JBLB   | Jeevan Bikas Laghubitta        | Rs 75.60                  | Above avg        |
+| NMFBS  | National Microfinance          | Rs 68.44                  | Above avg        |
+| CBBL   | Chhimek Laghubitta             | Rs 37.45 (2022 data)      | Largest MFI      |
+| NUBL   | Nirdhan Utthan                 | Rs 46.84 (2022 data)      | Established      |
+
+CBBL (Chhimek) PROFILE — Largest by Market Cap:
+  Market Cap: ~Rs 26.79 Billion (2022 data — significantly changed since)
+  Historical ROE: 15.72%
+  Historical P/E: 25.23x (2022)
+  Historical P/B: 3.97x
+  Note: CBBL is the benchmark microfinance company in Nepal.
+
+SKBBL (Sana Kisan) NOTE:
+  Due to merger with RMDC and loan recovery issues, EPS and ROE dropped sharply.
+  Monitor post-merger integration performance. Q2 2082/83 data needed for current view.
+
+=============================================================================
+SECTOR PROFIT CONTEXT (Recent Trend)
+=============================================================================
+
+DECLINING PROFITS (2022-2024 period):
+  - Net Profit of Microfinance Sector DECLINED 42.58% year-over-year in 2022.
+  - Driven by rising provisioning requirements for bad loans.
+  - CBBL: Highest net profit (Rs 55.61 Crore, national category)
+  - JBLB: Second highest (Rs 26.47 Crore, national category)
+  - SKBBL: Highest profit at national-wholesale level
+
+RECOVERY INDICATORS (2025-2026):
+  - NRB providing refinancing at low rates to support sector
+  - Forced mergers reducing overcrowding
+  - Stronger institutions absorbing weaker ones
+  - Regulatory framework becoming clearer
+
+=============================================================================
+HOW TO RESPOND TO MICROFINANCE QUERIES
+=============================================================================
+
+When user asks about a microfinance stock:
+
+1. Identify category: National level vs regional/district level
+   (National level = higher quality, more regulatory oversight)
+
+2. State EPS context: Microfinance EPS of Rs 30+ is strong.
+   But ALWAYS check PAR/NPL alongside EPS.
+
+3. Mention sector-wide challenge: Loan recovery issues and declining profits
+   have affected the entire sector from 2022-2024. Check if the specific company
+   has recovered.
+
+4. P/E for microfinance: Typically 20-40x for quality companies.
+   P/E above 50x = expensive unless EPS growth justifies it.
+
+5. Note ongoing NRB-driven consolidation — mergers can create short-term
+   disruption but long-term strength for the surviving entity.
+
+6. Mention group lending model: Peer accountability reduces default risk
+   compared to individual loans in banks.
+
+IMPORTANT DISCLAIMER FOR MICROFINANCE:
+  Historical EPS data for microfinance (before FY2082) may be significantly
+  different from current EPS due to:
+  - Rising NPL and provisioning requirements
+  - Mandatory capital increases
+  - Post-merger integration adjustments
+  Always use the most recent quarterly data available.
+
+=============================================================================
+DISCLAIMER
+=============================================================================
+Microfinance sector data changes rapidly due to NRB-mandated mergers and
+sector-wide NPL developments. Historical EPS data from before FY2082 may
+not reflect current financial health. This is for educational and research
+purposes only. Not financial advice.
