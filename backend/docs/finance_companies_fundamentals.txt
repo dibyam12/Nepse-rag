@@ -1,0 +1,101 @@
+# finance_companies_fundamentals.txt
+# NEPSE AI Research Assistant — Finance Companies (Class C BFI) Sector Guide
+# Purpose: Fundamental analysis knowledge for all 10 listed finance companies.
+# Last Updated: 2026-05-09
+# Sources: nepsetrading.com Q2 2082/83 analysis
+
+=============================================================================
+SECTOR OVERVIEW
+=============================================================================
+
+Sector Name: Finance Companies
+NRB Classification: Class C Banking and Financial Institutions (BFIs)
+Total Listed on NEPSE: 10 (as of Q2 FY2082/83)
+Role: Consumer loans, hire purchase financing, leasing, small business loans.
+  Operate in urban/semi-urban markets with narrow product focus.
+Regulatory Body: Nepal Rastra Bank (NRB)
+Minimum Paid-Up Capital: Rs 1 Billion
+
+KEY CHARACTERISTICS:
+  + Highest NIM in the BFI space: avg ~6% (vs 4.4% dev banks, 3.7% comm banks)
+  + Some companies have extraordinarily high EPS due to small equity base
+  - MUCH higher NPL risk: sector avg NPL ~8-12% (vs 3.6% for commercial banks)
+  - Smallest balance sheets in the BFI hierarchy
+  - Less diversified — concentrated in consumer/hire-purchase lending
+  - Some companies showing signs of distress (GUFL, PFL NPL risk)
+
+IMPORTANT WARNING: High EPS in finance companies can be MISLEADING.
+A small equity base inflates both EPS and ROE. Always check NPL ratio alongside EPS.
+PFL's EPS of Rs 43.20 is the highest in all BFI but its NPL of 25.1% is existential risk.
+
+=============================================================================
+Q2 FY2082/83 COMPLETE FUNDAMENTAL DATA — ALL 10 FINANCE COMPANIES
+=============================================================================
+
+| Symbol | Company Name               | EPS (Rs) | ROE%  | P/E    | NAV (Rs) | NPL%  | NIM%  | Score | Grade |
+|--------|----------------------------|----------|-------|--------|----------|-------|-------|-------|-------|
+| PFL    | Progressive Finance        | 43.20    | 65.36 | 8.33   | 78.22    | 25.10 | —     | 56.30 | B     |
+| GFCL   | Goodwill Finance           | 23.61    | 10.36 | 58.19  | 256.65   | 6.70  | 7.04  | 57.50 | B     |
+| MFIL   | Manjushree Finance         | 20.03    | 11.72 | 32.34  | —        | 3.64  | —     | 62.25 | B     |
+| GUFL   | Gurkhas Finance            | 14.21    | —     | neg    | —        | 17.46 | —     | —     | C     |
+| CFCL   | Central Finance            | 8.26     | —     | —      | —        | —     | —     | —     | C     |
+| SFCL   | Samriddhi Finance          | 0.29     | —     | —      | —        | —     | —     | —     | D     |
+
+NOTE: Some symbols have incomplete data due to delayed filings or restructuring.
+
+SECTOR CHAMPION: MFIL (Score 62.25, B)
+  — Best BALANCE of EPS (Rs 20.03), low NPL (3.64%), decent ROE (11.72%)
+  — Dividend yield: 2.41% — only significant dividend payer in sector
+  — P/E of 32.34x is reasonable given quality
+
+GROWTH LEADER: GFCL (Score 57.50, B)
+  — Highest NIM in sector (7.04%) — excellent pricing power
+  — Highest NAV in sector (Rs 256.65) — strong asset backing
+  — Concern: NPL 6.70% above ideal threshold, P/E 58.19x is expensive
+
+HIGH-RISK VALUE: PFL (Score 56.30, B)
+  — Extraordinary EPS Rs 43.20 (beats ALL commercial banks including NABIL)
+  — ROE 65.36% unprecedented in Nepal's financial sector
+  — CRITICAL WARNING: NPL 25.1% — 1 in 4 loans is non-performing
+  — Low equity base (NAV Rs 78.22) inflates EPS/ROE — numbers not sustainable
+  — Only for high-risk-tolerance investors. Not suitable for most retail investors.
+
+CAUTIONARY: GUFL (Gurkhas Finance)
+  — EPS Rs 14.21 looks decent but NPL 17.46% means heavy provisioning ahead
+  — Negative P/E ratio suggests the true earnings picture is worse than headline
+  — Avoid unless you have deep insight into loan recovery prospects
+
+=============================================================================
+HOW TO ANALYZE FINANCE COMPANIES
+=============================================================================
+
+Step 1 — Always check NPL FIRST. If NPL > 10%, treat EPS as potentially inflated.
+Step 2 — Check NAV. Low NAV (below Rs 100) with high EPS = small equity base effect.
+Step 3 — Check NIM. Finance companies with NIM > 6% have strong pricing power.
+Step 4 — Compare ROE excluding PFL (which is an outlier at 65.36%).
+         Sector avg ROE excluding PFL: ~5.05% — much lower than it appears.
+Step 5 — P/E context: Finance company P/E of 30-40x is reasonable for quality companies.
+         P/E above 50x needs justification. Negative P/E = actual losses likely.
+
+=============================================================================
+SECTOR HIERARCHY SUMMARY (Commercial Banks > Development Banks > Finance Companies)
+=============================================================================
+
+| Metric           | Commercial Banks | Development Banks | Finance Companies |
+|------------------|-----------------|-------------------|-------------------|
+| Avg EPS (Rs)     | 21.70           | 17.50             | Varies widely     |
+| Avg ROE (%)      | 10.20           | 10.90             | ~5.05 (ex-PFL)    |
+| Avg NPL (%)      | 3.60            | 4.40              | ~8-12%            |
+| Avg NIM (%)      | 3.70            | 4.40              | ~6.00             |
+| Quality Grade    | A-B+            | B-B+              | B-D               |
+| Risk Level       | Moderate        | Moderate-High     | High              |
+
+Commercial banks win 6 out of 7 comparison categories.
+Finance companies only lead on NIM — but this advantage comes with 3x higher NPL risk.
+
+=============================================================================
+DISCLAIMER
+=============================================================================
+All data is from Q2 FY2082/83 reports unless otherwise noted.
+This is for educational and research purposes only. Not financial advice.
+Finance companies carry significantly higher risk than commercial or development banks.

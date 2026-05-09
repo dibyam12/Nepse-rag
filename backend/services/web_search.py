@@ -1,312 +1,284 @@
-# services/web_search.py (UPDATED FOR REALITY)
+# services/web_search.py
 """
-Web search fallback chain — based on what ACTUALLY WORKS.
-Primary: NewsAPI (working, dedicated news, good metadata)
-Fallback 1: DuckDuckGo (free, unlimited)
-Fallback 2: (Placeholder for future Google CSE fix)
-Fallback 3: (Placeholder for future SerpAPI fresh credits)
+Web search fallback chain for NEPSE AI.
+Primary: DuckDuckGo with NEPSE site restriction (best for Nepali financial news)
+Fallback: NewsAPI (good metadata but limited Nepali coverage)
 """
 
-import httpx
-import logging
-import os
-from django.core.cache import cache
 import asyncio
+import logging
+from urllib.parse import urlparse
+
+import httpx
 from decouple import config
 
 logger = logging.getLogger('nepse_rag')
 
-# ═══════════════════════════════════════════════════════════════
-# PRIMARY: NEWSAPI (WORKING)
-# ═══════════════════════════════════════════════════════════════
 
-async def newsapi_search(query: str, count: int = 5) -> list[dict]:
-    """
-    NewsAPI.org — PRIMARY provider (actually working).
-    Free tier: 500 requests/month (~16/day).
-    
-    Returns metadata-rich articles:
-    {title, url, description, publishedAt, source.name, source.id}
-    """
-    api_key = config('NEWSAPI_KEY', default='')
-    
-    if not api_key or api_key == 'your_newsapi_key_here':
-        logger.warning("NewsAPI: key not configured")
-        return []
-    
+def _extract_domain(url: str) -> str:
     try:
-        url = "https://newsapi.org/v2/everything"
-        params = {
-            'q': query,
-            'apiKey': api_key,
-            'pageSize': count,
-            'sortBy': 'publishedAt',
-            'language': 'en'
-        }
-        
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(url, params=params, timeout=10)
-        
-        if resp.status_code != 200:
-            logger.warning(f"NewsAPI: HTTP {resp.status_code}")
-            return []
-        
-        data = resp.json()
-        
-        if data.get('status') != 'ok':
-            logger.warning(f"NewsAPI: {data.get('message', 'unknown error')}")
-            return []
-        
-        articles = data.get('articles', [])
-        
-        if not articles:
-            logger.debug("NewsAPI: no articles found")
-            return []
-        
-        logger.info(f"NewsAPI: {len(articles)} articles returned")
-        return [
-            {
-                'title': a.get('title', '')[:500],
-                'url': a.get('url', ''),
-                'snippet': a.get('description', ''),
-                'publishedAt': a.get('publishedAt'),
-                'source': a.get('source', {}).get('name', ''),
-                'source_provider': 'newsapi'
-            }
-            for a in articles
-        ]
-    
-    except Exception as e:
-        logger.error(f"NewsAPI error: {e}")
-        return []
+        return urlparse(url).netloc.replace("www.", "")
+    except Exception:
+        return url
 
-# NEPSE-specific financial news sites (mirrors Google CSE config)
+
 NEPSE_SITES = [
     "sharesansar.com",
     "merolagani.com",
     "nepsealpha.com",
     "sharehubnepal.com",
     "nepalipaisa.com",
+    "eng.bajarkochirfar.com",
     "bajarkochirfar.com",
-    "nepalytix.com",
-    "moneymitra.com",
+    "ictframe.com",
+    "english.ratopati.com",
+    "laganinews.com",
+    "onlinekhabar.com",
+    "newbusinessage.com",
+    "nepsetrading.com",
+    "english.khabarhub.com",
 ]
 
-async def duckduckgo_search(query: str, count: int = 5) -> list[dict]:
+
+def _extract_source(r: dict) -> str:
+    source = r.get("source", "")
+    if source and source.lower() not in ("duckduckgo", ""):
+        return source
+    url = r.get("url", r.get("href", r.get("link", "")))
+    return _extract_domain(url) if url else "web"
+
+
+async def ddg_search(query: str, count: int = 8) -> list[dict]:
     """
-    DuckDuckGo fallback — free, unlimited.
-    Uses the new `ddgs` package (successor to duckduckgo_search).
-    
-    Strategy:
-    1. First searches NEPSE-specific financial sites using site: operator
-    2. If not enough results, supplements with a general search
+    DuckDuckGo search — primary provider for NEPSE news.
+    Tries news search first, falls back to text search.
+    Uses two-step strategy: site-restricted first, then general Nepal finance.
     """
     try:
         from ddgs import DDGS
-        
-        logger.debug(f"DuckDuckGo: searching '{query}'")
-        
-        loop = asyncio.get_event_loop()
-        
-        def _search():
-            ddgs = DDGS()
-            all_results = []
-            seen_urls = set()
-            
-            # Step 1: Search NEPSE-specific sites first
-            site_filter = " OR ".join(f"site:{s}" for s in NEPSE_SITES)
-            site_query = f"{query} ({site_filter})"
-            
+    except ImportError:
+        logger.warning("ddg_search: ddgs package not installed")
+        return []
+
+    def _run_search() -> list[dict]:
+        ddgs_client = DDGS()
+        seen_urls: set[str] = set()
+        results: list[dict] = []
+
+        # Step 1: site-restricted query — split into smaller batches
+        # DDG handles max ~3 site: operators reliably; use two passes
+        nepse_sites_a = "site:sharesansar.com OR site:merolagani.com OR site:nepsealpha.com OR site:nepalipaisa.com"
+        nepse_sites_b = "site:eng.bajarkochirfar.com OR site:ictframe.com OR site:laganinews.com OR site:nepsetrading.com"
+
+        for site_filter in (nepse_sites_a, nepse_sites_b):
+            if len(results) >= count:
+                break
+            restricted_query = f"{query} ({site_filter})"
+            # Try news search
             try:
-                site_results = list(ddgs.news(site_query, max_results=count))
-                for r in site_results:
-                    url = r.get('url', r.get('href', ''))
+                for r in ddgs_client.news(restricted_query, max_results=count):
+                    url = r.get("url", r.get("href", ""))
                     if url and url not in seen_urls:
                         seen_urls.add(url)
-                        all_results.append(r)
-                if all_results:
-                    logger.debug(f"DuckDuckGo: {len(all_results)} results from NEPSE sites")
-            except Exception as e:
-                logger.debug(f"DuckDuckGo site-restricted news failed: {e}")
-                # Try text search with site filter instead
+                        results.append(r)
+            except Exception:
+                pass
+            # Try text search as fallback
+            if not results:
                 try:
-                    site_results = list(ddgs.text(site_query, max_results=count))
-                    for r in site_results:
-                        url = r.get('url', r.get('href', ''))
+                    for r in ddgs_client.text(restricted_query, max_results=count):
+                        url = r.get("url", r.get("href", ""))
                         if url and url not in seen_urls:
                             seen_urls.add(url)
-                            all_results.append(r)
-                except Exception as e2:
-                    logger.debug(f"DuckDuckGo site-restricted text failed: {e2}")
-            
-            # Step 2: If not enough results, do a general search
-            if len(all_results) < count:
-                remaining = count - len(all_results)
-                try:
-                    general = list(ddgs.news(query, max_results=remaining))
-                    for r in general:
-                        url = r.get('url', r.get('href', ''))
-                        if url and url not in seen_urls:
-                            seen_urls.add(url)
-                            all_results.append(r)
-                except Exception as e:
-                    logger.debug(f"DuckDuckGo general news failed: {e}")
-                    try:
-                        general = list(ddgs.text(query, max_results=remaining))
-                        for r in general:
-                            url = r.get('url', r.get('href', ''))
-                            if url and url not in seen_urls:
-                                seen_urls.add(url)
-                                all_results.append(r)
-                    except Exception as e2:
-                        logger.debug(f"DuckDuckGo general text failed: {e2}")
-            
-            return all_results
-        
-        results = await loop.run_in_executor(None, _search)
-        
-        if not results:
-            logger.debug("DuckDuckGo: no results (may be IP rate-limited)")
-            return []
-        
-        logger.info(f"DuckDuckGo: {len(results)} results")
-        return [
-            {
-                'title': r.get('title', '')[:500],
-                'url': r.get('url', r.get('href', r.get('link', ''))),
-                'snippet': r.get('body', '')[:500],
-                'publishedAt': r.get('date'),
-                'source': r.get('source', 'DuckDuckGo'),
-                'source_provider': 'duckduckgo'
-            }
-            for r in results
-        ]
-    
-    except ImportError:
-        logger.warning("DuckDuckGo: ddgs package not installed. Run: pip install ddgs")
+                            results.append(r)
+                except Exception:
+                    pass
+
+        # Step 2: if still short, general Nepal finance query
+        if len(results) < 3:
+            general_query = f"{query} Nepal finance bank stock"
+            try:
+                for r in ddgs_client.news(general_query, max_results=count - len(results)):
+                    url = r.get("url", r.get("href", ""))
+                    if url and url not in seen_urls:
+                        seen_urls.add(url)
+                        results.append(r)
+            except Exception:
+                pass
+
+        return results
+
+    try:
+        loop = asyncio.get_event_loop()
+        raw = await asyncio.wait_for(
+            loop.run_in_executor(None, _run_search),
+            timeout=8.0,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("ddg_search: timed out after 8s for query=%r", query)
         return []
     except Exception as e:
-        logger.debug(f"DuckDuckGo error: {e}")
+        logger.warning("ddg_search error: %s", e)
         return []
 
-# ═══════════════════════════════════════════════════════════════
-# PLACEHOLDER: Google Custom Search (Currently 403)
-# ═══════════════════════════════════════════════════════════════
+    if not raw:
+        logger.debug("ddg_search: 0 results for %r", query)
+        return []
 
-async def google_custom_search(query: str, count: int = 5) -> list[dict]:
-    """
-    Google Custom Search — TEMPORARILY DISABLED (403 error).
-    
-    To fix:
-    1. Go to console.cloud.google.com
-    2. Verify "Custom Search API" is ENABLED
-    3. Verify API key is correct
-    4. Verify Search Engine ID is correct
-    5. Update .env with correct values
-    6. Uncomment this code below
-    """
-    logger.debug("Google CSE: skipped (403 error from previous attempts)")
-    return []
+    logger.info("ddg_search: %d results for %r", len(raw), query)
+    return [
+        {
+            "title": (r.get("title") or "")[:500],
+            "url": r.get("url", r.get("href", r.get("link", ""))),
+            "snippet": (r.get("body") or r.get("description") or "")[:500],
+            "publishedAt": r.get("date", ""),
+            "source": _extract_source(r),
+            "source_provider": "duckduckgo",
+        }
+        for r in raw
+        if r.get("url") or r.get("href")
+    ]
 
-# ═══════════════════════════════════════════════════════════════
-# PLACEHOLDER: SerpAPI (Currently 429 - No Credits)
-# ═══════════════════════════════════════════════════════════════
 
-async def serpapi_search(query: str, count: int = 5) -> list[dict]:
+async def newsapi_search(query: str, count: int = 5) -> list[dict]:
     """
-    SerpAPI — TEMPORARILY DISABLED (429 rate limit / no credits).
-    
-    To fix:
-    1. Go to https://serpapi.com/
-    2. Create a NEW account (get fresh $100 free credits)
-    3. Copy the new API key
-    4. Update .env: SERPAPI_KEY=new_key
-    5. Uncomment this code below
+    NewsAPI.org — secondary provider.
+    Free tier: 500 requests/month. Good metadata but limited Nepali coverage.
+    Filters out articles with None titles (malformed Khabarhub responses).
     """
-    logger.debug("SerpAPI: skipped (429 rate limit from previous account)")
-    return []
+    api_key = config("NEWSAPI_KEY", default="")
+    if not api_key or api_key == "your_newsapi_key_here":
+        logger.warning("newsapi_search: key not configured")
+        return []
 
-# ═══════════════════════════════════════════════════════════════
-# MAIN UNIFIED FUNCTION
-# ═══════════════════════════════════════════════════════════════
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                "https://newsapi.org/v2/everything",
+                params={
+                    "q": query,
+                    "apiKey": api_key,
+                    "pageSize": count,
+                    "sortBy": "publishedAt",
+                    "language": "en",
+                },
+            )
+        if resp.status_code != 200:
+            logger.warning("newsapi_search: HTTP %d", resp.status_code)
+            return []
+
+        data = resp.json()
+        if data.get("status") != "ok":
+            logger.warning("newsapi_search: %s", data.get("message", "error"))
+            return []
+
+        articles = data.get("articles", [])
+        results = []
+        for a in articles:
+            title = a.get("title") or ""
+            url = a.get("url") or ""
+            # Skip articles with no title or placeholder titles
+            if not title or title == "[Removed]" or not url:
+                continue
+            results.append({
+                "title": title[:500],
+                "url": url,
+                "snippet": (a.get("description") or "")[:500],
+                "publishedAt": a.get("publishedAt", ""),
+                "source": a.get("source", {}).get("name") or _extract_domain(url),
+                "source_provider": "newsapi",
+            })
+
+        logger.info("newsapi_search: %d valid articles for %r", len(results), query)
+        return results
+
+    except Exception as e:
+        logger.error("newsapi_search error: %s", e)
+        return []
+
 
 async def web_search(query: str, count: int = 5) -> list[dict]:
     """
-    Web search with pragmatic fallback chain.
-    
-    Priority 1: NewsAPI (working, reliable, good metadata)
-    Priority 2: DuckDuckGo (free fallback)
-    Priority 3: (Reserved for Google CSE once 403 is fixed)
-    Priority 4: (Reserved for SerpAPI once fresh credits obtained)
-    
-    Returns list of {title, url, snippet, publishedAt, source, source_provider}.
+    Unified search — DDG first (better for NEPSE), NewsAPI as supplement.
+    Returns deduplicated combined results.
     """
-    
-    logger.info(f"web_search: '{query}'")
-    
-    # Priority 1: NewsAPI (PRIMARY - WORKING)
-    results = await newsapi_search(query, count)
-    if results:
-        logger.info(f"web_search: using NewsAPI ({len(results)} results)")
-        return results
-    
-    # Priority 2: DuckDuckGo (FREE FALLBACK)
-    results = await duckduckgo_search(query, count)
-    if results:
-        logger.info(f"web_search: using DuckDuckGo fallback ({len(results)} results)")
-        return results
-    
-    # All failed
-    logger.error(f"web_search: all providers failed for '{query}'")
+    logger.info("web_search: %r", query)
+
+    # Run both concurrently — don't waterfall
+    ddg_results, newsapi_results = await asyncio.gather(
+        ddg_search(query, count),
+        newsapi_search(query, 3),
+        return_exceptions=True,
+    )
+
+    combined: list[dict] = []
+    seen_urls: set[str] = set()
+
+    for batch in (ddg_results, newsapi_results):
+        if not isinstance(batch, list):
+            continue
+        for item in batch:
+            url = item.get("url", "")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                combined.append(item)
+
+    if combined:
+        logger.info("web_search: %d combined results", len(combined))
+        return combined[:count]
+
+    logger.error("web_search: all providers failed for %r", query)
     return []
 
-# ═══════════════════════════════════════════════════════════════
-# FETCH ARTICLE
-# ═══════════════════════════════════════════════════════════════
 
 async def fetch_article(url: str, max_chars: int = 2000) -> str:
-    """
-    Fetches a URL and extracts clean text.
-    Returns empty string on any error.
-    """
+    """Fetches a URL and extracts clean article text."""
     if not url:
         return ""
-    
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(5.0, connect=2.0),
+            follow_redirects=True,
+        ) as client:
             resp = await client.get(
                 url,
                 headers={
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                                  'AppleWebKit/537.36 (KHTML, like Gecko) '
-                                  'Chrome/120.0.0.0 Safari/537.36'
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/124.0.0.0 Safari/537.36"
+                    )
                 },
-                follow_redirects=True
             )
-        
         if resp.status_code != 200:
             return ""
-        
+
         from bs4 import BeautifulSoup
-        soup = BeautifulSoup(resp.text, 'html.parser')
-        
-        # Remove junk
-        for tag in soup(['script', 'style', 'nav', 'footer', 'ads', 'noscript']):
+        import re
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for tag in soup(["script", "style", "nav", "footer", "noscript", "ads"]):
             tag.decompose()
-        
-        # Get main content
-        main = soup.find('main') or soup.find('article') or soup.find('body')
+
+        main = soup.find("main") or soup.find("article") or soup.find("body")
         if not main:
             return ""
-        
-        text = main.get_text(separator=' ', strip=True)
-        
-        # Clean whitespace
-        import re
-        text = re.sub(r'\s+', ' ', text).strip()
-        
+
+        text = main.get_text(separator=" ", strip=True)
+        text = re.sub(r"\s+", " ", text).strip()
         return text[:max_chars]
-    
+
     except Exception as e:
-        logger.debug(f"fetch_article error: {e}")
+        logger.debug("fetch_article error for %s: %s", url, e)
         return ""
+
+
+# Legacy aliases — keep for backward compatibility
+async def google_custom_search(query: str, count: int = 5) -> list[dict]:
+    logger.debug("google_custom_search: disabled (403)")
+    return []
+
+
+async def serpapi_search(query: str, count: int = 5) -> list[dict]:
+    logger.debug("serpapi_search: disabled (429, no credits)")
+    return []

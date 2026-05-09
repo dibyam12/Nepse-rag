@@ -1,0 +1,223 @@
+# other_sectors_fundamentals.txt
+# NEPSE AI Research Assistant — Non-Financial Sectors Guide
+# Covers: Manufacturing & Processing, Hotels & Tourism, Trading, Investment, Others
+# Last Updated: 2026-05-09
+# Sources: nepsetrading.com, kathmandupost.com, sharesansar.com, nepsealpha.com
+
+=============================================================================
+NEPSE SECTOR COMPOSITION (February 2026)
+=============================================================================
+
+Total Listed Companies: 284
+  - Banks, Financial Institutions & Insurance: 132
+  - Hydropower: 97
+  - Manufacturing & Processing: 26
+  - Hotels & Tourism: 8
+  - Investment: 7
+  - Trading: 4
+  - Others: 10
+
+Combined non-financial + non-hydro = ~55 companies
+These sectors are smaller in company count but sometimes outperform on percentage gains.
+
+NEPSE Overall Valuation (October 2025):
+  Overall P/E: 38.32 (above historical avg of 31.25, near peak of 42.28)
+  Overall P/B: 2.78x (above healthy global range of 1.5-2.5)
+  Global healthy P/E range: 15-20 (NEPSE trades at premium due to limited investable stocks)
+
+=============================================================================
+SECTION A: MANUFACTURING AND PROCESSING SECTOR
+=============================================================================
+
+Sub-Index: Manufacturing And Processing
+Listed Companies: 26
+Sub-Index Level (May 8, 2026): 11,287.55 (+1.41%)
+Recent Performance: April 2026 — led NEPSE rally with +2.97% weekly gain
+
+KEY METRICS FOR MANUFACTURING:
+  1. Revenue Growth — Is the company growing its top line?
+  2. Operating Margin — Manufacturing margins are thin; above 15% is strong
+  3. Capacity Utilization — What % of installed manufacturing capacity is used?
+  4. Raw Material Costs — Imports create forex risk (Nepal imports most raw materials)
+  5. Debt-to-Equity — Capital-intensive manufacturing often uses debt
+  6. Dividend Consistency — Long-established manufacturers often pay regular dividends
+
+VALUATION CONTEXT:
+  P/E: 15-25x for established manufacturers
+  P/B: 1-3x typical
+
+NOTABLE MANUFACTURING COMPANIES:
+| Symbol  | Company Name                         | Product           |
+|---------|--------------------------------------|-------------------|
+| RSIML   | Reliance Spinning Mills Limited      | Yarn/Textiles     |
+| SYPML   | SY Panel Nepal Limited               | Panels/Boards     |
+| BGWI    | Bottlers Nepal (Balaju) Ltd.         | Beverages (Coca)  |
+| BTML    | Bottlers Nepal Terai Ltd.            | Beverages         |
+| SHIVM   | Shiva Shree Industries               | Food processing   |
+| HPCI    | Him Pushpam Company                  | Agricultural      |
+| HNVL    | Himalayan Net & Twine               | Industrial nets   |
+
+Reliance Spinning Mills (RSIML) was highest turnover stock in week of April 10, 2026.
+Manufacturing stocks led NEPSE gains in April 2026 (+2% weekly).
+
+KEY RISKS:
+  - Import dependency for raw materials (NPR depreciation = cost pressure)
+  - Competition from Indian goods (open border with India)
+  - Power supply interruptions affect production
+  - Limited domestic market size
+
+=============================================================================
+SECTION B: HOTELS AND TOURISM SECTOR
+=============================================================================
+
+Sub-Index: Hotels And Tourism
+Listed Companies: 8
+Recent Performance: Consistent sector leader in rally sessions
+  January 19, 2026: Hotels sector +3.36% (led all sectors)
+  January 24, 2026: Hotels sector +3.35% (led all sectors)
+  April 10, 2026: Hotels participated in broad rally
+
+KEY METRICS FOR HOTELS:
+  1. Occupancy Rate — How full are the hotels? Above 60% is healthy.
+  2. Revenue Per Available Room (RevPAR) — Key profitability metric
+  3. EBITDA Margin — Hotels have high fixed costs; EBITDA above 20% is good
+  4. Tourist Arrivals — Nepal's tourism directly drives hotel revenues
+  5. Seasonality — October-November and March-April peak tourist seasons
+  6. Debt Load — Most Nepal hotels financed with significant debt
+  7. Property Value — Hotel real estate appreciation adds to NAV
+
+VALUATION CONTEXT:
+  P/E: 20-50x (varies widely with occupancy cycles)
+  P/B: 1-4x (property values factor into book value)
+  EV/EBITDA: 10-20x for established properties
+
+NOTABLE HOTEL COMPANIES:
+| Symbol | Company Name                          | Location      | Category   |
+|--------|---------------------------------------|---------------|------------|
+| OHL    | Oriental Hotels Limited               | Kathmandu     | 5-star     |
+| BCBL   | Bandipur Cable Car & Tourism Ltd.     | Bandipur      | Cable car  |
+| HRL    | Soaltee Hotel Limited                 | Kathmandu     | 5-star     |
+| NICGF  | Nepal Infrastructure Bank             | —             | See Notes  |
+
+Tourism context: Nepal targets 2 million tourists/year. Chinese and Indian tourists
+dominate. Trekking and mountain climbing create unique seasonal demand patterns.
+Everest Base Camp, Annapurna Circuit, Pashupatinath are key demand drivers.
+
+KEY CATALYSTS FOR HOTELS SECTOR:
+  + Tourism recovery post-COVID
+  + Government budget announcements supporting tourism (June 2025 budget boosted sector)
+  + Nepal Visit Year campaigns
+  + Pokhara International Airport (added capacity, new routes)
+  - Political instability affects tourist confidence
+  - Earthquake risk to infrastructure
+  - Competition from Bhutan as premium destination
+
+=============================================================================
+SECTION C: TRADING SECTOR
+=============================================================================
+
+Listed Companies: 4 (smallest sector by company count)
+These are primarily commodity/goods trading companies.
+
+NOTABLE COMPANIES:
+| Symbol | Company Name              | Business         |
+|--------|---------------------------|------------------|
+| STC    | Salt Trading Corporation  | Government-backed|
+|        |                           | commodity trading|
+| BBC    | Bottlers Nepal Beverage   | Check current    |
+| NTVL   | Nepal Television          | Media/Others     |
+
+KEY METRICS: Revenue, Gross Margin, Inventory Turnover
+RISK: Trading companies have thin margins and inventory risk.
+VALUATION: P/E of 15-30x for profitable trading companies.
+
+STC (Salt Trading Corporation):
+  Government-backed entity, quasi-monopoly in salt import/distribution.
+  Historically pays dividends. Stable but limited growth.
+
+=============================================================================
+SECTION D: INVESTMENT SECTOR
+=============================================================================
+
+Listed Companies: 7
+These are holding companies, mutual fund companies, or investment arms.
+Key example: HIDCL (Hydroelectricity Investment & Development Company)
+  — Provides financing to hydropower projects
+  — Revenue: interest + returns from invested projects
+  — Treat as infrastructure investment fund, not direct power company
+
+Other investment companies: Various mutual fund management companies
+  Citizen Investment Trust (CIT): Government-backed, large AUM
+  NIBL Ace Capital, etc.
+
+VALUATION: Investment companies valued on Net Asset Value (NAV) per unit.
+  P/NAV above 1.0 = trading at premium | Below 1.0 = trading at discount.
+
+KEY INSIGHT: Investment sector gains when broader NEPSE rallies because
+  their portfolio (equity investments) appreciates. January 19, 2026:
+  Investment sector +2.54% (second-best sector that day).
+
+=============================================================================
+SECTION E: OTHERS / MISCELLANEOUS SECTOR
+=============================================================================
+
+Listed Companies: ~10
+Includes cable car companies, agritech, cable TV, etc.
+Notable: Bandipur Cable Car and Tourism Limited (BCBL) — hit upper circuit Jan 2026.
+         Shreenagar Agritech Industries Limited — hit upper circuit Jan 2026.
+
+These stocks are very thinly traded with low liquidity.
+High volatility — can hit +10% or -10% circuit breakers on low volume.
+Not suitable for fundamental analysis using standard banking metrics.
+Use general equity metrics: Revenue, Profit Margin, P/E, P/B.
+
+=============================================================================
+NEPSE SECTOR P/E COMPARISON (Q4 FY2024/25 — October 2025)
+=============================================================================
+
+| Sector                  | P/E Ratio | P/B Ratio | Notes                    |
+|-------------------------|-----------|-----------|--------------------------|
+| Commercial Banks        | 15.80     | 1.51      | Lowest P/E = best value  |
+| Development Banks       | ~25-30    | ~2.0      | Moderate valuation       |
+| Finance Companies       | Varies    | ~2.0      | High variance            |
+| Life Insurance          | 30-80     | 3-6       | Premium valuation        |
+| Non-Life Insurance      | 20-50     | 2-4       | Moderate premium         |
+| Hydropower              | 20-100+   | 2-5       | Very wide range          |
+| Manufacturing           | 15-25     | 1-3       | Moderate                 |
+| Hotels & Tourism        | 20-50     | 1-4       | Cyclical                 |
+| Microfinance            | 20-40     | 3-5       | High historical premium  |
+| NEPSE OVERALL           | 38.32     | 2.78      | Above historical avg     |
+
+=============================================================================
+HOW TO RESPOND TO MULTI-SECTOR QUERIES
+=============================================================================
+
+When user asks "what are the different sectors in NEPSE?" or "which sectors are there?":
+
+Answer: NEPSE has 9 main sectors:
+1. Commercial Banks (18 stocks, Class A BFI)
+2. Development Banks (10 stocks, Class B BFI)
+3. Finance Companies (10 stocks, Class C BFI)
+4. Microfinance (50 stocks, Class D BFI)
+5. Life Insurance (12 stocks)
+6. Non-Life Insurance (12 stocks)
+7. Hydropower (91 stocks — largest by count)
+8. Manufacturing & Processing (26 stocks)
+9. Hotels & Tourism (8 stocks)
+10. Investment (7 stocks)
+11. Trading (4 stocks)
+12. Others (10 stocks)
+
+Total: ~284 companies as of February 2026
+
+SECTOR PERFORMANCE (FY2025/26 data):
+  Finance/Insurance: +5.65% | Manufacturing: +5.59%
+  Hydropower dominates daily trading volume (40-50% of total turnover)
+  Hotels & Tourism: Best percentage gains in rally sessions
+
+=============================================================================
+DISCLAIMER
+=============================================================================
+Sector P/E data is from October 2025 (latest available cross-sector comparison).
+Individual company data may have changed significantly.
+This is for educational and research purposes only. Not financial advice.

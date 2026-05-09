@@ -103,12 +103,12 @@ function SidebarShell({ isOpen, onClose, children }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:relative z-50 top-0 left-0 h-full w-72
+        className={`fixed lg:relative z-50 top-0 left-0 h-full w-72 flex-shrink-0
                     bg-white dark:bg-surface-900
                     border-r border-surface-200 dark:border-surface-800
                     flex flex-col
-                    transition-transform duration-300 ease-out
-                    ${isOpen ? 'translate-x-0' : '-translate-x-full lg:hidden'}`}
+                    transition-all duration-300 ease-in-out
+                    ${isOpen ? 'translate-x-0 lg:ml-0' : '-translate-x-full lg:translate-x-0 lg:-ml-72'}`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3
@@ -118,7 +118,8 @@ function SidebarShell({ isOpen, onClose, children }) {
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg btn-ghost lg:hidden"
+            className="p-1.5 rounded-lg btn-ghost transition-colors hover:bg-surface-200 dark:hover:bg-surface-800"
+            title="Close Sidebar"
           >
             <X size={16} />
           </button>

@@ -245,8 +245,11 @@ class Command(BaseCommand):
                 created_stocks += 1
             else:
                 existing_stocks += 1
-                # Update sector/index if missing (e.g., auto-created from Neon)
+                # Update name/sector/index if missing or junk
                 changed = False
+                if not obj.name or 'auto-created' in (obj.name or ''):
+                    obj.name = name
+                    changed = True
                 if obj.sector is None and sector_name in sectors:
                     obj.sector = sectors[sector_name]
                     changed = True

@@ -1,0 +1,228 @@
+# nepse_market_context.txt
+# NEPSE AI Research Assistant — Market-Wide Context & Trading Rules
+# Purpose: Provide the LLM with NEPSE market structure, macro context, 
+#          trading rules, and how to interpret market-wide data.
+# Last Updated: 2026-05-09
+# Sources: nepsetrading.com, investorean.com, sharesansar.com, nrb.org.np
+
+=============================================================================
+NEPSE MARKET STRUCTURE
+=============================================================================
+
+Full Name: Nepal Stock Exchange Limited (NEPSE)
+Founded: January 13, 1994
+Type: Government-owned stock exchange (only one in Nepal)
+Location: Singhadurbar, Kathmandu, Nepal
+Regulator: SEBON (Securities Board of Nepal)
+Clearing: CDS and Clearing Limited (CDSC)
+
+TRADING BASICS:
+  Trading Days: Sunday to Thursday (Nepal's working week)
+  Trading Hours: 11:00 AM — 3:00 PM NPT (Nepal Time, UTC+5:45)
+  Pre-Open Session: 10:45-11:00 AM
+  Settlement: T+2 (two working days after trade)
+  Trading Platform: NEPSE Online Trading System (NOTS)
+  Face Value: Rs 100 per share (most companies)
+  Lot Size: 10 shares minimum for most stocks; varies by category
+
+PRICE LIMITS (Circuit Breakers):
+  Daily Upper Circuit: +10% above previous close
+  Daily Lower Circuit: -10% below previous close
+  Exception: On listing day (IPO first trade), maximum gain is 10%
+  Index-level circuit: Trading halts if index falls 5% intraday
+
+MARKET INDICES:
+  NEPSE Index: Benchmark composite index
+  NEPSE Sensitive Index: Tracks only Class A stocks (commercial banks, large caps)
+  NEPSE Float Index: Tracks only publicly floating shares
+
+=============================================================================
+NEPSE MARKET DATA (February-May 2026)
+=============================================================================
+
+Total Listed Companies: 284 (as of February 2026)
+Total Market Capitalization: Rs 4.43-4.65 Trillion (Rs 4,430-4,650 Billion)
+  — as of January-May 2026
+Market Cap to GDP: 72.62%
+NEPSE Index Range (Q1-Q2 2026): ~2,641 — 2,931
+
+NEPSE Index Milestones:
+  - 3,000 level: Resistance zone (approached but not consistently above)
+  - 2,700 level: Mid-range support
+  - 2,500 level: Strong support
+  - All-time high: ~3,227 (reached 2021 bull run peak)
+
+Recent Index Movement:
+  January 19, 2026: +42.26 points (+1.5%) → 2,714.81
+  January 24, 2026: +57.55 points (+2.12%) → 2,772.17
+  April 1, 2026: -74.73 points (-2.62%) (capital market policy fears)
+  May 2026 range: ~2,800-2,900
+
+Average Daily Turnover: Rs 8-15 Billion on active days
+Peak Daily Turnover: Rs 25+ Billion (on high-volume sessions)
+Number of Active Investors (DEMAT accounts): 6+ million
+
+=============================================================================
+MACRO ECONOMIC CONTEXT (Nepal 2025-2026)
+=============================================================================
+
+Currency: Nepalese Rupee (NPR)
+  Exchange Rate: NPR is PEGGED to INR at 1 INR = 1.60 NPR (fixed by NRB)
+  Implication: Nepal monetary policy closely follows India's RBI decisions
+
+NRB (Nepal Rastra Bank) — CURRENT MONETARY POLICY:
+  Repo Rate (Bank Rate): 4.25%
+  NRB Bank Rate: 5.75%
+  Refinancing Rate (for productive sectors): 5.00-6.50%
+  Average Fixed Deposit Rate (commercial banks): 5.18%
+  Average Lending Rate (commercial banks): 7.00%
+  Net Interest Margin pressure from NRB rate guidance ongoing
+
+REMITTANCE ECONOMY:
+  Nepal is one of the world's most remittance-dependent economies.
+  Remittances ~25-30% of GDP.
+  Impact on NEPSE: Remittance inflows → bank deposits → credit growth → stock market liquidity.
+  Strong remittances = positive for banking stocks and NEPSE overall.
+
+ECONOMIC GROWTH:
+  GDP growth: Moderate recovery from COVID impacts.
+  Priority sectors: Hydropower, tourism, manufacturing, agriculture.
+  Nepal Economic Sector Performance FY2025/26:
+    Finance/Insurance: +5.65%
+    Manufacturing: +5.59%
+    Wholesale/Retail: +4.43%
+    Agriculture: -1.99% (drought impact)
+
+ELECTRICITY SECTOR:
+  Nepal aims to be energy self-sufficient and export to India/Bangladesh.
+  NEA (Nepal Electricity Authority): State buyer of all electricity.
+  Energy mix shifting from petroleum imports to hydropower (EV adoption rising).
+
+=============================================================================
+KEY SEBON REGULATIONS INVESTORS MUST KNOW
+=============================================================================
+
+1. BONUS SHARE AND DIVIDENDS:
+   Companies announce cash dividend and/or bonus shares at AGM.
+   Book closure date: Shareholders registered before this date receive dividend.
+   Ex-dividend date: Stock price typically falls by dividend amount on this date.
+   Cash dividend: Paid in cash. Taxed at 5% at source (for individuals).
+   Bonus share: New shares issued at Rs 100 face value. Tax treatment differs.
+
+2. RIGHTS OFFERING:
+   Companies can issue new shares to existing shareholders at a discount.
+   Rights ratio: e.g., 1:3 means 1 new share for every 3 existing shares held.
+   Subscription price: Usually Rs 100-200 (face value or small premium).
+   If you DON'T subscribe: Your stake gets diluted.
+   Rights shares can be RENOUNCED (sold in secondary market during subscription period).
+
+3. FPO (Further Public Offering):
+   Public offering after IPO. Often by established companies to raise more capital.
+   Regulated by SEBON. Prospectus required.
+
+4. MARGIN LENDING:
+   Investors can borrow against shares for additional buying.
+   NRB regulates margin lending — banks can lend up to 65% of share value.
+   Margin calls during market corrections can amplify selloffs.
+
+5. FOREIGN INVESTMENT IN NEPSE:
+   Foreign portfolio investment was restricted for most of NEPSE's history.
+   Recent changes allow NRNs (Non-Resident Nepalis) and some foreign investors.
+   Institutional foreign investment remains limited.
+
+6. INSIDER TRADING:
+   SEBON has insider trading regulations but enforcement is limited.
+   Board member and promoter trading is regulated and must be disclosed.
+
+7. PROMOTER SHARE LOCK-IN:
+   Promoter shares are locked in for 3-5 years after IPO.
+   Large promoter lock-in expiry = potential selling pressure (watch for this).
+
+=============================================================================
+NEPSE TRADING CONCEPTS
+=============================================================================
+
+FLOOR PRICE:
+  SEBON can set a floor (minimum) price for IPOs and rights shares.
+  Floor price = face value (Rs 100) + premium if applicable.
+
+OVERSUBSCRIPTION:
+  When demand for IPO/rights shares exceeds supply.
+  Allotment done by lottery (balloting) for retail investors.
+  100x-500x oversubscription is common for popular hydropower IPOs.
+
+QUALIFIED INSTITUTIONAL BUYERS (QIB):
+  Separate allotment quota for institutions (mutual funds, banks, etc.).
+
+MUTUAL FUNDS:
+  Nepal has growing mutual fund industry.
+  Close-ended funds listed on NEPSE (trade like stocks).
+  Open-ended funds: NAV-based pricing, not NEPSE-listed.
+  Nabil Equity Fund, Siddhartha Equity Scheme, etc.
+
+DEMAT ACCOUNT:
+  All shares held in dematerialized form through CDS (Central Depository System).
+  Mandatory for trading. Linked to bank account.
+  MEROSHARE: CDS's online platform for IPO applications, portfolio viewing.
+
+BROKER SYSTEM:
+  Trading through licensed brokers only.
+  Online trading available through NOTS (NEPSE Online Trading System).
+  Broker commission: 0.40% for transactions below Rs 50,000;
+  reduces on higher transaction amounts.
+  DP fee (depository participant): Rs 25 per buy/sell transaction.
+
+=============================================================================
+HOW TO RESPOND TO MARKET-WIDE QUERIES
+=============================================================================
+
+"How is NEPSE doing today?" or "What is the NEPSE index?"
+  → State latest NEPSE Index value from SQL/price data.
+  → Mention % change from previous day.
+  → Name top gaining/losing sector if data available.
+  → Mention daily turnover if available.
+
+"Is NEPSE overvalued?"
+  → Current P/E: 38.32 (Oct 2025, last available comprehensive data).
+  → Historical avg P/E: 31.25. Near peak P/E: 42.28.
+  → Global healthy P/E: 15-20. NEPSE trades at premium due to limited alternatives.
+  → Banking sector is MOST REASONABLY VALUED at P/E 15.80.
+  → Hydropower and insurance trade at much higher P/E multiples.
+
+"When should I invest in NEPSE?"
+  → Cannot predict market timing. Present data, not advice.
+  → Mention: NRB interest rate cycle impacts stock market.
+  → Lower interest rates = positive for stocks. Rising rates = pressure.
+  → Remittance inflows historically support market liquidity.
+
+"What are the biggest stocks on NEPSE?"
+  → By market cap: NABIL, EBL, NLIC, UPPER, CHCL, SCB among largest.
+  → By trading volume: Hydropower stocks dominate daily turnover.
+  → NEPSE total market cap: Rs 4.43-4.65 Trillion.
+
+=============================================================================
+DATA FRESHNESS WARNING
+=============================================================================
+
+IMPORTANT: NEPSE stock prices change every trading day.
+Database (Neon PostgreSQL) OHLCV data is updated periodically.
+Always check the "Data as of" date in SQL tool results.
+
+If database data is more than 7 days old:
+  - Clearly state the data age: "Based on data as of [date]"
+  - Recommend checking merolagani.com or sharesansar.com for real-time prices
+  - Do NOT present stale prices as current prices
+
+REAL-TIME SOURCES:
+  merolagani.com — Real-time prices, technical data
+  sharesansar.com — News, announcements, real-time data
+  nepsealpha.com — Technical signals, fundamental data
+  nepalipaisa.com — Portfolio tracker, corporate actions
+
+=============================================================================
+DISCLAIMER
+=============================================================================
+NEPSE is an emerging market with higher volatility than developed markets.
+All investment involves risk. Past performance does not guarantee future results.
+This document is for educational and research purposes only.
+This is NOT financial advice. Consult a licensed financial advisor before investing.

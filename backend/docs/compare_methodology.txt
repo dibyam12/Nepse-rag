@@ -1,0 +1,239 @@
+# compare_methodology.txt
+# NEPSE AI Research Assistant — Stock Comparison Guide
+# Purpose: Instruct the AI on how to structure multi-symbol comparison responses.
+# This file is part of the docs/ vector knowledge base.
+# Last Updated: 2026-05-09
+# Sources: nepsetrading.com, sharesansar.com, merolagani.com, nepsealpha.com
+
+=============================================================================
+SECTION 1: WHAT IS A COMPARISON QUERY?
+=============================================================================
+
+A comparison query is any question where the user asks to:
+- Compare two or more NEPSE stocks side by side
+- Ask "which is better" between two symbols
+- Ask to "compare X and Y"
+- Ask about "X vs Y"
+- Ask about multiple symbols in a single query
+
+Examples:
+  "compare NABIL and NICA"
+  "which bank is better NABIL or EBL?"
+  "tell me about NABIL and NICA and their latest news"
+  "compare CHCL NHPC and HIDCL"
+
+=============================================================================
+SECTION 2: MANDATORY RESPONSE STRUCTURE FOR COMPARE QUERIES
+=============================================================================
+
+Always present ALL requested symbols. Never omit a symbol. Follow this order:
+
+STEP 1 — ONE-LINE SUMMARY
+One sentence naming both stocks, their sector, and the key difference.
+Example: "NABIL and NICA are both Commercial Banks; NABIL leads on EPS (35.18 vs 1.76)
+and profitability, while NICA has higher trading volume."
+
+STEP 2 — PRICE TABLE (Markdown)
+Always present a side-by-side markdown table:
+
+| Metric          | SYMBOL_A     | SYMBOL_B     |
+|-----------------|-------------|-------------|
+| LTP (NPR)       |             |             |
+| Change (%)      |             |             |
+| Volume          |             |             |
+| Day Range       |             |             |
+| 52W High        |             |             |
+| 52W Low         |             |             |
+| VWAP            |             |             |
+
+STEP 3 — TECHNICAL INDICATOR TABLE
+Show indicators for ALL symbols in one table. Show value + signal only.
+Do NOT explain what each indicator means in a compare response.
+
+| Indicator   | SYMBOL_A       | SYMBOL_B       |
+|-------------|----------------|----------------|
+| RSI (14)    |                |                |
+| MACD        |                |                |
+| EMA 20      |                |                |
+| EMA 50      |                |                |
+| BB Upper    |                |                |
+| BB Lower    |                |                |
+| BB Position |                |                |
+
+STEP 4 — RELATIVE STRENGTH (2-3 sentences)
+State which stock is technically stronger and why, using only the numbers shown.
+Example: "NABIL's price is above both EMA-20 (525.6) and EMA-50 (510.0), suggesting
+sustained upward momentum. NICA is below EMA-20 (367.9) with RSI at 51 (neutral).
+NABIL shows stronger near-term momentum."
+
+STEP 5 — SECTOR AND PEER CONTEXT
+State the sector both belong to. Name 3-5 peer stocks.
+Example: "Both NABIL and NICA are Commercial Banks (18 peers).
+Key peers: EBL, SCB, GBIME, SBL, KBL."
+
+STEP 6 — FUNDAMENTAL QUICK COMPARISON (if data available)
+| Metric      | SYMBOL_A | SYMBOL_B |
+|-------------|----------|----------|
+| EPS (NPR)   |          |          |
+| P/E Ratio   |          |          |
+| ROE (%)     |          |          |
+| NAV (NPR)   |          |          |
+| NPM (%)     |          |          |
+
+STEP 7 — NEWS PER SYMBOL
+Present news under separate bold headers per symbol.
+**SYMBOL_A — Recent News**
+1. Headline — Source, Date
+   One sentence context (from snippet only, no fabrication).
+
+**SYMBOL_B — Recent News**
+1. Headline — Source, Date
+
+STEP 8 — DISCLAIMER (mandatory, always last)
+"DISCLAIMER: This is for educational purposes only. Not financial advice."
+
+=============================================================================
+SECTION 3: SIGNAL LABELS (use these exact labels — no variations)
+=============================================================================
+
+RSI Signal Labels:
+  RSI below 30  → "Oversold"
+  RSI 30 to 50  → "Neutral-Weak"
+  RSI 50 to 70  → "Neutral"
+  RSI above 70  → "Overbought"
+
+MACD Signal Labels:
+  Positive value → "Bullish"
+  Negative value → "Bearish"
+
+BB Position Labels:
+  Price above BB Upper → "Above Upper Band"
+  Price near upper half → "Near Upper Band"
+  Price near midline   → "Mid Band"
+  Price near lower half → "Near Lower Band"
+  Price below BB Lower → "Below Lower Band"
+
+EMA Trend Labels:
+  Price > EMA-20 and EMA-20 > EMA-50 → "Bullish Alignment"
+  Price < EMA-20 and EMA-20 < EMA-50 → "Bearish Alignment"
+  Mixed positions                      → "Consolidating"
+
+=============================================================================
+SECTION 4: RULES FOR COMPARE RESPONSES
+=============================================================================
+
+RULE 1: Always present data for EVERY symbol mentioned in the query.
+If user asks "compare NABIL, NICA, and EBL", show all three symbols.
+
+RULE 2: The SQL DATA block in context IS the price — read it directly.
+Never say "unable to retrieve" if the data block exists.
+
+RULE 3: Use tables for 2+ symbols. Prose only for single-symbol queries.
+For 4+ symbols, use two separate tables (max 3 columns per table).
+
+RULE 4: Do NOT explain what RSI, MACD, Bollinger Bands, EMA mean
+in a compare response. Just show value and signal label.
+Only explain if the user explicitly asks "what is RSI?" as a standalone question.
+
+RULE 5: Do NOT give buy/sell recommendations. Present data only.
+Acceptable: "NABIL shows stronger momentum than NICA."
+Not acceptable: "You should buy NABIL over NICA."
+
+RULE 6: For "which is better" queries, present data objectively.
+End with: "Investors should consider their own risk tolerance and investment goals."
+
+RULE 7: Never write "[context unclear]", "N/A" without reason, or placeholder text.
+If data is truly missing, write "Not available in current data."
+
+RULE 8: Always end with the DISCLAIMER line.
+
+=============================================================================
+SECTION 5: COMMERCIAL BANK COMPARISON REFERENCE DATA (Q2 FY2082/83)
+=============================================================================
+
+Source: nepsetrading.com Q2 2082/83 Fundamental Analysis of Commercial Banks
+
+| Symbol | EPS (Rs) | P/E Ratio | ROE (%) | NAV (Rs) | NPM (%) | Quality Score |
+|--------|----------|-----------|---------|----------|---------|---------------|
+| NABIL  | 35.18    | 13.86     | 14.93   | 235.64   | 44.56   | 75.95 (A)     |
+| EBL    | 30.86    | 21.39     | 13.13   | 235.04   | 40.31   | B+            |
+| SCB    | 27.35    | 23.09     | 12.96   | 210.97   | 44.58   | B+            |
+| KBL    | 20.74    | 8.63      | 13.72   | 151.16   | 35.30   | B             |
+| SANIMA | 20.48    | 16.45     | 11.88   | 172.39   | 38.69   | B             |
+| PCBL   | 19.50    | 12.25     | 11.76   | 165.80   | 40.60   | B             |
+| SBI    | 18.93    | 21.66     | 9.80    | 193.10   | 34.59   | B             |
+| SBL    | 17.93    | 21.51     | 8.49    | 211.23   | 29.31   | B             |
+| NBL    | 17.76    | 13.57     | 6.77    | 262.43   | 26.80   | C+            |
+| NMB    | 17.10    | 13.98     | 10.10   | 169.36   | 32.99   | B             |
+| GBIME  | 17.06    | 13.24     | 9.73    | 175.29   | 38.53   | B             |
+| MBL    | 16.73    | 13.61     | 10.35   | 161.63   | 29.29   | B             |
+| ADBL   | 9.89     | 30.33     | 4.41    | 224.37   | 19.70   | C             |
+| NIMB   | 9.45     | 20.20     | 4.85    | 194.77   | 29.38   | C             |
+| PRVU   | 8.62     | 21.27     | 5.90    | 146.17   | 19.36   | C             |
+| CZBIL  | 4.63     | 41.70     | 3.09    | 149.79   | 15.70   | C             |
+| NICA   | 1.76     | 190.01    | 0.89    | 198.33   | 4.51    | D             |
+| LSL    | -2.04    | 0         | 0       | 166.23   | -9.53   | F             |
+
+Sector Average P/E: 15.80 (lowest among all NEPSE sectors — reasonably valued)
+Sector Average P/B: 1.51
+NABIL leads: #1 EPS, #1 NPM, #1 Quality Score among all 18 commercial banks.
+NICA note: EPS of 1.76 and P/E of 190 indicate weak profitability in Q2 FY2082/83.
+
+=============================================================================
+SECTION 6: EXAMPLE COMPARE RESPONSES
+=============================================================================
+
+--- Example 1: "compare NABIL and NICA" ---
+
+NABIL and NICA are both Commercial Banks listed on NEPSE.
+NABIL significantly leads on profitability with EPS of Rs 35.18 vs NICA's Rs 1.76.
+
+| Metric     | NABIL   | NICA    |
+|------------|---------|---------|
+| LTP (NPR)  | 530.00  | 353.00  |
+| Change (%) | -0.36%  | -2.71%  |
+| Volume     | 39,114  | 115,093 |
+| 52W High   | 562.00  | 428.40  |
+| 52W Low    | 471.00  | 304.50  |
+| VWAP       | 533.2   | 368.5   |
+
+| Indicator   | NABIL           | NICA            |
+|-------------|-----------------|-----------------|
+| RSI (14)    | 54.0 (Neutral)  | 51.0 (Neutral)  |
+| MACD        | +3.09 (Bullish) | +6.99 (Bullish) |
+| EMA 20      | 525.6           | 367.9           |
+| BB Position | 52% (Mid Band)  | 19% (Near Lower)|
+
+Relative Strength: NABIL's price (530) is above EMA-20 (525.6), indicating positive
+momentum. NICA at 353 is below EMA-20 (367.9), suggesting near-term weakness. Both
+show neutral RSI, so neither is overbought or oversold.
+
+Sector: Both are Commercial Banks (18 peers: EBL, SCB, GBIME, SBL, KBL).
+
+| Fundamental | NABIL  | NICA   |
+|-------------|--------|--------|
+| EPS (Rs)    | 35.18  | 1.76   |
+| P/E Ratio   | 13.86  | 190.01 |
+| ROE (%)     | 14.93  | 0.89   |
+| NAV (Rs)    | 235.64 | 198.33 |
+| NPM (%)     | 44.56  | 4.51   |
+
+NABIL is fundamentally the stronger bank with top EPS, ROE, and NPM in the sector.
+NICA's high P/E of 190 reflects very low earnings — investors should monitor Q3 results.
+
+DISCLAIMER: This is for educational purposes only. Not financial advice.
+
+=============================================================================
+SECTION 7: COMMON QUERY PATTERNS AND ROUTING
+=============================================================================
+
+Query Pattern → Expected Route:
+"compare X and Y"              → ROUTE_COMPARE → sql + graph + news
+"X vs Y"                       → ROUTE_COMPARE → sql + graph + news
+"which is better X or Y?"      → ROUTE_COMPARE → sql + graph
+"tell me about X and Y"        → ROUTE_FULL_AGENT → sql + graph + news + vector
+"X and Y price"                → ROUTE_COMPARE → sql only
+"compare X Y Z" (3+ symbols)   → ROUTE_COMPARE → sql + graph
+
+For ROUTE_COMPARE: always fire sql_tool for ALL extracted symbols,
+then graph_tool for sector/peer context, then news_tool concurrently.

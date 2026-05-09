@@ -12,6 +12,7 @@ const useChatStore = create((set, get) => ({
   messages: [],
   isLoading: false,
   selectedSymbol: '',
+  lastSymbol: null,
   symbols: [],
 
   // ── Conversation State ────────────────────────────
@@ -24,7 +25,8 @@ const useChatStore = create((set, get) => ({
 
   // ── Symbol Actions ────────────────────────────────
 
-  setSymbol: (symbol) => set({ selectedSymbol: symbol }),
+  setSymbol: (sym) => set({ selectedSymbol: sym }),
+  setLastSymbol: (sym) => set({ lastSymbol: sym }),
 
   loadSymbols: async () => {
     try {
@@ -133,9 +135,10 @@ const useChatStore = create((set, get) => ({
 
     // Try SSE streaming first
     try {
+      const symbolToSend = selectedSymbol || get().lastSymbol || "";
       const params = new URLSearchParams({
         question,
-        ...(selectedSymbol && { symbol: selectedSymbol }),
+        symbol: symbolToSend,
         ...(activeConversationId && { conversation_id: activeConversationId }),
       });
 
@@ -167,6 +170,12 @@ const useChatStore = create((set, get) => ({
               break;
             case 'signals':
               signals = data.data;
+              if (signals?.symbol) {
+                set({ lastSymbol: signals.symbol });
+              }
+              if (signals?.price_cards?.length > 0) {
+                set({ lastSymbol: signals.price_cards[0].symbol });
+              }
               break;
             case 'citations':
               citations = data.data;

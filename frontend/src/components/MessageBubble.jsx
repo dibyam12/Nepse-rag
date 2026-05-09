@@ -1,20 +1,21 @@
 /**
  * MessageBubble — Renders a single chat message.
  *
- * User: right-aligned indigo gradient.
- * Assistant: left-aligned glass card with tool badges, signals table, citations.
+ * User messages: right-aligned teal bubble.
+ * Assistant messages: avatar header + tool chips + structured content sections.
  */
+import { TrendingUp } from 'lucide-react';
 import LoadingIndicator from './LoadingIndicator';
 import SignalsTable from './SignalsTable';
 import CitationList from './CitationList';
 import PriceCard from './PriceCard';
 import NewsSection from './NewsSection';
 
-const TOOL_BADGES = {
-  sql_tool:    { label: 'SQL',    className: 'badge-blue' },
-  graph_tool:  { label: 'Graph',  className: 'badge-green' },
-  news_tool:   { label: 'News',   className: 'badge-orange' },
-  vector_tool: { label: 'Vector', className: 'badge-purple' },
+const TOOL_CHIP_CONFIG = {
+  sql_tool:    { label: 'SQL',    cls: 'chip-sql' },
+  graph_tool:  { label: 'Graph',  cls: 'chip-graph' },
+  news_tool:   { label: 'News',   cls: 'chip-news' },
+  vector_tool: { label: 'Vector', cls: 'chip-vector' },
 };
 
 const ROUTE_LABELS = {
@@ -24,114 +25,146 @@ const ROUTE_LABELS = {
   compare:     'Compare',
 };
 
+function extractSymbol(signals, content) {
+  if (signals?.symbol) return signals.symbol;
+  const match = content?.match(/\b([A-Z]{2,6})\b/);
+  return match ? match[1] : null;
+}
+
+function cleanContent(content) {
+  if (!content) return '';
+  return content
+    .replace(/No recent news was found[^.]*\.\s*/gi, '')
+    .replace(/The web search fallback chain[^.]*\.\s*/gi, '')
+    .trim();
+}
+
 export default function MessageBubble({ message }) {
   const isUser = message.role === 'user';
 
   if (isUser) {
     return (
-      <div className="flex justify-end mb-4 animate-fade-in">
-        <div className="max-w-[75%] lg:max-w-[60%]">
-          <div className="px-4 py-3 rounded-2xl rounded-tr-md
-                          bg-gradient-to-br from-brand-500 to-brand-600
-                          text-white shadow-md">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">
-              {message.content}
-            </p>
-          </div>
-        </div>
+      <div className="message-user">
+        <div className="bubble-user">{message.content}</div>
       </div>
     );
   }
 
-  // Assistant message
-  const isEmpty = !message.content && message.isStreaming;
+  // ── Assistant bubble ──────────────────────────────────────────────
+  const { content, signals, citations, toolsUsed, routeUsed,
+    llmProvider, tokenUsage, latencyMs, isStreaming } = message;
 
-  // Extract symbol from citations to pass to PriceCard
-  const symbol = message.citations?.find(c => c.type === 'db' || c.symbol)?.symbol || 
-                 message.citations?.find(c => c.type === 'news' && c.headline)?.headline?.split(' ')[0] || 
-                 '';
+  // Normalize signals: always work with an array
+  const signalsList = Array.isArray(signals) ? signals : (signals ? [signals] : []);
+  const primarySignals = signalsList[0] || null;
 
-  // Filter content
-  let displayContent = message.content || '';
-  if (displayContent.match(/no recent news/i) || displayContent.match(/no news available/i)) {
-    displayContent = displayContent.replace(/.*no recent news.*/ig, '').replace(/.*no news available.*/ig, '');
-  }
-  
-  // Hide repetitive text if signals are present (heuristic for clean UI)
-  if (message.signals) {
-    displayContent = displayContent
-      .replace(/.*Close price of.*/ig, '')
-      .replace(/.*Price:.*NPR.*/ig, '')
-      .replace(/.*Volume:.*/ig, '')
-      .replace(/.*RSI:.*/ig, '')
-      .replace(/.*MACD:.*/ig, '')
-      .replace(/.*EMA-20:.*/ig, '')
-      .replace(/.*Bollinger:.*/ig, '')
-      .replace(/.*Technical Indicators:.*/ig, '');
-  }
+  const symbol = extractSymbol(primarySignals, content);
+  const displayContent = cleanContent(content);
+  const hasSignals = primarySignals && Object.keys(primarySignals).length > 1;
 
   return (
-    <div className="flex justify-start mb-4 animate-fade-in">
-      <div className="max-w-[85%] lg:max-w-[75%]">
-        {/* Tool + Route badges */}
-        {(message.toolsUsed || message.routeUsed) && !message.isStreaming && (
-          <div className="flex flex-wrap items-center gap-1.5 mb-2">
-            {message.routeUsed && (
-              <span className="badge badge-gray text-[10px]">
-                {ROUTE_LABELS[message.routeUsed] || message.routeUsed}
-              </span>
-            )}
-            {message.toolsUsed?.map((tool) => {
-              const config = TOOL_BADGES[tool] || { label: tool, className: 'badge-gray' };
-              return (
-                <span key={tool} className={`badge ${config.className} text-[10px]`}>
-                  {config.label}
-                </span>
-              );
+    <div className="message-assistant">
+      {/* Avatar + Name + Time */}
+      <div className="msg-header">
+        <div className="msg-avatar">
+          <TrendingUp size={12} />
+        </div>
+        <span className="msg-name">NEPSE AI</span>
+        {message.created_at && (
+          <span className="msg-time">
+            {new Date(message.created_at).toLocaleTimeString('en-US', {
+              hour: '2-digit', minute: '2-digit',
             })}
-            {message.llmProvider && (
-              <span className="badge badge-gray text-[10px]">
-                via {message.llmProvider}
-              </span>
-            )}
-            {message.latencyMs && (
-              <span className="badge badge-gray text-[10px]">
-                {message.latencyMs}ms
-              </span>
-            )}
-          </div>
+          </span>
         )}
+      </div>
 
-        {/* Message body */}
-        <div className="glass-card px-5 py-4">
-          {isEmpty ? (
-            <LoadingIndicator />
-          ) : (
-            <div>
-              {/* Price Card */}
-              {message.signals && <PriceCard symbol={symbol} signals={message.signals} />}
-
-              {/* Signals Grid */}
-              {message.signals && <SignalsTable signals={message.signals} />}
-
-              {/* News Section */}
-              <NewsSection citations={message.citations} symbol={symbol} content={message.content} />
-
-              {/* Text Content */}
-              {displayContent.trim() && (
-                <p className={`whitespace-pre-wrap text-sm leading-relaxed 
-                             text-surface-800 dark:text-surface-200 mt-4
-                             ${message.isStreaming ? 'typing-cursor' : ''}`}>
-                  {displayContent.trim()}
-                </p>
-              )}
-
-              {/* Citations */}
-              {message.citations && <CitationList citations={message.citations} />}
+      {/* Tool chips row */}
+      {(toolsUsed || routeUsed) && (
+        <div className="bubble-meta-row">
+          {routeUsed && (
+            <div className={`tool-chip chip-full`}>
+              <span className="chip-dot" />
+              {ROUTE_LABELS[routeUsed] || routeUsed}
             </div>
           )}
+          {toolsUsed?.map((tool) => {
+            const cfg = TOOL_CHIP_CONFIG[tool];
+            return cfg ? (
+              <div key={tool} className={`tool-chip ${cfg.cls}`}>
+                <span className="chip-dot" />
+                {cfg.label}
+              </div>
+            ) : null;
+          })}
+          {llmProvider && (
+            <span className="provider-chip">via {llmProvider}</span>
+          )}
+          {latencyMs && (
+            <span className="latency-chip">{(latencyMs / 1000).toFixed(1)}s</span>
+          )}
+        </div>
+      )}
+
+      <div className="bubble-assistant">
+        {/* Loading state */}
+        {isStreaming && !content && <LoadingIndicator />}
+
+        {/* Price card(s) — one per symbol */}
+        {signalsList.map((sig, idx) =>
+          sig?.close != null ? (
+            <PriceCard
+              key={sig.symbol || idx}
+              symbol={sig.symbol || symbol}
+              signals={sig}
+            />
+          ) : null
+        )}
+
+        {/* Main LLM text */}
+        {displayContent && (
+          <div
+            className="prose"
+            dangerouslySetInnerHTML={{ __html: mdToHtml(displayContent) }}
+          />
+        )}
+
+        {/* Technical indicators (show for primary symbol only) */}
+        {hasSignals && <SignalsTable signals={primarySignals} />}
+
+        {/* News */}
+        <NewsSection citations={citations} symbol={symbol} content={content} />
+
+        {/* Sources / Citations */}
+        {citations && citations.length > 0 && (
+          <CitationList citations={citations} />
+        )}
+
+        {/* Disclaimer */}
+        <div className="disclaimer">
+          ⚠ Educational purposes only — not financial advice.
         </div>
       </div>
+
+      {/* Token usage */}
+      {tokenUsage != null && (
+        <div className="token-row">~{tokenUsage} tokens</div>
+      )}
     </div>
   );
+}
+
+// ── Markdown → HTML ──────────────────────────────────────────────────────
+function mdToHtml(text) {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/^#{1,3}\s+(.+)$/gm, '<h3>$1</h3>')
+    .replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+    .replace(/\n\n+/g, '</p><p>')
+    .replace(/\n/g, '<br/>')
+    .replace(/^(.+)$/, '<p>$1</p>');
 }
