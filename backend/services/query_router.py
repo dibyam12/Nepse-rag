@@ -26,6 +26,22 @@ ROUTE_VECTOR_ONLY = "vector_only"
 ROUTE_SQL_GRAPH   = "sql_graph"
 ROUTE_FULL_AGENT  = "full_agent"
 ROUTE_COMPARE     = "compare"
+ROUTE_CHAT        = "chat"
+
+# ── Chat / Conversational Patterns ───────────────────────────
+# Matched BEFORE any stock routing. Regex patterns, case-insensitive.
+CHAT_PATTERNS = [
+    r"\b(hi|hello|hey|howdy|greetings|yo)\b",
+    r"\bhow are you\b",
+    r"\bwhat'?s up\b",
+    r"\bthank(s| you)\b",
+    r"\bgood (morning|afternoon|evening|night)\b",
+    r"\bwho are you\b",
+    r"\bintroduce yourself\b",
+    r"\bwhat can you do\b",
+    r"\bare you (an |a )?ai\b",
+    r"^(ok|okay|cool|nice|great|got it|alright)\.?$",
+]
 
 # ── Keywords Per Route ────────────────────────────────────────
 FULL_AGENT_KEYWORDS = [
@@ -72,8 +88,19 @@ _EXCLUDED_WORDS = frozenset({
     "RSI", "MACD", "EMA", "SMA", "ATR", "OBV", "VWAP", "BB",
     # Institution abbreviations
     "AGM", "NRB", "SEBON", "CDSC", "GDP", "NPR",
-    "CEO", "CFO", "USA",
+    "CEO", "CFO", "USA", "NEPSE",
 })
+
+
+# ── Merged / Historical Symbols Mapping ────────────────────────
+MERGED_SYMBOLS_MAP = {
+    "NCCB": "KBL",      # Nepal Credit and Commerce Bank -> Kumari Bank
+    "MEGA": "NIMB",     # Mega Bank -> Nepal Investment Mega Bank
+    "NIB": "NIMB",      # Nepal Investment Bank -> Nepal Investment Mega Bank
+    "BOKL": "GBIME",    # Bank of Kathmandu -> Global IME Bank
+    "CBL": "LSL",       # Sunrise Bank -> Laxmi Sunrise Bank
+    "LBL": "LSL",       # Laxmi Bank -> Laxmi Sunrise Bank
+}
 
 
 @dataclass
@@ -94,31 +121,88 @@ class RouteDecision:
 
 _KNOWN_SYMBOLS = None
 
+_COMPANY_NAMES_MAP = None
+
+def _fetch_symbols_from_db():
+    from django.apps import apps
+    Stock = apps.get_model('nepse_data', 'Stock')
+    return set(s.upper() for s in Stock.objects.values_list('symbol', flat=True))
+
 def get_known_symbols():
     global _KNOWN_SYMBOLS
     if _KNOWN_SYMBOLS is None:
         try:
-            from django.apps import apps
-            Stock = apps.get_model('nepse_data', 'Stock')
-            _KNOWN_SYMBOLS = set(s.upper() for s in Stock.objects.values_list('symbol', flat=True))
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                _KNOWN_SYMBOLS = executor.submit(_fetch_symbols_from_db).result()
         except Exception as e:
             logger.warning("Failed to load symbols for query router: %s", e)
             _KNOWN_SYMBOLS = set()
     return _KNOWN_SYMBOLS
 
+def _fetch_company_names_from_db():
+    from django.apps import apps
+    Stock = apps.get_model('nepse_data', 'Stock')
+    mapping = {}
+    for symbol, name in Stock.objects.values_list('symbol', 'name'):
+        if name and "auto-created" not in name.lower():
+            clean_name = name.lower().strip()
+            mapping[clean_name] = symbol
+            
+            # Map first two words of company name
+            words = clean_name.split()
+            if len(words) >= 2:
+                two_words = " ".join(words[:2])
+                # Exclude generic two-word combinations
+                if two_words not in ("mutual fund", "investment company", "limited company"):
+                    mapping[two_words] = symbol
+    return mapping
+
+def get_company_names_map():
+    global _COMPANY_NAMES_MAP
+    if _COMPANY_NAMES_MAP is None:
+        try:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                _COMPANY_NAMES_MAP = executor.submit(_fetch_company_names_from_db).result()
+        except Exception as e:
+            logger.warning("Failed to load company name mapping: %s", e)
+            _COMPANY_NAMES_MAP = {}
+    return _COMPANY_NAMES_MAP
+
 def extract_symbols(question: str) -> list[str]:
     """
     Extracts NEPSE stock symbols from question text.
-    Uses case-insensitive matching against the database of known symbols.
+    Uses case-insensitive matching against known symbols and company names.
+    Supports historical/merged symbols mapped to active entities.
     """
+    seen = set()
+    symbols = []
+
+    # 1. Try matching company names first
+    q_lower = question.lower()
+    name_map = get_company_names_map()
+    for name, sym in name_map.items():
+        pattern = rf"\b{re.escape(name)}\b"
+        if re.search(pattern, q_lower):
+            sym_upper = sym.upper()
+            if sym_upper not in seen:
+                seen.add(sym_upper)
+                symbols.append(sym_upper)
+
+    # 2. Match ticker symbol candidates
     candidates = re.findall(r'\b([A-Za-z0-9]{2,10})\b', question)
     known = get_known_symbols()
     
-    seen = set()
-    symbols = []
     for c in candidates:
         c_upper = c.upper()
         if c_upper in seen or c_upper in _EXCLUDED_WORDS:
+            continue
+            
+        # Allow historical/merged symbols to be recognized
+        if c_upper in MERGED_SYMBOLS_MAP:
+            seen.add(c_upper)
+            symbols.append(c_upper)
             continue
             
         if known and c_upper not in known:
@@ -134,6 +218,15 @@ def extract_symbols(question: str) -> list[str]:
     return symbols
 
 
+def _has_keyword(text: str, keywords: list[str]) -> bool:
+    """Checks if any keyword in the list matches the text with word boundaries."""
+    for kw in keywords:
+        pattern = rf"\b{re.escape(kw.lower())}\b"
+        if re.search(pattern, text):
+            return True
+    return False
+
+
 def classify_query(question: str, symbol: str = None) -> RouteDecision:
     """
     Classifies query into one of 4 routes.
@@ -147,21 +240,30 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
 
     Args:
         question: User's natural language question.
-        symbol: Optional symbol to include even if not in question.
+        symbol: Optional symbol to include ONLY if no symbols are in the question.
 
     Returns:
         RouteDecision with route, symbols, and tools_needed.
     """
     q_lower = question.lower()
 
+    # 0. Chat — casual conversation detected FIRST, no stock data needed
+    for pat in CHAT_PATTERNS:
+        if re.search(pat, q_lower):
+            logger.info(
+                "Query routed to chat: '%s'",
+                question[:60],
+                extra={"event": "query_route", "route": ROUTE_CHAT, "symbols": []},
+            )
+            return RouteDecision(route=ROUTE_CHAT, symbols=[], tools_needed=[])
+
     # Extract symbols from question text
     symbols = extract_symbols(question)
 
-    # If caller provided a symbol, ensure it's in the list
-    if symbol:
+    # Only inject the context symbol if no symbols were explicitly found in the text
+    if not symbols and symbol:
         sym_upper = symbol.upper()
-        if sym_upper not in symbols:
-            symbols.insert(0, sym_upper)
+        symbols.append(sym_upper)
 
     # Evaluate definitional vs data patterns first for the _decide helper
     PRICE_DATA_KEYWORDS = [
@@ -176,7 +278,7 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
     # "tell me about NABIL" = stock query, NOT definitional
     # Only definitional when no symbols present (e.g., "what is RSI?")
     is_definitional = any(pat in q_lower for pat in definitional_patterns) and not symbols
-    wants_data = any(kw in q_lower for kw in PRICE_DATA_KEYWORDS)
+    wants_data = _has_keyword(q_lower, PRICE_DATA_KEYWORDS)
 
     # Helper to build and log decision
     def _decide(route, tools):
@@ -185,7 +287,7 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
         if "vector_tool" in tools:
             if route == ROUTE_COMPARE:
                 tools = [t for t in tools if t != "vector_tool"]
-            elif not is_definitional and (wants_data or any(kw in q_lower for kw in ["news", "latest"])):
+            elif not is_definitional and (wants_data or _has_keyword(q_lower, ["news", "latest"])):
                 tools = [t for t in tools if t != "vector_tool"]
 
         decision = RouteDecision(route=route, symbols=symbols, tools_needed=tools)
@@ -197,11 +299,11 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
         return decision
 
     # 1. Compare — HIGHEST priority (most specific: >=2 symbols or explicit keywords)
-    if any(kw in q_lower for kw in COMPARE_KEYWORDS) or len(symbols) >= 2:
+    if _has_keyword(q_lower, COMPARE_KEYWORDS) or len(symbols) >= 2:
         return _decide(ROUTE_COMPARE, ["sql_tool", "graph_tool", "news_tool"])
 
     # 2. Full agent — why/news/today with a single symbol
-    if any(kw in q_lower for kw in FULL_AGENT_KEYWORDS):
+    if _has_keyword(q_lower, FULL_AGENT_KEYWORDS):
         return _decide(ROUTE_FULL_AGENT,
                        ["sql_tool", "graph_tool", "news_tool", "vector_tool"])
 
@@ -212,7 +314,7 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
         return _decide(ROUTE_VECTOR_ONLY, ["vector_tool"])
 
     # 4. SQL + Graph — technical analysis, price data
-    if any(kw in q_lower for kw in SQL_GRAPH_KEYWORDS):
+    if _has_keyword(q_lower, SQL_GRAPH_KEYWORDS):
         return _decide(ROUTE_SQL_GRAPH, ["sql_tool", "graph_tool"])
 
     # 5. If symbols are present but no keyword matched, default to full_agent

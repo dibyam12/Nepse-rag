@@ -47,7 +47,9 @@ async def get_latest_ohlcv(symbol: str) -> dict:
 
     # 2. Query Neon DB
     start = time.time()
-    rows = execute_neon_query(
+    import asyncio
+    rows = await asyncio.to_thread(
+        execute_neon_query,
         "SELECT symbol, date, open, high, low, close, volume "
         "FROM stocks_stockdata "
         "WHERE symbol = %s ORDER BY date DESC LIMIT 1",
@@ -106,7 +108,9 @@ async def get_latest_indicators(symbol: str) -> dict:
 
     # 2. Fetch from Neon
     start = time.time()
-    rows = execute_neon_query(
+    import asyncio
+    rows = await asyncio.to_thread(
+        execute_neon_query,
         "SELECT symbol, date, open, high, low, close, volume "
         "FROM stocks_stockdata "
         "WHERE symbol = %s ORDER BY date DESC LIMIT 100",
@@ -126,7 +130,8 @@ async def get_latest_indicators(symbol: str) -> dict:
     # 4. Fetch market data for beta computation
     market_df = None
     try:
-        market_rows = execute_neon_query(
+        market_rows = await asyncio.to_thread(
+            execute_neon_query,
             "SELECT date, close FROM stocks_stockdata "
             "WHERE symbol = 'NEPSE' ORDER BY date DESC LIMIT 100"
         )
@@ -170,7 +175,9 @@ async def get_recent_history(symbol: str, days: int = 30) -> list[dict]:
 
     # Fetch from Neon
     start = time.time()
-    rows = execute_neon_query(
+    import asyncio
+    rows = await asyncio.to_thread(
+        execute_neon_query,
         "SELECT symbol, date, open, high, low, close, volume "
         "FROM stocks_stockdata "
         "WHERE symbol = %s ORDER BY date DESC LIMIT %s",
@@ -289,7 +296,9 @@ async def verify_symbol_in_neon(symbol: str) -> bool:
     if cached is not None:
         return cached
 
-    rows = execute_neon_query(
+    import asyncio
+    rows = await asyncio.to_thread(
+        execute_neon_query,
         "SELECT 1 FROM stocks_stockdata WHERE symbol = %s LIMIT 1",
         (sym,)
     )

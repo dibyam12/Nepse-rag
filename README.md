@@ -41,7 +41,6 @@ NEPSE AI Research Assistant is an AI-powered web assistant that answers question
 | RAG | LlamaIndex, ChromaDB, Sentence Transformers (`all-MiniLM-L6-v2`) |
 | Agent | LangGraph |
 | LLMs (cloud) | Groq (Llama 3.3 70B), Google Gemini, OpenRouter |
-| LLM (local) | Ollama `llama3.2:3b` (CPU, OpenAI-compatible endpoint) |
 | Frontend | Vite, React 18, Tailwind CSS, Zustand |
 
 ---

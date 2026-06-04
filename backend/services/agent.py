@@ -18,13 +18,14 @@ from datetime import date as date_cls
 
 from langgraph.graph import StateGraph, END
 
-from services.llm_client import call_llm, build_rag_prompt
+from services.llm_client import call_llm, build_rag_prompt, NO_CONTEXT_RESPONSE
 from services.query_router import (
     classify_query,
     ROUTE_VECTOR_ONLY,
     ROUTE_SQL_GRAPH,
     ROUTE_FULL_AGENT,
     ROUTE_COMPARE,
+    MERGED_SYMBOLS_MAP,
 )
 from services.cache_service import (
     get_cached_llm_response,
@@ -41,6 +42,7 @@ logger = logging.getLogger('nepse_rag')
 class AgentState(TypedDict):
     question: str
     symbol: str
+    symbols: list
     route: str
     sql_output: str
     graph_output: str
@@ -52,7 +54,7 @@ class AgentState(TypedDict):
     llm_provider: str
     tokens_used: int
     latency_ms: int
-    signals: dict
+    signals: list | dict
 
 
 # ══════════════════════════════════════════════════════════════
@@ -174,23 +176,36 @@ async def _fetch_price_from_web(symbol: str) -> dict | None:
 async def sql_tool(symbol: str, days: int = 7) -> tuple[str, list[dict], dict]:
     """
     Fetches latest OHLCV + indicators for symbol from Neon DB.
+    Supports historical merged symbols transparently.
     Returns: (text_summary, citations, signals_dict)
     On error: ("", [], {})
     """
     if not symbol:
         return "", [], {}
 
+    symbol_upper = symbol.upper()
+    active_symbol = MERGED_SYMBOLS_MAP.get(symbol_upper, symbol_upper)
+    is_merged = (active_symbol != symbol_upper)
+
     try:
-        from services.db_service import get_latest_ohlcv, get_latest_indicators
+        from services.db_service import get_latest_ohlcv, get_latest_indicators, get_stock_info
 
         ohlcv, indicators, range_52w = await asyncio.gather(
-            get_latest_ohlcv(symbol),
-            get_latest_indicators(symbol),
-            _fetch_52w_range(symbol),
+            get_latest_ohlcv(active_symbol),
+            get_latest_indicators(active_symbol),
+            _fetch_52w_range(active_symbol),
         )
 
         if not ohlcv:
             return "", [], {}
+
+        active_name = active_symbol
+        try:
+            stock_info = get_stock_info(active_symbol)
+            if stock_info and stock_info.get("name"):
+                active_name = stock_info["name"]
+        except Exception:
+            pass
 
         data_date = ohlcv.get('date')
         days_old = 0
@@ -209,7 +224,7 @@ async def sql_tool(symbol: str, days: int = 7) -> tuple[str, list[dict], dict]:
                 pass
 
         if days_old > 3:
-            live = await _fetch_price_from_web(symbol)
+            live = await _fetch_price_from_web(active_symbol)
 
             if live and live.get('close'):
                 ohlcv['close'] = live['close']
@@ -230,7 +245,7 @@ async def sql_tool(symbol: str, days: int = 7) -> tuple[str, list[dict], dict]:
                 stale_note = (
                     f"\n⚠️ DB data is {days_old} days old (last: {data_date}). "
                     f"Live fetch failed. "
-                    f"Check merolagani.com/CompanyDetail.aspx?symbol={symbol}"
+                    f"Check merolagani.com/CompanyDetail.aspx?symbol={active_symbol}"
                 )
 
         close      = ohlcv.get('close') or 0
@@ -275,10 +290,13 @@ async def sql_tool(symbol: str, days: int = 7) -> tuple[str, list[dict], dict]:
             bb_position = "N/A"
 
         open_val   = ohlcv.get('open') or close
-        header = f"{symbol}:" if web_source_url else f"{symbol} as of {date_val}:"
+        
+        disp_symbol = f"{symbol_upper} (merged into {active_symbol})" if is_merged else symbol_upper
+        
+        header = f"{disp_symbol}:" if web_source_url else f"{disp_symbol} as of {date_val}:"
         lines  = [
             header,
-            f"SQL DATA: {symbol} — Close: {close:.2f}, Open: {open_val:.2f}, High: {high:.2f}, Low: {low:.2f}, Volume: {vol_text}. Date: {date_val}. Change: {pct_text}.",
+            f"SQL DATA: {disp_symbol} — Close: {close:.2f}, Open: {open_val:.2f}, High: {high:.2f}, Low: {low:.2f}, Volume: {vol_text}. Date: {date_val}. Change: {pct_text}.",
             f"Indicators: RSI is {rsi_text}, MACD is {macd_text}.",
         ]
         if ema_20 is not None and ema_50 is not None:
@@ -293,19 +311,22 @@ async def sql_tool(symbol: str, days: int = 7) -> tuple[str, list[dict], dict]:
 
         text = "\n".join(lines) + stale_note
 
-        citations = [{"type": "db", "symbol": symbol, "date": str(date_val)}]
+        citations = [{"type": "db", "symbol": symbol_upper, "date": str(date_val)}]
         if web_source_url:
             citations.append({
                 "type": "web",
                 "url": web_source_url,
-                "description": f"{symbol} live price via web search",
+                "description": f"{disp_symbol} live price via web search",
             })
 
         signals = {
-            "symbol": symbol,
+            "symbol": symbol_upper,
             "date": str(date_val),
             "close": close, "high": high, "low": low, "volume": volume,
         }
+        if is_merged:
+            signals["name"] = f"{active_name} (formerly {symbol_upper})"
+            
         if rsi        is not None: signals["RSI"]       = round(rsi, 1)
         if macd       is not None: signals["MACD"]      = round(macd, 2)
         if ema_20     is not None: signals["EMA_20"]    = round(ema_20, 1)
@@ -320,8 +341,8 @@ async def sql_tool(symbol: str, days: int = 7) -> tuple[str, list[dict], dict]:
 
         logger.info(
             "sql_tool(%s): close=%.1f, rsi=%s",
-            symbol, close, rsi_text,
-            extra={"event": "sql_tool", "symbol": symbol},
+            symbol_upper, close, rsi_text,
+            extra={"event": "sql_tool", "symbol": symbol_upper},
         )
         return text, citations, signals
 
@@ -338,10 +359,14 @@ async def graph_tool(question: str, symbol: str) -> tuple[str, list[dict]]:
     if not symbol:
         return "", []
 
+    symbol_upper = symbol.upper()
+    active_symbol = MERGED_SYMBOLS_MAP.get(symbol_upper, symbol_upper)
+    is_merged = (active_symbol != symbol_upper)
+
     try:
         from services.graph_rag import query_stock_relationships
 
-        result = query_stock_relationships(symbol)
+        result = query_stock_relationships(active_symbol)
 
         if not result or not result.get('sector'):
             return "", []
@@ -356,19 +381,21 @@ async def graph_tool(question: str, symbol: str) -> tuple[str, list[dict]]:
         if peer_count > 5:
             peer_text += f" (+{peer_count - 5} more)"
 
+        disp_symbol = f"{symbol_upper} (merged into {active_symbol})" if is_merged else symbol_upper
+
         text = (
-            f"{symbol} — Graph Context:\n"
+            f"{disp_symbol} — Graph Context:\n"
             f"Sector: {sector}\n"
             f"Index: {index_name}\n"
             f"Sector peers ({peer_count}): {peer_text}"
         )
 
-        citations = [{"type": "graph", "description": f"{symbol}→{sector}→Peers"}]
+        citations = [{"type": "graph", "description": f"{disp_symbol}→{sector}→Peers"}]
 
         logger.info(
             "graph_tool(%s): sector=%s, %d peers",
-            symbol, sector, peer_count,
-            extra={"event": "graph_tool", "symbol": symbol},
+            symbol_upper, sector, peer_count,
+            extra={"event": "graph_tool", "symbol": symbol_upper},
         )
         return text, citations
 
@@ -387,8 +414,7 @@ async def vector_tool(question: str) -> tuple[str, list[dict]]:
 
     try:
         from services.vector_rag import query_vector_rag
-
-        results = query_vector_rag(question, top_k=3)
+        results = await asyncio.to_thread(query_vector_rag, question, 3)
 
         if not results:
             return "", []
@@ -422,56 +448,104 @@ async def vector_tool(question: str) -> tuple[str, list[dict]]:
 
 
 async def news_tool(symbol: str) -> tuple[str, list[dict]]:
-    """Fetches recent news for symbol."""
-    search_symbol = symbol if symbol else "NEPSE"
+    """
+    Fetches recent news for symbol from the full 8-source pipeline.
+    Passes stock_name for better search quality.
+    Returns informative fallback when 0 articles found.
+    """
+    if not symbol:
+        return "", []
+
+    symbol_upper = symbol.upper()
+    active_symbol = MERGED_SYMBOLS_MAP.get(symbol_upper, symbol_upper)
+    is_merged = (active_symbol != symbol_upper)
+    search_symbol = active_symbol if active_symbol else symbol_upper
+
+    # Get company name for better DDG search quality
+    stock_name = ""
+    try:
+        from apps.nepse_data.models import Stock
+        loop = asyncio.get_event_loop()
+        obj = await loop.run_in_executor(
+            None,
+            lambda: Stock.objects.filter(symbol=search_symbol).first(),
+        )
+        if obj and obj.name and "auto-created" not in obj.name.lower():
+            stock_name = obj.name
+    except Exception:
+        pass
 
     try:
         from services.news_scraper import get_news_for_symbol
 
         articles = await asyncio.wait_for(
-            get_news_for_symbol(search_symbol, max_articles=5),
-            timeout=12.0,   # Reduced from 20s — full text fetch is now skipped
+            get_news_for_symbol(
+                search_symbol,
+                stock_name=stock_name,
+                max_articles=6,
+            ),
+            timeout=22.0,
         )
 
         if not articles:
-            return "", []
+            fallback_text = (
+                f"No recent news found for {symbol_upper} from Nepali financial sources. "
+                f"Check ShareSansar or MeroLagani directly for latest announcements."
+            )
+            logger.info("news_tool(%s): 0 articles found", symbol_upper)
+            return fallback_text, []
 
-        lines = [f"Recent news for {symbol}:"]
+        disp_symbol = (
+            f"{symbol_upper} (merged into {active_symbol})"
+            if is_merged else symbol_upper
+        )
+
+        lines = [f"Recent news for {disp_symbol}:"]
         citations = []
 
-        for i, article in enumerate(articles[:3], 1):
-            headline = article.get('headline', 'No headline')
-            source = article.get('source', 'unknown')
-            date = article.get('published_date', '') or article.get('publishedAt', '')
-            url = article.get('url', '')
-            summary = article.get('summary', '')
+        for i, article in enumerate(articles[:5], 1):  # up to 5 for LLM context
+            headline = article.get("headline") or article.get("title") or "No headline"
+            source = article.get("source", "unknown")
+            date = article.get("published_date") or article.get("publishedAt") or ""
+            url = article.get("url", "")
+            body = article.get("body", "")
+            summary = article.get("summary", "")
 
-            date_str = f", {date}" if date else ""
-            lines.append(f"{i}. '{headline}' — {source}{date_str}")
+            date_str = f" [{date}]" if date else ""
+            content_preview = (body or summary or "").strip()
+
+            if content_preview:
+                excerpt = content_preview[:400]
+                lines.append(
+                    f"{i}. '{headline}' — {source}{date_str}\n"
+                    f"   Excerpt: {excerpt}"
+                )
+            else:
+                lines.append(f"{i}. '{headline}' — {source}{date_str}")
 
             citations.append({
                 "type": "news",
                 "headline": headline[:200],
                 "url": url,
                 "source": source,
-                "published_at": date,     # used by NewsSection.jsx
-                "summary": summary[:200],
-                "symbol": symbol,         # for multi-symbol news grouping
+                "published_at": str(date),
+                "summary": (body or summary)[:500],
+                "symbol": symbol_upper,
             })
 
         text = "\n".join(lines)
 
         logger.info(
             "news_tool(%s): %d articles",
-            symbol, len(articles),
-            extra={"event": "news_tool", "symbol": symbol, "count": len(articles)},
+            symbol_upper, len(articles),
+            extra={"event": "news_tool", "symbol": symbol_upper, "count": len(articles)},
         )
 
         return text, citations
 
     except asyncio.TimeoutError:
         logger.warning(
-            "news_tool(%s): timed out after 12s", symbol,
+            "news_tool(%s): timed out after 14s", symbol,
             extra={"event": "news_tool_timeout", "symbol": symbol},
         )
         return "", []
@@ -487,36 +561,75 @@ async def news_tool(symbol: str) -> tuple[str, list[dict]]:
 # ══════════════════════════════════════════════════════════════
 
 async def route_node(state: AgentState) -> dict:
-    decision = classify_query(state["question"], state.get("symbol"))
-    result = {"route": decision.route}
-    if not state.get("symbol") and decision.symbols:
-        result["symbol"] = decision.symbols[0]
+    from services.query_router import extract_symbols
+    question = state["question"]
+    q_symbols = extract_symbols(question)
+
+    context_symbol = state.get("symbol")
+    if q_symbols:
+        decision = classify_query(question)
+        symbols = q_symbols
+    else:
+        decision = classify_query(question, context_symbol)
+        symbols = decision.symbols
+
+    result = {
+        "route": decision.route,
+        "symbols": symbols,
+    }
+    if symbols:
+        result["symbol"] = symbols[0]
     return result
 
 
 async def sql_node(state: AgentState) -> dict:
-    symbol = state.get("symbol", "")
-    if not symbol:
+    symbols = state.get("symbols", []) or ([state.get("symbol")] if state.get("symbol") else [])
+    if not symbols:
         return {}
-    text, citations, signals = await sql_tool(symbol)
+    
+    all_texts = []
+    all_citations = []
+    all_signals = []
+
+    for sym in symbols:
+        if not sym:
+            continue
+        text, citations, signals = await sql_tool(sym)
+        if text:
+            all_texts.append(text)
+            all_citations.extend(citations)
+            if signals:
+                all_signals.append(signals)
+
     result = {
-        "sql_output":   text,
-        "citations":    state.get("citations", []) + citations,
+        "sql_output":   "\n\n".join(all_texts),
+        "citations":    state.get("citations", []) + all_citations,
         "tools_called": state.get("tools_called", []) + ["sql_tool"],
     }
-    if signals:
-        result["signals"] = signals
+    if all_signals:
+        result["signals"] = all_signals if len(all_signals) > 1 else all_signals[0]
     return result
 
 
 async def graph_node(state: AgentState) -> dict:
-    symbol = state.get("symbol", "")
-    if not symbol:
+    symbols = state.get("symbols", []) or ([state.get("symbol")] if state.get("symbol") else [])
+    if not symbols:
         return {}
-    text, citations = await graph_tool(state["question"], symbol)
+    
+    all_texts = []
+    all_citations = []
+
+    for sym in symbols:
+        if not sym:
+            continue
+        text, citations = await graph_tool(state["question"], sym)
+        if text:
+            all_texts.append(text)
+            all_citations.extend(citations)
+
     return {
-        "graph_output": text,
-        "citations":    state.get("citations", []) + citations,
+        "graph_output": "\n\n".join(all_texts),
+        "citations":    state.get("citations", []) + all_citations,
         "tools_called": state.get("tools_called", []) + ["graph_tool"],
     }
 
@@ -531,13 +644,30 @@ async def vector_node(state: AgentState) -> dict:
 
 
 async def news_node(state: AgentState) -> dict:
-    symbol = state.get("symbol", "")
-    if not symbol:
+    symbols = state.get("symbols", []) or ([state.get("symbol")] if state.get("symbol") else [])
+    if not symbols:
         return {}
-    text, citations = await news_tool(symbol)
+        
+    all_texts = []
+    all_citations = []
+
+    news_results = await asyncio.gather(
+        *[news_tool(sym) for sym in symbols if sym],
+        return_exceptions=True
+    )
+
+    for i, res in enumerate(news_results):
+        if isinstance(res, Exception):
+            logger.warning("news_node failed for %s: %s", symbols[i], res)
+            continue
+        text, citations = res
+        if text:
+            all_texts.append(text)
+            all_citations.extend(citations)
+
     return {
-        "news_output":  text,
-        "citations":    state.get("citations", []) + citations,
+        "news_output":  "\n\n".join(all_texts),
+        "citations":    state.get("citations", []) + all_citations,
         "tools_called": state.get("tools_called", []) + ["news_tool"],
     }
 
@@ -551,47 +681,90 @@ async def _empty_sql_result():
 
 
 async def parallel_retrieve_node(state: AgentState) -> dict:
-    """Full agent: runs all 4 tools concurrently."""
-    symbol   = state.get("symbol", "")
+    """Full agent: runs all 4 tools concurrently for all symbols."""
+    symbols = state.get("symbols", []) or ([state.get("symbol")] if state.get("symbol") else [])
     question = state["question"]
 
-    results = await asyncio.gather(
-        sql_tool(symbol) if symbol else _empty_sql_result(),
-        graph_tool(question, symbol) if symbol else _empty_result(),
-        news_tool(symbol),
-        vector_tool(question),
-        return_exceptions=True,
-    )
+    tasks = []
+    # Gather SQL tasks
+    for sym in symbols:
+        if sym:
+            tasks.append(sql_tool(sym))
+    # Gather Graph tasks
+    for sym in symbols:
+        if sym:
+            tasks.append(graph_tool(question, sym))
+    # Gather News tasks
+    for sym in symbols:
+        if sym:
+            tasks.append(news_tool(sym))
+    # Gather Vector task
+    tasks.append(vector_tool(question))
 
-    sql_text, sql_cites, signals = "", [], {}
-    graph_text, graph_cites      = "", []
-    news_text, news_cites        = "", []
-    vec_text, vec_cites          = "", []
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    sql_texts, sql_cites, all_signals = [], [], []
+    graph_texts, graph_cites = [], []
+    news_texts, news_cites = [], []
+    vec_text, vec_cites = "", []
     tools_called = []
 
-    if not isinstance(results[0], Exception):
-        sql_text, sql_cites, signals = results[0]
-        if sql_text: tools_called.append("sql_tool")
-    else:
-        logger.warning("parallel sql_tool failed: %s", results[0])
+    idx = 0
+    # Parse SQL
+    for sym in symbols:
+        if sym:
+            res = results[idx]
+            idx += 1
+            if not isinstance(res, Exception):
+                text, cites, signals = res
+                if text:
+                    sql_texts.append(text)
+                    sql_cites.extend(cites)
+                    if "sql_tool" not in tools_called:
+                        tools_called.append("sql_tool")
+                    if signals:
+                        all_signals.append(signals)
+            else:
+                logger.warning("parallel sql_tool failed for %s: %s", sym, res)
 
-    if not isinstance(results[1], Exception):
-        graph_text, graph_cites = results[1]
-        if graph_text: tools_called.append("graph_tool")
-    else:
-        logger.warning("parallel graph_tool failed: %s", results[1])
+    # Parse Graph
+    for sym in symbols:
+        if sym:
+            res = results[idx]
+            idx += 1
+            if not isinstance(res, Exception):
+                text, cites = res
+                if text:
+                    graph_texts.append(text)
+                    graph_cites.extend(cites)
+                    if "graph_tool" not in tools_called:
+                        tools_called.append("graph_tool")
+            else:
+                logger.warning("parallel graph_tool failed for %s: %s", sym, res)
 
-    if not isinstance(results[2], Exception):
-        news_text, news_cites = results[2]
-        if news_text: tools_called.append("news_tool")
-    else:
-        logger.warning("parallel news_tool failed: %s", results[2])
+    # Parse News
+    for sym in symbols:
+        if sym:
+            res = results[idx]
+            idx += 1
+            if not isinstance(res, Exception):
+                text, cites = res
+                if text:
+                    news_texts.append(text)
+                    news_cites.extend(cites)
+                    if "news_tool" not in tools_called:
+                        tools_called.append("news_tool")
+            else:
+                logger.warning("parallel news_tool failed for %s: %s", sym, res)
 
-    if not isinstance(results[3], Exception):
-        vec_text, vec_cites = results[3]
-        if vec_text: tools_called.append("vector_tool")
+    # Parse Vector
+    vec_res = results[idx]
+    if not isinstance(vec_res, Exception):
+        vec_text, vec_cites = vec_res
+        if vec_text:
+            tools_called.append("vector_tool")
     else:
-        logger.warning("parallel vector_tool failed: %s", results[3])
+        logger.warning("parallel vector_tool failed: %s", vec_res)
 
     all_citations = (
         state.get("citations", [])
@@ -599,15 +772,15 @@ async def parallel_retrieve_node(state: AgentState) -> dict:
     )
 
     result = {
-        "sql_output":    sql_text,
-        "graph_output":  graph_text,
+        "sql_output":    "\n\n".join(sql_texts),
+        "graph_output":  "\n\n".join(graph_texts),
         "vector_output": vec_text,
-        "news_output":   news_text,
+        "news_output":   "\n\n".join(news_texts),
         "citations":     all_citations,
         "tools_called":  state.get("tools_called", []) + tools_called,
     }
-    if signals:
-        result["signals"] = signals
+    if all_signals:
+        result["signals"] = all_signals if len(all_signals) > 1 else all_signals[0]
     return result
 
 
@@ -619,7 +792,15 @@ async def synthesize_node(state: AgentState) -> dict:
         if state.get(k, "").strip()
     ]
 
-    prompt = build_rag_prompt(state["question"], tool_outputs)
+    if not tool_outputs:
+        return {
+            "final_answer": NO_CONTEXT_RESPONSE,
+            "llm_provider": "none",
+            "tokens_used": 0,
+            "latency_ms": 0,
+        }
+
+    prompt = build_rag_prompt(state["question"], tool_outputs, route=state.get("route"))
 
     start = time.time()
     try:
@@ -733,7 +914,7 @@ async def run_agent(question: str, symbol: str = "") -> dict:
         return cached
 
     initial_state: AgentState = {
-        "question": question, "symbol": symbol,
+        "question": question, "symbol": symbol, "symbols": [],
         "route": "", "sql_output": "", "graph_output": "",
         "vector_output": "", "news_output": "",
         "citations": [], "tools_called": [],

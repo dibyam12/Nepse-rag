@@ -682,3 +682,114 @@
   background: var(--chat-border);
   border-radius: var(--chat-radius-full);
 }
+
+/* ── Live Status Indicator Styles ──────────────────────────────────────── */
+.status-indicator-container {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: var(--chat-surface-offset);
+  border: 1px solid var(--chat-border);
+  border-radius: var(--chat-radius-xl);
+  padding: 0.65rem 1.15rem;
+  margin: 0.75rem 0;
+  max-width: max-content;
+  box-shadow: var(--chat-shadow-sm);
+  animation: chatFadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all var(--chat-transition);
+}
+
+.status-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--chat-primary);
+  flex-shrink: 0;
+}
+
+.status-text-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.status-dot {
+  position: relative;
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--chat-success);
+  flex-shrink: 0;
+}
+
+.status-dot::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--chat-success);
+  animation: statusPing 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  opacity: 0.75;
+}
+
+.status-text {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--chat-text-muted);
+  letter-spacing: -0.01em;
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.95); }
+}
+
+@keyframes statusPing {
+  75%, 100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.status-indicator-container .animate-pulse {
+  animation: statusPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── Step Timeline (completed steps) ───────────────────────────────────── */
+.status-step-done {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.1rem 0;
+  opacity: 0.45;
+  font-size: 0.72rem;
+  color: var(--chat-text-muted);
+}
+.status-step-icon-done {
+  color: var(--chat-success);
+  flex-shrink: 0;
+}
+.status-step-text-done {
+  font-size: 0.72rem;
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--chat-text-muted) 40%, transparent);
+}
+
+/* Wrap the status container in a column layout when steps are present */
+.status-indicator-container:has(.status-step-done) {
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 360px;
+}
+
+.status-step-active {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+}

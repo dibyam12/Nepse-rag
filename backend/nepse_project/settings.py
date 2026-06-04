@@ -226,6 +226,7 @@ GRAPH_DATA_PATH = str(BASE_DIR / 'indexes' / 'graph_data.json')
 VECTOR_CHUNK_SIZE = 256
 VECTOR_CHUNK_OVERLAP = 30
 VECTOR_TOP_K = 4
+VECTOR_MIN_SCORE = 0.25  # Filter low-relevance chunks to avoid off-topic noise
 
 # Graph RAG
 GRAPH_REBUILD_ON_STARTUP = False

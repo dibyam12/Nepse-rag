@@ -1,6 +1,6 @@
 # NEPSE AI Research Assistant — Project Status Tracker
 
-> **Last Updated**: 2026-05-09
+> **Last Updated**: 2026-06-04
 > **Team**: 4 students (BE Computer Engineering, Final Year)
 > **Purpose**: Educational & Research — NOT financial advice
 
@@ -15,7 +15,7 @@
 | 3 | RAG System (Vector + Graph) | COMPLETE | 100% |
 | 4 | Agentic LLM Orchestration (LangGraph) | COMPLETE | 100% |
 | 5 | Frontend (React + Vite) | COMPLETE | 100% |
-| 6 | Evaluation & Documentation | IN PROGRESS | 5% |
+| 6 | Evaluation & Documentation | IN PROGRESS | 30% |
 
 ---
 
@@ -264,6 +264,14 @@ nepse_rag/
 ---
 
 ## Change Log
+
+### 2026-06-04 — Richer News, Live Agent Status, & Anti-Hallucination Improvements
+- **Richer News Body Extraction (Component 1)**: Integrated direct article body scraping using `fetch_article()` in `web_search.py` with selectors customized for Nepali financial websites (ShareSansar, MeroLagani, NepseAlpha), stripping ad/cookie boilerplate, and attaching body text (up to 1,500 chars) under a new `body` field returned by `get_news_for_symbol()`. Pre-populated excerpts (first 400 chars) into the LLM context and mapped richer text to the frontend citation summaries.
+- **Live Agent Status Indicators (Component 2)**: Added real-time SSE progress events (e.g. `{"type": "status", "message": "Fetching price data for NICA..."}`) emitted before calling `sql_tool`, `graph_tool`, `news_tool`, `vector_tool`, and generating the LLM response. Added Zustand state management in `chatStore.js` and created a premium React `StatusIndicator` component with Lucide icons (Database, GitBranch, Globe, Sparkles, Search), a pulsing green dot, and smooth fade-in animations to make long-running queries feel snappy.
+- **Anti-Hallucination & Prompt Engineering (Component 3)**: Added robust grounding rules, few-shot response examples, prefill hints, and chain-of-verification checks in the system prompt. Enhanced `build_rag_prompt()` to accept a query route (increasing the token budget from 3000 -> 4500 on news-heavy routes) and dynamically tag XML data blocks with their respective symbols (`<sql_data symbol="NICA">`).
+- **Context Symbol Pollution Fix**: Updated `classify_query` in `query_router.py`, `route_node` in `agent.py`, and `_async_stream` in `views.py` to only inject context symbol if the query itself is devoid of tickers. This prevents stale URL params (like `NICA`) from polluting subsequent queries (like *"what about nabil?"*).
+- **Merged Stocks Ticker Mapping**: Added `MERGED_SYMBOLS_MAP` in `query_router.py` mapping historically merged tickers (like `NCCB` -> `KBL`, `MEGA` -> `NIMB`). Updated `extract_symbols` to recognize them, and `sql_tool`, `graph_tool`, `news_tool` in `agent.py` to transparently route to active entity database records while displaying a clean transition name in the PriceCard.
+- **Symmetric Comparison UI**: Updated `MessageBubble.jsx` to render a separate `SignalsTable` for every symbol listed in the comparison list, and updated `SignalsTable.jsx` to display the symbol name in its section title.
 
 ### 2026-05-09 — UI Polish & Response Quality Improvements
 - **Frontend UI Redesign**: Fixed missing `style.css` import in `main.jsx` and completely rewrote the chat UI to use a premium, card-based design with colored tool chips, a `PriceCard` with a 3-column meta grid, an indicator `SignalsTable`, and type-colored citation chips. Also fixed contrast issues for disclaimer and token row text in light/dark mode.

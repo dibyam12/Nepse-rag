@@ -6,6 +6,7 @@
  */
 import { TrendingUp } from 'lucide-react';
 import LoadingIndicator from './LoadingIndicator';
+import StatusIndicator from './StatusIndicator';
 import SignalsTable from './SignalsTable';
 import CitationList from './CitationList';
 import PriceCard from './PriceCard';
@@ -23,6 +24,7 @@ const ROUTE_LABELS = {
   sql_graph:   'SQL + Graph',
   vector_only: 'Vector',
   compare:     'Compare',
+  chat:        'Chat',
 };
 
 function extractSymbol(signals, content) {
@@ -37,6 +39,28 @@ function cleanContent(content) {
     .replace(/No recent news was found[^.]*\.\s*/gi, '')
     .replace(/The web search fallback chain[^.]*\.\s*/gi, '')
     .trim();
+}
+
+function extractThinking(content) {
+  if (!content) return { thinkingText: '', cleanText: '' };
+  
+  const thinkingStartIdx = content.indexOf('<thinking>');
+  const thinkingEndIdx = content.indexOf('</thinking>');
+  
+  let thinkingText = '';
+  let cleanText = content;
+  
+  if (thinkingStartIdx !== -1) {
+    if (thinkingEndIdx !== -1) {
+      thinkingText = content.substring(thinkingStartIdx + 10, thinkingEndIdx).trim();
+      cleanText = (content.substring(0, thinkingStartIdx) + content.substring(thinkingEndIdx + 11)).trim();
+    } else {
+      thinkingText = content.substring(thinkingStartIdx + 10).trim();
+      cleanText = content.substring(0, thinkingStartIdx).trim();
+    }
+  }
+  
+  return { thinkingText, cleanText };
 }
 
 export default function MessageBubble({ message }) {
@@ -59,8 +83,15 @@ export default function MessageBubble({ message }) {
   const primarySignals = signalsList[0] || null;
 
   const symbol = extractSymbol(primarySignals, content);
-  const displayContent = cleanContent(content);
-  const hasSignals = primarySignals && Object.keys(primarySignals).length > 1;
+  
+  const { thinkingText, cleanText } = extractThinking(content);
+  const displayContent = cleanContent(cleanText);
+  
+  const hasThinking = content && content.includes('<thinking>');
+  const isThinking = isStreaming && (
+    !content ||
+    (hasThinking && !content.includes('</thinking>'))
+  );
 
   return (
     <div className="message-assistant">
@@ -107,8 +138,13 @@ export default function MessageBubble({ message }) {
       )}
 
       <div className="bubble-assistant">
-        {/* Loading state */}
-        {isStreaming && !content && <LoadingIndicator />}
+        {/* Loading state — show step timeline during streaming */}
+        {isThinking && (
+          <StatusIndicator
+            statusMessage={message.statusMessage}
+            steps={message.statusSteps}
+          />
+        )}
 
         {/* Price card(s) — one per symbol */}
         {signalsList.map((sig, idx) =>
@@ -129,8 +165,12 @@ export default function MessageBubble({ message }) {
           />
         )}
 
-        {/* Technical indicators (show for primary symbol only) */}
-        {hasSignals && <SignalsTable signals={primarySignals} />}
+        {/* Technical indicators (show for all symbols in the list) */}
+        {signalsList.map((sig, idx) => (
+          sig && Object.keys(sig).length > 1 ? (
+            <SignalsTable key={sig.symbol || idx} signals={sig} />
+          ) : null
+        ))}
 
         {/* News */}
         <NewsSection citations={citations} symbol={symbol} content={content} />
@@ -139,11 +179,6 @@ export default function MessageBubble({ message }) {
         {citations && citations.length > 0 && (
           <CitationList citations={citations} />
         )}
-
-        {/* Disclaimer */}
-        <div className="disclaimer">
-          ⚠ Educational purposes only — not financial advice.
-        </div>
       </div>
 
       {/* Token usage */}

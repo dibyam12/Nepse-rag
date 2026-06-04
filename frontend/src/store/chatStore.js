@@ -56,6 +56,8 @@ const useChatStore = create((set, get) => ({
       role: 'assistant',
       content: '',
       isStreaming: true,
+      statusMessage: '',
+      statusSteps: [],
       signals: null,
       citations: null,
       toolsUsed: null,
@@ -86,6 +88,8 @@ const useChatStore = create((set, get) => ({
           ? {
               ...m,
               isStreaming: false,
+              statusMessage: '',
+              statusSteps: [],
               signals: data.signals || m.signals,
               citations: data.citations || m.citations,
               toolsUsed: data.toolsUsed || m.toolsUsed,
@@ -167,6 +171,20 @@ const useChatStore = create((set, get) => ({
           switch (data.type) {
             case 'token':
               get().appendToken(assistantId, data.content);
+              break;
+            case 'status':
+              set((s) => ({
+                messages: s.messages.map((m) =>
+                  m.id === assistantId
+                    ? {
+                        ...m,
+                        statusMessage: data.message,
+                        // Accumulate steps for the timeline display
+                        statusSteps: [...(m.statusSteps || []), data.message],
+                      }
+                    : m
+                ),
+              }));
               break;
             case 'signals':
               signals = data.data;

@@ -15,8 +15,8 @@ export default function PriceCard({ symbol, signals }) {
   if (!symbol || !signals || signals.close == null) return null;
 
   const stock = symbolsList.find((s) => s.symbol === symbol);
-  const name = stock?.name || symbol;
-  const sector = stock?.sector_name || signals.sector || 'N/A';
+  const name = signals.name || stock?.name || symbol;
+  const sector = signals.sector || stock?.sector_name || 'N/A';
 
   const close = signals.close;
   const pctChange = signals.pct_change ?? 0;

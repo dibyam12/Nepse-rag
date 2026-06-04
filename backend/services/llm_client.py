@@ -34,29 +34,81 @@ logger = logging.getLogger('nepse_rag')
 SYSTEM_PROMPT = (
     "You are a NEPSE (Nepal Stock Exchange) AI research assistant. "
     "Respond like a premium Bloomberg terminal — direct, data-driven, zero fluff.\n\n"
+    "## ANTI-HALLUCINATION RULES:\n"
+    "1. You are operating in CLOSED-BOOK mode. You have NO knowledge beyond what is in the <context> block.\n"
+    "2. If a number, price, date, or percentage is NOT in the context, say 'Data not available in current context.'\n"
+    "3. If asked about a stock NOT in the context, say 'I don't have data for [SYMBOL] right now. Try querying it directly.'\n"
+    "4. NEVER extrapolate or calculate values not explicitly given (e.g., don't compute P/E ratio from fragments).\n"
+    "5. For news: ONLY summarize headlines/content that appear in <news_data>. DO NOT add news from your training data.\n"
+    "6. When uncertain, use hedging language: 'Based on the available data...' rather than asserting facts.\n\n"
     "## MANDATORY Rules (violating ANY of these is UNACCEPTABLE):\n"
-    "1. Each 'SQL DATA:' block in the context IS the stock's current price. "
+    "1. You MUST start your response with a `<thinking>` block to write your step-by-step reasoning. "
+    "Close it with `</thinking>` before starting your final analysis. In the thinking block (Chain-of-Verification):\n"
+    "   - Identify the user's question and the active symbols queried.\n"
+    "   - Locate the structured data blocks in the context (e.g., `<sql_data>`, `<news_data>`).\n"
+    "   - List the numbers and headlines you will use, verifying they are exactly as listed in the context.\n"
+    "   - For each fact you plan to state, write [VERIFIED: <source_tag>] or [NOT FOUND].\n"
+    "   - If any fact is [NOT FOUND], explicitly plan to say 'data not available'.\n"
+    "   - If any symbol requested is missing data, explicitly note that and plan to address it in the response (e.g., NCCB is merged into KBL).\n"
+    "2. Each 'SQL DATA:' block in the context IS the stock's current price. "
     "State the close value as the latest price. "
     "NEVER say 'no price data' or 'limited information' if SQL DATA exists for that symbol.\n"
-    "2. If there are SQL DATA blocks for MULTIPLE symbols (e.g., NABIL and NICA), "
+    "3. If there are SQL DATA blocks for MULTIPLE symbols (e.g., NABIL and NICA), "
     "you MUST present price data for ALL of them. Skipping ANY symbol's data is WRONG.\n"
-    "3. DO NOT explain what indicators mean. No definitions. No theory. "
+    "4. DO NOT explain what indicators mean. No definitions. No theory. "
     "Wrong: 'RSI is a momentum indicator that measures...' "
     "Right: 'RSI: 51.0 — neutral' "
     "Only explain if user says 'what is RSI' or 'explain MACD'.\n"
-    "4. NEVER invent prices, indicators, news, or URLs not in context.\n"
-    "5. For news: if only a headline exists with no summary, just show the headline "
+    "5. STRICT GROUNDING: NEVER invent prices, indicators, news, or URLs not in the context. "
+    "If information is missing, state 'I do not have access to that information in my current database context.' rather than guessing or fabricating.\n"
+    "6. For news: if only a headline exists with no summary, just show the headline "
     "and source. NEVER write '[context unclear]', '[no context]', or similar placeholders.\n"
-    "6. The UI already shows a PriceCard with LTP/Volume/Range and a SignalsTable "
+    "7. The UI already shows a PriceCard with LTP/Volume/Range and a SignalsTable "
     "with RSI/MACD/EMA/BB. Do NOT repeat these exact numbers in your text. "
     "Instead, provide a brief 1-2 sentence ANALYSIS or commentary on what the data means "
-    "for the stock (e.g., 'NABIL is trading near its 52-week high with neutral momentum').\n\n"
-    "## Format:\n"
-    "Your response should be a brief, professional synthesis of the stock's status.\n"
+    "for the stock (e.g., 'NABIL is trading near its 52-week high with neutral momentum').\n"
+    "8. CONVERSATIONAL MEMORY: You will receive the conversation history. "
+    "Do NOT repeat descriptions, indicators, news summaries, or comparisons if they were already stated in the previous turns. "
+    "If the user asks a follow-up or comparison decision (e.g., 'should I buy X or Y?', 'so should I go with X?'), "
+    "directly analyze the options based on the previously stated facts and your RAG context. "
+    "Focus on answering the new question directly. "
+    "Acknowledge the user's follow-up naturally (e.g., 'Given that...', 'As mentioned...') without repeating the stock profiles or news headlines from the previous turns.\n\n"
+    "## EXAMPLE of a GOOD response:\n"
+    "<example>\n"
+    "<thinking>\n"
+    "Question: Compare NABIL and NICA fundamentals.\n"
+    "Active Symbols: NABIL, NICA.\n"
+    "SQL Data: NABIL close=350.50 [VERIFIED: sql_data], NICA close=366.30 [VERIFIED: sql_data].\n"
+    "RSI: NABIL=58.2 (neutral) [VERIFIED: sql_data], NICA=51.0 (neutral) [VERIFIED: sql_data].\n"
+    "News: NICA resignation [VERIFIED: news_data], NABIL no news [VERIFIED: news_data].\n"
+    "Plan: Synthesize both prices, indicators, and news without listing raw numbers. Note NICA's news.\n"
+    "</thinking>\n\n"
+    "**Price & Trend**: Both NABIL and NICA are displaying neutral momentum, with both stocks currently consolidating.\n\n"
+    "**News**: NICA has news regarding capital restructuring and director changes. No recent news is available for NABIL.\n\n"
+    "**Comparison**: NABIL is trading at a slightly lower price point than NICA, with both banks exhibiting similar neutral indicators.\n\n"
+    "DISCLAIMER: This is for educational purposes only. Not financial advice.\n"
+    "</example>\n\n"
+    "## Output Structure:\n"
+    "Start immediately with `<thinking>\n[Your step-by-step analytical reasoning and fact verification]\n</thinking>`\n\n"
+    "Then provide the synthesis:\n"
     "- **Price & Trend**: Provide a 1-2 sentence analysis combining price action and indicator momentum.\n"
     "- **News**: If news exists, summarize the overall sentiment in 1 sentence. DO NOT list individual news articles (the UI shows them).\n"
     "- **Comparison**: ONLY if there are multiple stocks in the context, provide a brief comparison of their performance.\n\n"
     "Always end with: \n\nDISCLAIMER: This is for educational purposes only. Not financial advice."
+)
+
+NO_CONTEXT_RESPONSE = (
+    "I can answer NEPSE-related questions about listed stocks, indicators, sectors, and market news. "
+    "Please ask about a NEPSE company or indicator (e.g., 'Why did NABIL fall today?' or 'What is RSI?')."
+    "\n\nDISCLAIMER: This is for educational purposes only. Not financial advice."
+)
+
+CHAT_SYSTEM_PROMPT = (
+    "You are NEPSE AI, a friendly and knowledgeable research assistant specialising in Nepal's stock market (NEPSE). "
+    "For casual conversation and greetings, respond naturally and warmly in 2-4 sentences. "
+    "Briefly mention you can help with NEPSE stock prices, news, technical indicators, and sector analysis. "
+    "If the user's question touches on investment advice (e.g., 'should I buy?'), "
+    "always end with: DISCLAIMER: This is for educational purposes only. Not financial advice."
 )
 
 # ── Provider Configuration ────────────────────────────────────
@@ -102,7 +154,7 @@ PROVIDERS = [
 
 # ── call_llm ──────────────────────────────────────────────────
 
-async def call_llm(prompt: str, max_tokens: int = 800) -> tuple[str, str]:
+async def call_llm(prompt_or_messages: str | list[dict], max_tokens: int = 800) -> tuple[str, str]:
     """
     Calls LLM using the fallback chain.
 
@@ -134,7 +186,7 @@ async def call_llm(prompt: str, max_tokens: int = 800) -> tuple[str, str]:
 
         try:
             answer, tokens_used = await _call_provider(
-                provider, api_key, prompt, max_tokens
+                provider, api_key, prompt_or_messages, max_tokens
             )
             return answer, name, tokens_used
 
@@ -185,7 +237,7 @@ class _ProviderAuthError(Exception):
 async def _call_provider(
     provider: dict,
     api_key: str | None,
-    prompt: str,
+    prompt_or_messages: str | list[dict],
     max_tokens: int,
 ) -> tuple[str, int]:
     """
@@ -214,12 +266,19 @@ async def _call_provider(
         url = f"{url}{separator}key={api_key}"
 
     # Build request body (OpenAI-compatible format)
+    if isinstance(prompt_or_messages, list):
+        messages_payload = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+        ] + prompt_or_messages
+    else:
+        messages_payload = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt_or_messages},
+        ]
+
     body = {
         "model": model,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
+        "messages": messages_payload,
         "max_tokens": max_tokens,
         "temperature": 0.7,
     }
@@ -279,21 +338,26 @@ def build_rag_prompt(
     question: str,
     tool_outputs: list[str],
     max_input_tokens: int = 3000,
+    route: str = None,
 ) -> str:
     """
     Assembles the final RAG prompt from tool outputs.
 
-    Enforces a 3,000 token budget. If over budget, truncates the
-    longest tool output by 20% iteratively. Never truncates the question.
+    Enforces a 3,000 token budget (4,500 for news-heavy routes). If over budget,
+    truncates the longest tool output by 20% iteratively. Never truncates the question.
 
     Args:
         question: User's original question.
         tool_outputs: List of plain-text tool output strings.
         max_input_tokens: Max token budget for the prompt.
+        route: Query classification route.
 
     Returns:
         Assembled prompt string ready for call_llm().
     """
+    if route in ('full_agent', 'compare'):
+        max_input_tokens = max(max_input_tokens, 4500)
+
     # Filter out empty outputs
     outputs = [o for o in tool_outputs if o and o.strip()]
 
@@ -309,11 +373,30 @@ def build_rag_prompt(
 
     # Build context block
     def _build_prompt(parts: list[str]) -> str:
-        context = "\n---\n".join(parts)
+        xml_parts = []
+        for part in parts:
+            part_str = part.strip()
+            import re
+            sym_match = re.search(r"\b([A-Z]{2,6})\b", part_str)
+            sym_attr = f" symbol=\"{sym_match.group(1)}\"" if sym_match else ""
+
+            if "SQL DATA:" in part_str or "Indicators:" in part_str:
+                xml_parts.append(f"<sql_data{sym_attr}>\n{part_str}\n</sql_data>")
+            elif "Graph Context:" in part_str:
+                xml_parts.append(f"<graph_data{sym_attr}>\n{part_str}\n</graph_data>")
+            elif "Recent news for" in part_str:
+                xml_parts.append(f"<news_data{sym_attr}>\n{part_str}\n</news_data>")
+            elif "From " in part_str:
+                xml_parts.append(f"<vector_data>\n{part_str}\n</vector_data>")
+            else:
+                xml_parts.append(f"<additional_context>\n{part_str}\n</additional_context>")
+                
+        context = "\n".join(xml_parts)
         return (
-            f"=== CONTEXT ===\n{context}\n=== END CONTEXT ===\n\n"
+            f"<context>\n{context}\n</context>\n\n"
             f"QUESTION: {question}\n\n"
             "INSTRUCTIONS: Using ONLY the context above, answer concisely.\n"
+            "- You MUST write your step-by-step thinking process inside a `<thinking>` block before the final answer.\n"
             "- The UI already displays a PriceCard, SignalsTable, and a News Section with the actual headlines.\n"
             "- Do NOT list LTP, Volume, Range, RSI, MACD, EMA, BB values as bullet points.\n"
             "- Do NOT list news headlines as bullet points.\n"
@@ -321,6 +404,7 @@ def build_rag_prompt(
             "- NEVER include a 'Compare' or 'Comparison' section unless multiple stocks were queried.\n"
             "- NEVER explain what indicators mean or how they work.\n"
             "- NEVER write '[context unclear]' or similar placeholders.\n"
+            "- Begin your response with: <thinking>\n"
         )
 
     def _estimate_tokens(text: str) -> int:
@@ -369,7 +453,7 @@ def build_rag_prompt(
 # ── stream_llm ────────────────────────────────────────────────
 
 async def stream_llm(
-    prompt: str, max_tokens: int = 800
+    prompt_or_messages: str | list[dict], max_tokens: int = 800
 ) -> AsyncGenerator[str | tuple, None]:
     """
     Streaming LLM call with fallback chain.
@@ -407,13 +491,17 @@ async def stream_llm(
         try:
             token_count = 0
             async for token in _stream_provider(
-                provider, api_key, prompt, max_tokens
+                provider, api_key, prompt_or_messages, max_tokens
             ):
                 token_count += 1
                 yield token
 
             # Track approximate token usage
-            prompt_tokens = int(len(prompt.split()) / 0.75)
+            if isinstance(prompt_or_messages, list):
+                prompt_text = " ".join([m.get("content", "") for m in prompt_or_messages])
+            else:
+                prompt_text = prompt_or_messages
+            prompt_tokens = int(len(prompt_text.split()) / 0.75)
             track_llm_tokens(name, prompt_tokens + token_count)
 
             logger.info(
@@ -472,10 +560,152 @@ async def stream_llm(
         yield ("__meta__", "none", 0)
 
 
+async def stream_llm_chat(
+    question: str,
+) -> AsyncGenerator[str | tuple, None]:
+    """
+    Lightweight streaming LLM call for casual conversation.
+    Uses CHAT_SYSTEM_PROMPT (friendly, no closed-book restriction).
+    Max 200 tokens — keeps responses concise.
+    """
+    prompt = f"User: {question}\nAssistant:"
+    async for token in _stream_with_system(CHAT_SYSTEM_PROMPT, prompt, max_tokens=200):
+        yield token
+
+
+async def _stream_with_system(
+    system_prompt: str,
+    user_prompt: str,
+    max_tokens: int = 400,
+) -> AsyncGenerator[str | tuple, None]:
+    """
+    Internal helper: streams from provider chain using a custom system_prompt.
+    Yields str tokens then a final ("__meta__", provider, tokens) tuple.
+    """
+    errors = []
+    for provider in PROVIDERS:
+        name = provider["name"]
+        api_key = None
+        if provider["api_key_env"]:
+            api_key = config(provider["api_key_env"], default="")
+            if not api_key:
+                errors.append(f"{name}: no API key")
+                continue
+        if is_llm_provider_exhausted(name):
+            errors.append(f"{name}: exhausted")
+            continue
+        try:
+            name_ = provider["name"]
+            url = provider["base_url"]
+            model = provider["model"]
+            auth_style = provider["auth_style"]
+            headers = {"Content-Type": "application/json"}
+            if auth_style == "bearer" and api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+            elif auth_style == "query_param" and api_key:
+                sep = "&" if "?" in url else "?"
+                url = f"{url}{sep}key={api_key}"
+            body = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "max_tokens": max_tokens,
+                "temperature": 0.75,
+                "stream": True,
+            }
+            token_count = 0
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                async with client.stream("POST", url, json=body, headers=headers) as resp:
+                    if resp.status_code == 429:
+                        await resp.aread()
+                        mark_llm_provider_exhausted(name_, ttl=3600)
+                        errors.append(f"{name_}: 429")
+                        continue
+                    if resp.status_code in (401, 403):
+                        await resp.aread()
+                        mark_llm_provider_exhausted(name_, ttl=86400)
+                        errors.append(f"{name_}: auth error")
+                        continue
+                    if resp.status_code >= 400:
+                        await resp.aread()
+                        errors.append(f"{name_}: HTTP {resp.status_code}")
+                        continue
+                    import json as _json
+                    async for line in resp.aiter_lines():
+                        line = line.strip()
+                        if not line or not line.startswith("data:"):
+                            continue
+                        data_str = line[5:].strip()
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            chunk = _json.loads(data_str)
+                            content = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                            if content:
+                                token_count += 1
+                                yield content
+                        except Exception:
+                            continue
+            prompt_tokens = int(len(user_prompt.split()) / 0.75)
+            track_llm_tokens(name_, prompt_tokens + token_count)
+            yield ("__meta__", name_, prompt_tokens + token_count)
+            return
+        except Exception as e:
+            errors.append(f"{name}: {e}")
+            logger.warning("_stream_with_system %s failed: %s", name, e)
+
+    # Fallback: non-streaming
+    try:
+        import httpx as _httpx
+        for provider in PROVIDERS:
+            name = provider["name"]
+            api_key = None
+            if provider["api_key_env"]:
+                api_key = config(provider["api_key_env"], default="")
+                if not api_key:
+                    continue
+            if is_llm_provider_exhausted(name):
+                continue
+            url = provider["base_url"]
+            model = provider["model"]
+            auth_style = provider["auth_style"]
+            headers = {"Content-Type": "application/json"}
+            if auth_style == "bearer" and api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+            elif auth_style == "query_param" and api_key:
+                sep = "&" if "?" in url else "?"
+                url = f"{url}{sep}key={api_key}"
+            body = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "max_tokens": max_tokens,
+                "temperature": 0.75,
+            }
+            async with _httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(url, json=body, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+                answer = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                tokens = data.get("usage", {}).get("total_tokens", 0)
+                track_llm_tokens(name, tokens)
+                yield answer
+                yield ("__meta__", name, tokens)
+                return
+    except Exception:
+        pass
+    yield "I'm sorry, I'm temporarily unavailable. Please try again later."
+    yield ("__meta__", "none", 0)
+
+
 async def _stream_provider(
     provider: dict,
     api_key: str | None,
-    prompt: str,
+    prompt_or_messages: str | list[dict],
     max_tokens: int,
 ) -> AsyncGenerator[str, None]:
     """
@@ -503,12 +733,19 @@ async def _stream_provider(
         url = f"{url}{separator}key={api_key}"
 
     # Build request body with stream=True
+    if isinstance(prompt_or_messages, list):
+        messages_payload = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+        ] + prompt_or_messages
+    else:
+        messages_payload = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt_or_messages},
+        ]
+
     body = {
         "model": model,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
+        "messages": messages_payload,
         "max_tokens": max_tokens,
         "temperature": 0.7,
         "stream": True,

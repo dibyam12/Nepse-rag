@@ -90,7 +90,7 @@ export default function SignalsTable({ signals }) {
 
   return (
     <div className="signals-section">
-      <div className="section-title">Technical Indicators</div>
+      <div className="section-title">Technical Indicators {signals.symbol ? `— ${signals.symbol}` : ''}</div>
       <div className="signals-grid">
         {cards.map((card, i) => (
           <div key={i} className="signal-card">

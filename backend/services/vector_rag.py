@@ -200,6 +200,7 @@ def query_vector_rag(question: str, top_k: int = None) -> list[dict]:
     """
     if top_k is None:
         top_k = getattr(settings, 'VECTOR_TOP_K', 3)
+    min_score = getattr(settings, 'VECTOR_MIN_SCORE', 0.0) or 0.0
 
     # 1. Check cache
     cached = get_cached_vector_rag(question)
@@ -222,6 +223,10 @@ def query_vector_rag(question: str, top_k: int = None) -> list[dict]:
     # 3. Format results
     results = []
     for node in nodes:
+        score = round(float(node.score), 4) if node.score else 0.0
+        if min_score and score < min_score:
+            continue
+
         # Extract source filename from metadata
         metadata = node.node.metadata or {}
         source_file = metadata.get('file_name', 'unknown')
@@ -234,7 +239,7 @@ def query_vector_rag(question: str, top_k: int = None) -> list[dict]:
         results.append({
             'text': text,
             'source_file': source_file,
-            'score': round(float(node.score), 4) if node.score else 0.0,
+            'score': score,
         })
 
     # 4. Cache and return
