@@ -5,6 +5,8 @@
  */
 import { ExternalLink, AlertCircle, Clock } from 'lucide-react';
 
+const cleanSnippet = (text) => text?.replace(/[#*_`]/g, '').slice(0, 120);
+
 export default function NewsSection({ citations, symbol, content }) {
   const newsCitations = citations?.filter((c) => c.type === 'news') || [];
 
@@ -83,6 +85,11 @@ export default function NewsSection({ citations, symbol, content }) {
             <div className="news-dot" />
             <div className="news-content">
               <div className="news-title">{article.headline || 'No title'}</div>
+              {(article.summary || article.excerpt || article.body || article.snippet) && (
+                <div className="news-snippet">
+                  {cleanSnippet(article.summary || article.excerpt || article.body || article.snippet)}
+                </div>
+              )}
               <div className="news-meta">
                 {displaySource(article) && (
                   <span className="news-source-label">{displaySource(article)}</span>

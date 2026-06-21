@@ -193,52 +193,48 @@ async def ddg_search(query: str, count: int = 6) -> list[dict]:
     return normalized[:count]
 
 
+from datetime import datetime
+
+def build_news_queries(symbol: str, company_name: str = None) -> list:
+    name = company_name or symbol
+    return [
+        f"{name} site:sharesansar.com",
+        f"{name} dividend bonus site:merolagani.com",
+        f"{symbol} NEPSE news",
+    ]
+
 async def ddg_search_multi_site(symbol: str, stock_name: str = "", count: int = 8) -> list[dict]:
     """
     Runs separate DDG queries per Nepali site for a given stock symbol.
     More reliable than OR chains — DDG handles one site: per query best.
     Called by news_scraper.py for targeted symbol-level news fetching.
     """
-    company_part = stock_name.split()[0] if stock_name else symbol
-
-    # Build per-site queries — one site: per query for reliability
-    site_queries = [
-        (f"{symbol} {company_part} site:sharesansar.com", "sharesansar.com"),
-        (f"{symbol} {company_part} site:merolagani.com", "merolagani.com"),
-        (f"{symbol} {company_part} site:nepsealpha.com", "nepsealpha.com"),
-        (f"{symbol} Nepal stock site:ictframe.com", "ictframe.com"),
-        (f"{company_part} Nepal site:onlinekhabar.com", "onlinekhabar.com"),
-    ]
-
+    queries = build_news_queries(symbol, stock_name)
+    results = []
+    seen: set[str] = set()
     loop = asyncio.get_event_loop()
 
-    tasks = [
-        asyncio.wait_for(
-            loop.run_in_executor(None, _run_ddg_query, q, 4, "m"),
-            timeout=6.0,
-        )
-        for q, _ in site_queries
-    ]
-
-    batch_results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    all_items = []
-    seen: set[str] = set()
-
-    for (_, site_name), batch in zip(site_queries, batch_results):
-        if not isinstance(batch, list):
+    for q in queries:
+        try:
+            hits = await asyncio.wait_for(
+                loop.run_in_executor(None, _run_ddg_query, q, 3, "m"),
+                timeout=6.0
+            )
+            if hits and isinstance(hits, list):
+                for item in hits:
+                    url = item.get("url", item.get("href", ""))
+                    if url and url not in seen:
+                        seen.add(url)
+                        results.append(item)
+                if len(results) >= 6:
+                    break
+        except Exception:
             continue
-        for item in batch:
-            url = item.get("url", item.get("href", ""))
-            if url and url not in seen:
-                seen.add(url)
-                item["source"] = site_name
-                all_items.append(item)
 
-    normalized = _normalize_ddg(all_items)
+    normalized = _normalize_ddg(results)
     logger.info(
-        "ddg_search_multi_site(%s): %d results across %d sites",
-        symbol, len(normalized), len(site_queries),
+        "ddg_search_multi_site(%s): %d results across queries",
+        symbol, len(normalized)
     )
     return normalized[:count]
 

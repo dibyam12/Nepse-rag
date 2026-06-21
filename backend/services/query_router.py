@@ -110,13 +110,16 @@ class RouteDecision:
 
     Attributes:
         route: One of ROUTE_VECTOR_ONLY, ROUTE_SQL_GRAPH,
-               ROUTE_FULL_AGENT, ROUTE_COMPARE.
+               ROUTE_FULL_AGENT, ROUTE_COMPARE, ROUTE_CHAT, ROUTE_SCREENER.
         symbols: Extracted NEPSE ticker symbols from the query.
         tools_needed: List of tool names the agent will call.
     """
     route: str
     symbols: list = field(default_factory=list)
     tools_needed: list = field(default_factory=list)
+    price_below: int = None
+    price_above: int = None
+    sector: str = None
 
 
 _KNOWN_SYMBOLS = None
@@ -245,6 +248,66 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
     Returns:
         RouteDecision with route, symbols, and tools_needed.
     """
+    # --- Screener route: "recommend banks below 200", "stocks under 300", etc. ---
+    SCREENER_PATTERNS = [
+        r'\brecommend\b.*\b(bank|stock|share|company)\b',
+        r'\b(bank|stock|share|company)\b.*\brecommend\b',
+        r'\bbelow\s+\d+\b',
+        r'\bunder\s+\d+\b',
+        r'\babove\s+\d+\b',
+        r'\bwatch.?list\b',
+        r'\bscreen\b',
+        r'\bfilter\b.*\b(price|npr|rupee)\b',
+        r'\baffordable\b',
+        r'\bcheap(er)?\b',
+    ]
+
+    if any(re.search(p, question, re.IGNORECASE) for p in SCREENER_PATTERNS):
+        price_below = None
+        price_above = None
+        
+        m = re.search(r'\bbelow\s+(\d+)\b', question, re.IGNORECASE)
+        if m:
+            price_below = int(m.group(1))
+        
+        m = re.search(r'\bunder\s+(\d+)\b', question, re.IGNORECASE)
+        if m:
+            price_below = int(m.group(1))
+        
+        m = re.search(r'\babove\s+(\d+)\b', question, re.IGNORECASE)
+        if m:
+            price_above = int(m.group(1))
+        
+        # Extract sector if mentioned
+        sector = None
+        sector_keywords = {
+            'commercial bank': 'Commercial Banks',
+            'development bank': 'Development Banks',
+            'finance': 'Finance',
+            'insurance': 'Life Insurance',
+            'hydropower': 'Hydropower',
+            'microfinance': 'Microfinance',
+            'manufacturing': 'Manufacturing And Processing',
+        }
+        for kw, sector_name in sector_keywords.items():
+            if kw in question.lower():
+                sector = sector_name
+                break
+        
+        logger.info(
+            "Query routed to screener: '%s' (sector=%s, price_below=%s, price_above=%s)",
+            question[:60], sector, price_below, price_above,
+            extra={"event": "query_route", "route": "screener", "symbols": []},
+        )
+        return RouteDecision(
+            route='screener',
+            symbols=[],
+            tools_needed=['sql_tool'],
+            price_below=price_below,
+            price_above=price_above,
+            sector=sector
+        )
+
     q_lower = question.lower()
 
     # 0. Chat — casual conversation detected FIRST, no stock data needed

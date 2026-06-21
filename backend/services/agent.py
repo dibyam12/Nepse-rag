@@ -3,17 +3,18 @@ services/agent.py
 Agentic RAG service using LangGraph.
 
 Public API:
-    run_agent(question, symbol) -> dict
-    sql_tool(symbol, days) -> (str, list[dict], dict)
-    graph_tool(question, symbol) -> (str, list[dict])
-    vector_tool(question) -> (str, list[dict])
-    news_tool(symbol) -> (str, list[dict])
+    run_agent(question, symbol)           -> dict                  (ainvoke, used by POST /api/query/)
+    run_agent_streaming(question, symbol) -> AsyncGenerator[dict]  (astream_events v2, used by SSE view)
+    sql_tool(symbol, days)                -> (str, list[dict], dict)
+    graph_tool(question, symbol)          -> (str, list[dict])
+    vector_tool(question)                 -> (str, list[dict])
+    news_tool(symbol)                     -> (str, list[dict])
 """
 
 import asyncio
 import logging
 import time
-from typing import TypedDict
+from typing import TypedDict, AsyncGenerator
 from datetime import date as date_cls
 
 from langgraph.graph import StateGraph, END
@@ -55,6 +56,9 @@ class AgentState(TypedDict):
     tokens_used: int
     latency_ms: int
     signals: list | dict
+    price_below: int
+    price_above: int
+    sector: str
 
 
 # ══════════════════════════════════════════════════════════════
@@ -201,7 +205,7 @@ async def sql_tool(symbol: str, days: int = 7) -> tuple[str, list[dict], dict]:
 
         active_name = active_symbol
         try:
-            stock_info = get_stock_info(active_symbol)
+            stock_info = await asyncio.to_thread(get_stock_info, active_symbol)
             if stock_info and stock_info.get("name"):
                 active_name = stock_info["name"]
         except Exception:
@@ -484,7 +488,7 @@ async def news_tool(symbol: str) -> tuple[str, list[dict]]:
                 stock_name=stock_name,
                 max_articles=6,
             ),
-            timeout=22.0,
+            timeout=30.0,
         )
 
         if not articles:
@@ -556,6 +560,7 @@ async def news_tool(symbol: str) -> tuple[str, list[dict]]:
             extra={"event": "news_tool_error", "symbol": symbol},
         )
         return "", []
+
 # ══════════════════════════════════════════════════════════════
 # LANGGRAPH NODES
 # ══════════════════════════════════════════════════════════════
@@ -576,6 +581,9 @@ async def route_node(state: AgentState) -> dict:
     result = {
         "route": decision.route,
         "symbols": symbols,
+        "price_below": decision.price_below,
+        "price_above": decision.price_above,
+        "sector": decision.sector,
     }
     if symbols:
         result["symbol"] = symbols[0]
@@ -583,6 +591,21 @@ async def route_node(state: AgentState) -> dict:
 
 
 async def sql_node(state: AgentState) -> dict:
+    if state.get("route") == 'screener':
+        from services.db_service import get_stocks_by_price_filter
+        stocks = await asyncio.to_thread(
+            get_stocks_by_price_filter,
+            sector=state.get("sector"),
+            max_price=state.get("price_below"),
+            min_price=state.get("price_above"),
+            limit=8
+        )
+        return {
+            "sql_output": stocks,
+            "citations": state.get("citations", []),
+            "tools_called": state.get("tools_called", []) + ["sql_tool"],
+        }
+
     symbols = state.get("symbols", []) or ([state.get("symbol")] if state.get("symbol") else [])
     if not symbols:
         return {}
@@ -785,7 +808,11 @@ async def parallel_retrieve_node(state: AgentState) -> dict:
 
 
 async def synthesize_node(state: AgentState) -> dict:
-    """Builds RAG prompt → calls LLM → returns answer."""
+    """
+    No-op passthrough — the actual LLM call happens in the SSE view
+    (stream_llm) or POST endpoint. This avoids the double-LLM-call
+    problem that was burning 2x tokens per query.
+    """
     tool_outputs = [
         state.get(k, "")
         for k in ("sql_output", "graph_output", "vector_output", "news_output")
@@ -800,35 +827,12 @@ async def synthesize_node(state: AgentState) -> dict:
             "latency_ms": 0,
         }
 
-    prompt = build_rag_prompt(state["question"], tool_outputs, route=state.get("route"))
-
-    start = time.time()
-    try:
-        answer, provider, tokens_used = await call_llm(prompt)
-    except RuntimeError as e:
-        logger.error("LLM chain exhausted during synthesis: %s", e)
-        answer = (
-            "I'm sorry, I couldn't generate a response at this time. "
-            "All LLM providers are temporarily unavailable.\n\n"
-            "DISCLAIMER: This is for educational purposes only. "
-            "Not financial advice."
-        )
-        provider    = "none"
-        tokens_used = 0
-
-    latency_ms = int((time.time() - start) * 1000)
-
-    if "DISCLAIMER" not in answer:
-        answer += (
-            "\n\nDISCLAIMER: This is for educational purposes only. "
-            "Not financial advice."
-        )
-
+    # Pass through — LLM will be called by the view layer
     return {
-        "final_answer": answer,
-        "llm_provider": provider,
-        "tokens_used":  tokens_used,
-        "latency_ms":   latency_ms,
+        "final_answer": "",
+        "llm_provider": "",
+        "tokens_used": 0,
+        "latency_ms": 0,
     }
 
 
@@ -838,7 +842,9 @@ async def synthesize_node(state: AgentState) -> dict:
 
 def _route_decision(state: AgentState) -> str:
     route = state.get("route", ROUTE_VECTOR_ONLY)
-    if route == ROUTE_VECTOR_ONLY:
+    if route == 'screener':
+        return "sql_node"
+    elif route == ROUTE_VECTOR_ONLY:
         return "vector_node"
     elif route in (ROUTE_SQL_GRAPH, ROUTE_COMPARE):
         return "sql_node"
@@ -883,13 +889,99 @@ agent_graph = build_agent_graph()
 
 
 # ══════════════════════════════════════════════════════════════
-# MAIN ENTRY POINT
+# NODE STATUS LABELS  (used by astream_events)
+# ══════════════════════════════════════════════════════════════
+
+NODE_STATUS_LABELS: dict[str, str] = {
+    "route_node":             "Routing query...",
+    "sql_node":               "Querying price & indicator database...",
+    "graph_node":             "Mapping sector & peer relationships...",
+    "vector_node":            "Searching NEPSE knowledge base...",
+    "news_node":              "Scraping live news sources...",
+    "parallel_retrieve_node": "Running all data sources in parallel...",
+    "synthesize_node":        "Synthesizing analysis with LLM...",
+}
+
+
+# ══════════════════════════════════════════════════════════════
+# STREAMING ENTRY POINT  (astream_events v2)
+# ══════════════════════════════════════════════════════════════
+
+async def run_agent_streaming(
+    question: str,
+    symbol: str = "",
+) -> AsyncGenerator[dict, None]:
+    """
+    Streaming entry point for the SSE view.
+
+    Uses LangGraph astream_events(version='v2') so every graph node
+    lifecycle fires an event automatically — no manual yield boilerplate.
+
+    Yields dicts matching these shapes:
+        {"type": "status",      "message": str}    — node started
+        {"type": "node_done",   "node": str}       — node completed
+        {"type": "final_state", "state": dict}     — full AgentState after graph finishes
+
+    The caller (SSE view) translates these into SSE events.
+    """
+    symbol   = (symbol or "").upper().strip()
+    question = (question or "").strip()
+
+    if not question:
+        return
+
+    initial_state: AgentState = {
+        "question": question, "symbol": symbol, "symbols": [],
+        "route": "", "sql_output": "", "graph_output": "",
+        "vector_output": "", "news_output": "",
+        "citations": [], "tools_called": [],
+        "final_answer": "", "llm_provider": "",
+        "latency_ms": 0, "signals": {},
+        "tokens_used": 0,
+        "price_below": None, "price_above": None, "sector": "",
+    }
+
+    final_output: dict = {}
+
+    try:
+        async for event in agent_graph.astream_events(initial_state, version="v2"):
+            kind = event.get("event", "")
+            name = event.get("name", "")
+
+            # Node started → emit status
+            if kind == "on_chain_start" and name in NODE_STATUS_LABELS:
+                yield {"type": "status", "message": NODE_STATUS_LABELS[name]}
+
+            # Node finished → capture final state from synthesize_node
+            elif kind == "on_chain_end" and name == "synthesize_node":
+                output = event.get("data", {}).get("output", {})
+                if output:
+                    final_output.update(output)
+
+            # Graph fully finished
+            elif kind == "on_chain_end" and name == "LangGraph":
+                output = event.get("data", {}).get("output", {})
+                if output:
+                    final_output.update(output)
+
+    except Exception as e:
+        logger.error("run_agent_streaming failed: %s", e,
+                     extra={"event": "agent_streaming_error", "symbol": symbol})
+        yield {"type": "error", "message": str(e)}
+        return
+
+    yield {"type": "final_state", "state": final_output}
+
+
+# ══════════════════════════════════════════════════════════════
+# MAIN ENTRY POINT  (ainvoke — used by POST /api/query/)
 # ══════════════════════════════════════════════════════════════
 
 async def run_agent(question: str, symbol: str = "") -> dict:
     """
     Main entry point for the NEPSE AI agent.
-    Called by POST /api/query/ and GET /api/query/stream/.
+    Called by POST /api/query/.
+    Runs the LangGraph pipeline then calls LLM once for synthesis.
     """
     symbol   = (symbol or "").upper().strip()
     question = (question or "").strip()
@@ -941,19 +1033,57 @@ async def run_agent(question: str, symbol: str = "") -> dict:
             "debug": {"error": str(e)},
         }
 
+    # ── LLM synthesis (single call — synthesize_node is a passthrough) ──
+    tool_outputs = [
+        final_state.get(k, "")
+        for k in ("sql_output", "graph_output", "vector_output", "news_output")
+        if final_state.get(k, "").strip()
+    ]
+
+    answer = ""
+    provider = "none"
+    tokens_used = 0
+    llm_latency = 0
+
+    if tool_outputs:
+        prompt = build_rag_prompt(
+            question, tool_outputs, route=final_state.get("route")
+        )
+        llm_start = time.time()
+        try:
+            answer, provider, tokens_used = await call_llm(prompt)
+        except RuntimeError as e:
+            logger.error("LLM chain exhausted during synthesis: %s", e)
+            answer = (
+                "I'm sorry, I couldn't generate a response at this time. "
+                "All LLM providers are temporarily unavailable.\n\n"
+                "DISCLAIMER: This is for educational purposes only. "
+                "Not financial advice."
+            )
+        llm_latency = int((time.time() - llm_start) * 1000)
+    else:
+        answer = NO_CONTEXT_RESPONSE
+
+    if "DISCLAIMER" not in answer:
+        answer += (
+            "\n\nDISCLAIMER: This is for educational purposes only. "
+            "Not financial advice."
+        )
+
     total_latency = int((time.time() - total_start) * 1000)
 
     response = {
-        "answer":            final_state.get("final_answer", ""),
+        "answer":            answer,
         "signals":           final_state.get("signals", {}),
         "citations":         final_state.get("citations", []),
         "route_used":        final_state.get("route", ""),
         "tools_called":      final_state.get("tools_called", []),
         "latency_ms":        total_latency,
-        "llm_provider_used": final_state.get("llm_provider", ""),
+        "llm_provider_used": provider,
+        "tokens_used":       tokens_used,
         "debug": {
             "cache_hit":      False,
-            "llm_latency_ms": final_state.get("latency_ms", 0),
+            "llm_latency_ms": llm_latency,
         },
     }
 

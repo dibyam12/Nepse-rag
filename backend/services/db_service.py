@@ -305,3 +305,83 @@ async def verify_symbol_in_neon(symbol: str) -> bool:
     exists = len(rows) > 0
     cache_symbol_exists(sym, exists)
     return exists
+
+
+def get_stocks_by_price_filter(sector=None, max_price=None, min_price=None, limit=8):
+    """
+    Returns a list of stocks filtered by sector and/or price range.
+    Uses the most recent available trading date.
+    """
+    # 1. Fetch latest prices for all stocks from Neon DB
+    query = """
+        SELECT symbol, close, volume, date
+        FROM stocks_stockdata
+        WHERE date = (SELECT MAX(date) FROM stocks_stockdata)
+    """
+    try:
+        rows = execute_neon_query(query)
+        if not rows:
+            return "No stocks found matching the given criteria."
+    except Exception as e:
+        return f"Error fetching price data from database: {str(e)}"
+
+    # 2. Query local SQLite for active stock metadata
+    from apps.nepse_data.models import Stock
+    django_stocks = Stock.objects.filter(is_active=True).select_related('sector')
+    
+    # Clean up and apply sector filters
+    if sector:
+        if sector == 'Life Insurance':
+            django_stocks = django_stocks.filter(sector__name__icontains='Life')
+        elif sector == 'Manufacturing And Processing':
+            django_stocks = django_stocks.filter(sector__name__icontains='Manufacturing')
+        elif sector == 'Finance':
+            django_stocks = django_stocks.filter(sector__name__icontains='Finance')
+        else:
+            django_stocks = django_stocks.filter(sector__name__icontains=sector)
+
+    stock_map = {s.symbol.upper(): s for s in django_stocks}
+
+    # 3. Filter Neon DB rows by local SQLite mapping and price ranges
+    filtered_results = []
+    for row in rows:
+        symbol = row['symbol'].upper()
+        if symbol not in stock_map:
+            continue
+        
+        stock = stock_map[symbol]
+        close = float(row['close']) if row['close'] is not None else 0.0
+        volume = int(row['volume']) if row['volume'] is not None else 0
+        
+        if max_price is not None and close >= max_price:
+            continue
+        if min_price is not None and close <= min_price:
+            continue
+
+        filtered_results.append({
+            'symbol': symbol,
+            'company_name': stock.name,
+            'sector': stock.sector.name if stock.sector else "Unknown",
+            'close': close,
+            'volume': volume,
+            'date': str(row['date'])
+        })
+
+    # 4. Sort by volume descending and apply limit
+    filtered_results.sort(key=lambda x: x['volume'], reverse=True)
+    results_to_return = filtered_results[:limit]
+
+    if not results_to_return:
+        return "No stocks found matching the given criteria."
+
+    # 5. Format output lines
+    result_lines = []
+    for r in results_to_return:
+        result_lines.append(
+            f"{r['symbol']} — {r['company_name']} | "
+            f"Sector: {r['sector']} | "
+            f"Close: NPR {r['close']} | "
+            f"Volume: {r['volume']:,} | "
+            f"Date: {r['date']}"
+        )
+    return "\n".join(result_lines)

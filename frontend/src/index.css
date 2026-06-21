@@ -115,4 +115,25 @@
     content: '▌';
     @apply text-brand-500 animate-pulse ml-0.5;
   }
+
+  /* Status step slide-in animation */
+  .status-slide-in {
+    animation: slideInFromBottom 0.25s ease-out both;
+  }
+
+  @keyframes slideInFromBottom {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Completed step icon — green check */
+  .status-step-icon-done {
+    @apply text-emerald-500 dark:text-emerald-400 flex-shrink-0;
+  }
 }

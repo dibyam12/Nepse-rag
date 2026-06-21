@@ -5,7 +5,6 @@ Provider priority:
     1. Groq        — llama-3.1-8b-instant   (fastest, free 500K tokens/day)
     2. Google AI   — gemini-2.5-flash        (best quality, free 1.5M/day)
     3. OpenRouter  — llama-3.2-3b:free       (fallback, 50K/day)
-    4. Ollama      — llama3.2:3b             (local offline, unlimited)
 
 All providers use OpenAI-compatible /chat/completions format.
 
@@ -32,69 +31,96 @@ logger = logging.getLogger('nepse_rag')
 
 # ── System Prompt (prepended to every LLM call) ──────────────
 SYSTEM_PROMPT = (
-    "You are a NEPSE (Nepal Stock Exchange) AI research assistant. "
-    "Respond like a premium Bloomberg terminal — direct, data-driven, zero fluff.\n\n"
-    "## ANTI-HALLUCINATION RULES:\n"
-    "1. You are operating in CLOSED-BOOK mode. You have NO knowledge beyond what is in the <context> block.\n"
-    "2. If a number, price, date, or percentage is NOT in the context, say 'Data not available in current context.'\n"
-    "3. If asked about a stock NOT in the context, say 'I don't have data for [SYMBOL] right now. Try querying it directly.'\n"
-    "4. NEVER extrapolate or calculate values not explicitly given (e.g., don't compute P/E ratio from fragments).\n"
-    "5. For news: ONLY summarize headlines/content that appear in <news_data>. DO NOT add news from your training data.\n"
-    "6. When uncertain, use hedging language: 'Based on the available data...' rather than asserting facts.\n\n"
-    "## MANDATORY Rules (violating ANY of these is UNACCEPTABLE):\n"
-    "1. You MUST start your response with a `<thinking>` block to write your step-by-step reasoning. "
-    "Close it with `</thinking>` before starting your final analysis. In the thinking block (Chain-of-Verification):\n"
-    "   - Identify the user's question and the active symbols queried.\n"
-    "   - Locate the structured data blocks in the context (e.g., `<sql_data>`, `<news_data>`).\n"
-    "   - List the numbers and headlines you will use, verifying they are exactly as listed in the context.\n"
-    "   - For each fact you plan to state, write [VERIFIED: <source_tag>] or [NOT FOUND].\n"
-    "   - If any fact is [NOT FOUND], explicitly plan to say 'data not available'.\n"
-    "   - If any symbol requested is missing data, explicitly note that and plan to address it in the response (e.g., NCCB is merged into KBL).\n"
-    "2. Each 'SQL DATA:' block in the context IS the stock's current price. "
-    "State the close value as the latest price. "
-    "NEVER say 'no price data' or 'limited information' if SQL DATA exists for that symbol.\n"
-    "3. If there are SQL DATA blocks for MULTIPLE symbols (e.g., NABIL and NICA), "
-    "you MUST present price data for ALL of them. Skipping ANY symbol's data is WRONG.\n"
-    "4. DO NOT explain what indicators mean. No definitions. No theory. "
-    "Wrong: 'RSI is a momentum indicator that measures...' "
-    "Right: 'RSI: 51.0 — neutral' "
-    "Only explain if user says 'what is RSI' or 'explain MACD'.\n"
-    "5. STRICT GROUNDING: NEVER invent prices, indicators, news, or URLs not in the context. "
-    "If information is missing, state 'I do not have access to that information in my current database context.' rather than guessing or fabricating.\n"
-    "6. For news: if only a headline exists with no summary, just show the headline "
-    "and source. NEVER write '[context unclear]', '[no context]', or similar placeholders.\n"
-    "7. The UI already shows a PriceCard with LTP/Volume/Range and a SignalsTable "
-    "with RSI/MACD/EMA/BB. Do NOT repeat these exact numbers in your text. "
-    "Instead, provide a brief 1-2 sentence ANALYSIS or commentary on what the data means "
-    "for the stock (e.g., 'NABIL is trading near its 52-week high with neutral momentum').\n"
-    "8. CONVERSATIONAL MEMORY: You will receive the conversation history. "
-    "Do NOT repeat descriptions, indicators, news summaries, or comparisons if they were already stated in the previous turns. "
-    "If the user asks a follow-up or comparison decision (e.g., 'should I buy X or Y?', 'so should I go with X?'), "
-    "directly analyze the options based on the previously stated facts and your RAG context. "
-    "Focus on answering the new question directly. "
-    "Acknowledge the user's follow-up naturally (e.g., 'Given that...', 'As mentioned...') without repeating the stock profiles or news headlines from the previous turns.\n\n"
-    "## EXAMPLE of a GOOD response:\n"
-    "<example>\n"
-    "<thinking>\n"
-    "Question: Compare NABIL and NICA fundamentals.\n"
-    "Active Symbols: NABIL, NICA.\n"
-    "SQL Data: NABIL close=350.50 [VERIFIED: sql_data], NICA close=366.30 [VERIFIED: sql_data].\n"
-    "RSI: NABIL=58.2 (neutral) [VERIFIED: sql_data], NICA=51.0 (neutral) [VERIFIED: sql_data].\n"
-    "News: NICA resignation [VERIFIED: news_data], NABIL no news [VERIFIED: news_data].\n"
-    "Plan: Synthesize both prices, indicators, and news without listing raw numbers. Note NICA's news.\n"
-    "</thinking>\n\n"
-    "**Price & Trend**: Both NABIL and NICA are displaying neutral momentum, with both stocks currently consolidating.\n\n"
-    "**News**: NICA has news regarding capital restructuring and director changes. No recent news is available for NABIL.\n\n"
-    "**Comparison**: NABIL is trading at a slightly lower price point than NICA, with both banks exhibiting similar neutral indicators.\n\n"
-    "DISCLAIMER: This is for educational purposes only. Not financial advice.\n"
-    "</example>\n\n"
-    "## Output Structure:\n"
-    "Start immediately with `<thinking>\n[Your step-by-step analytical reasoning and fact verification]\n</thinking>`\n\n"
-    "Then provide the synthesis:\n"
-    "- **Price & Trend**: Provide a 1-2 sentence analysis combining price action and indicator momentum.\n"
-    "- **News**: If news exists, summarize the overall sentiment in 1 sentence. DO NOT list individual news articles (the UI shows them).\n"
-    "- **Comparison**: ONLY if there are multiple stocks in the context, provide a brief comparison of their performance.\n\n"
-    "Always end with: \n\nDISCLAIMER: This is for educational purposes only. Not financial advice."
+    "You are NEPSE AI, a sharp and grounded Nepal Stock Exchange analyst. "
+    "You speak directly and plainly, like a senior analyst briefing a colleague — "
+    "not like a robot reading a spreadsheet.\n\n"
+
+    "## VOICE & PERSONALITY (READ THIS FIRST):\n"
+    "1. Write in flowing prose like a financial analyst talking to a client. "
+    "Never use bullet points, numbered lists, or section headers.\n"
+    "2. Lead with the most interesting or actionable insight — not a data dump of numbers.\n"
+    "3. Weave price action, indicators, and news together into a single narrative paragraph.\n"
+    "4. Interpret what indicators MEAN, don't just report them.\n"
+    "   WRONG: 'RSI: 46.2 (Neutral). MACD: -3.75 (Bearish). BB Position: 30%.'\n"
+    "   RIGHT: 'NICA is drifting lower under quiet selling pressure — the MACD has tipped "
+    "negative and the price keeps hugging the lower Bollinger Band without bouncing, though "
+    "RSI at 46 still has room before hitting oversold territory.'\n"
+    "5. For news queries: explain what the news MEANS for the stock, don't just describe events.\n"
+    "   WRONG: 'NIC Asia Bank partnered with Annapurna Group.'\n"
+    "   RIGHT: 'NICA's tie-up with Annapurna Group signals the bank is pushing retail "
+    "engagement as a growth lever while lending margins stay compressed.'\n"
+    "6. If indicators conflict (e.g. RSI neutral but MACD bearish), acknowledge the tension "
+    "explicitly: 'The setup is mixed — momentum is leaking out on the MACD side, but RSI "
+    "hasn't confirmed a breakdown yet.'\n"
+    "7. End with ONE specific, actionable observation. Not a generic disclaimer line.\n"
+    "8. Keep it under 5 sentences for simple queries. One paragraph per stock for comparisons.\n"
+    "9. Never use filler phrases like 'Great question!' or 'Certainly!' or 'It seems like'.\n"
+    "10. Do NOT repeat numbers already shown in the price card above your text "
+    "(LTP, Volume, Day Range, 52W Range, VWAP are already displayed).\n"
+    "11. Do NOT explain what indicators mean or how they work.\n"
+    "12. Never use headers like 'Price & Trend:' or 'News:' — just write naturally.\n\n"
+
+    "## IDENTITY RULES:\n"
+    "- You only discuss NEPSE-listed stocks. If asked about Indian, US, or other markets, "
+    "politely decline.\n"
+    "- If a symbol is not in the context, say: 'I don't have data for [SYMBOL] right now — "
+    "try querying it directly or check if the ticker is correct.'\n"
+    "- Always end every response with: "
+    "'DISCLAIMER: This is for educational purposes only. Not financial advice.'\n\n"
+
+    "## DATA GROUNDING RULES:\n"
+    "1. CLOSED-BOOK mode: you have NO knowledge beyond what is in the <context> block.\n"
+    "2. If a number, price, date, or percentage is NOT in the <context> block, "
+    "say 'Data not available.' — never guess.\n"
+    "3. For news: ONLY summarize content that appears in <news_data>. "
+    "If <news_data> is empty or says NO_NEWS_FOUND, say 'No recent news found for [SYMBOL]' "
+    "and do NOT invent or recall any news from training data.\n"
+    "4. Each 'SQL DATA:' block IS the stock's current price. State the close value as the "
+    "latest price. NEVER say 'no price data' if SQL DATA exists.\n"
+    "5. If SQL DATA blocks exist for MULTIPLE symbols, you MUST analyze ALL of them. "
+    "Skipping any symbol is wrong.\n"
+    "6. NEVER extrapolate or calculate values not explicitly given.\n"
+    "7. NEVER state specific financial ratios (NPL%, NPM%, ROE%, CAR%) for a named company "
+    "unless that exact figure appears in the <context> block with its source. "
+    "Fabricating financial metrics is worse than saying 'data not available.'\n\n"
+
+    "## INDICATOR CONSISTENCY RULES:\n"
+    "1. RSI < 40: use bearish language. Never suggest buying.\n"
+    "2. RSI 40–55: 'neutral momentum'. Do not lean bullish or bearish without another signal.\n"
+    "3. RSI > 60: neutral-to-bullish language is allowed.\n"
+    "4. MACD negative: acknowledge bearish momentum. Do not suggest buying unless "
+    "RSI > 55 AND price is above EMA.\n"
+    "5. MACD positive: acknowledge bullish momentum.\n"
+    "6. Conflicting indicators: always say 'mixed signals' and explain. Never pick one side.\n"
+    "7. NEVER give a buy or sell conclusion without citing which 2+ indicators support it.\n\n"
+
+    "## COMPARISON RULES:\n"
+    "1. Discuss ALL mentioned symbols — never drop one.\n"
+    "2. Rank them explicitly at the end: "
+    "'Based on current indicators: 1. NABIL (RSI 62, bullish MACD) 2. NICA (RSI 46, bearish MACD)'\n"
+    "3. Resolve pronouns like 'it/they/those/which one' from <conversation_history>. "
+    "Never ask the user to repeat themselves.\n\n"
+
+    "## CONVERSATION MEMORY RULES:\n"
+    "1. Read <conversation_history> carefully before answering.\n"
+    "2. For follow-up questions, use stocks and data from previous turns.\n"
+    "3. Do NOT repeat prices, indicators, or news summaries already stated in the last "
+    "assistant message.\n\n"
+
+    "## THINKING (INTERNAL ONLY):\n"
+    "Before writing your answer, briefly think through: which indicators are present, "
+    "what the news implies, and what the single most important insight is. "
+    "Do NOT output this thinking — go straight to your prose answer.\n\n"
+
+    "## CORRECT BEHAVIOR EXAMPLE:\n"
+    "User: 'Should I buy NICA?'\n"
+    "Context: RSI=46, MACD=-3.75, BB Position=30%, no bullish news\n"
+    "WRONG: 'It seems like a good time to buy NICA based on the neutral RSI.'\n"
+    "CORRECT: 'NICA doesn't offer a compelling entry right now — the MACD has turned "
+    "negative and the price is pressing against the lower Bollinger Band without showing "
+    "any bounce. RSI at 46 is neutral, not oversold, so there's no technical floor to "
+    "buy against yet. Wait for RSI to recover above 52 or the MACD to flatten before "
+    "reconsidering. DISCLAIMER: Educational only.'\n"
 )
 
 NO_CONTEXT_RESPONSE = (
@@ -120,7 +146,7 @@ PROVIDERS = [
         "model": "llama-3.1-8b-instant",
         "priority": 1,
         "daily_token_limit": 500_000,
-        "auth_style": "bearer",       # Authorization: Bearer <key>
+        "auth_style": "bearer",
     },
     {
         "name": "google_ai_studio",
@@ -129,7 +155,7 @@ PROVIDERS = [
         "model": "gemini-2.5-flash",
         "priority": 2,
         "daily_token_limit": 1_500_000,
-        "auth_style": "query_param",   # ?key=<key> appended to URL
+        "auth_style": "query_param",   # ?key=<key> — NOT Bearer header
     },
     {
         "name": "openrouter",
@@ -143,7 +169,7 @@ PROVIDERS = [
     {
         "name": "ollama",
         "base_url": "http://localhost:11434/v1/chat/completions",
-        "api_key_env": None,           # No key needed
+        "api_key_env": None,
         "model": "llama3.2:3b",
         "priority": 4,
         "daily_token_limit": 999_999_999,
@@ -157,21 +183,14 @@ PROVIDERS = [
 async def call_llm(prompt_or_messages: str | list[dict], max_tokens: int = 800) -> tuple[str, str]:
     """
     Calls LLM using the fallback chain.
-
-    Tries providers in priority order. Skips exhausted providers.
-
-    Returns:
-        (answer_text, provider_name_used, tokens_used)
-
-    Raises:
-        RuntimeError: If ALL providers fail (caller should return 503).
+    Returns: (answer_text, provider_name_used, tokens_used)
+    Raises: RuntimeError if ALL providers fail.
     """
     errors = []
 
     for provider in PROVIDERS:
         name = provider["name"]
 
-        # Skip if no API key configured (except Ollama)
         api_key = None
         if provider["api_key_env"]:
             api_key = config(provider["api_key_env"], default="")
@@ -179,7 +198,6 @@ async def call_llm(prompt_or_messages: str | list[dict], max_tokens: int = 800) 
                 errors.append(f"{name}: no API key configured")
                 continue
 
-        # Skip if provider marked exhausted
         if is_llm_provider_exhausted(name):
             errors.append(f"{name}: marked exhausted (rate-limited)")
             continue
@@ -193,35 +211,19 @@ async def call_llm(prompt_or_messages: str | list[dict], max_tokens: int = 800) 
         except _ProviderRateLimited as e:
             mark_llm_provider_exhausted(name, ttl=3600)
             errors.append(f"{name}: rate limited (429) — {e}")
-            logger.warning(
-                "LLM provider %s rate limited (429), skipping for 1h",
-                name,
-                extra={"event": "llm_rate_limited", "provider": name},
-            )
+            logger.warning("LLM provider %s rate limited (429), skipping for 1h", name)
 
         except _ProviderAuthError as e:
             mark_llm_provider_exhausted(name, ttl=86400)
             errors.append(f"{name}: auth error (401/403) — {e}")
-            logger.warning(
-                "LLM provider %s auth error, skipping for 24h",
-                name,
-                extra={"event": "llm_auth_error", "provider": name},
-            )
+            logger.warning("LLM provider %s auth error, skipping for 24h", name)
 
         except Exception as e:
             errors.append(f"{name}: {type(e).__name__}: {e}")
-            logger.warning(
-                "LLM provider %s failed: %s",
-                name, e,
-                extra={"event": "llm_provider_error", "provider": name},
-            )
+            logger.warning("LLM provider %s failed: %s", name, e)
 
-    # All providers failed
     error_summary = "; ".join(errors)
-    logger.error(
-        "All LLM providers failed: %s", error_summary,
-        extra={"event": "llm_chain_exhausted"},
-    )
+    logger.error("All LLM providers failed: %s", error_summary)
     raise RuntimeError(f"All LLM providers failed: {error_summary}")
 
 
@@ -242,30 +244,21 @@ async def _call_provider(
 ) -> tuple[str, int]:
     """
     Makes a single OpenAI-compatible chat completion request.
-
-    Returns:
-        (answer_text, tokens_used)
-
-    Raises:
-        _ProviderRateLimited on 429
-        _ProviderAuthError on 401/403
-        Exception on any other error
+    Returns: (answer_text, tokens_used)
     """
     name = provider["name"]
     url = provider["base_url"]
     model = provider["model"]
     auth_style = provider["auth_style"]
 
-    # Build headers
     headers = {"Content-Type": "application/json"}
     if auth_style == "bearer" and api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     elif auth_style == "query_param" and api_key:
-        # Google AI Studio: append key as query parameter
+        # Google AI Studio uses ?key= param ONLY — no Bearer header
         separator = "&" if "?" in url else "?"
         url = f"{url}{separator}key={api_key}"
 
-    # Build request body (OpenAI-compatible format)
     if isinstance(prompt_or_messages, list):
         messages_payload = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -290,14 +283,12 @@ async def _call_provider(
 
     latency_ms = int((time.time() - start) * 1000)
 
-    # Handle error status codes
     if resp.status_code == 429:
         raise _ProviderRateLimited(resp.text[:200])
     if resp.status_code in (401, 403):
         raise _ProviderAuthError(resp.text[:200])
     resp.raise_for_status()
 
-    # Parse response
     data = resp.json()
     choices = data.get("choices", [])
     if not choices:
@@ -305,28 +296,19 @@ async def _call_provider(
 
     answer = choices[0].get("message", {}).get("content", "").strip()
 
-    # Estimate tokens used
     usage = data.get("usage", {})
     tokens_used = usage.get("total_tokens", 0)
     if not tokens_used:
-        # Fallback estimation: words / 0.75
-        tokens_used = int(len(prompt.split()) / 0.75) + int(
+        prompt_text = " ".join(m.get("content", "") for m in messages_payload)
+        tokens_used = int(len(prompt_text.split()) / 0.75) + int(
             len(answer.split()) / 0.75
         )
 
-    # Track usage
     track_llm_tokens(name, tokens_used)
 
     logger.info(
         "LLM call to %s: %d tokens, %dms, model=%s",
         name, tokens_used, latency_ms, model,
-        extra={
-            "event": "llm_call",
-            "provider": name,
-            "model": model,
-            "tokens_used": tokens_used,
-            "latency_ms": latency_ms,
-        },
     )
 
     return answer, tokens_used
@@ -339,31 +321,37 @@ def build_rag_prompt(
     tool_outputs: list[str],
     max_input_tokens: int = 3000,
     route: str = None,
+    history: list[dict] = None,
 ) -> str:
     """
     Assembles the final RAG prompt from tool outputs.
 
-    Enforces a 3,000 token budget (4,500 for news-heavy routes). If over budget,
-    truncates the longest tool output by 20% iteratively. Never truncates the question.
-
-    Args:
-        question: User's original question.
-        tool_outputs: List of plain-text tool output strings.
-        max_input_tokens: Max token budget for the prompt.
-        route: Query classification route.
-
-    Returns:
-        Assembled prompt string ready for call_llm().
+    Enforces a token budget. If over budget, truncates the longest
+    tool output by 20% iteratively. Never truncates the question.
     """
     if route in ('full_agent', 'compare'):
         max_input_tokens = max(max_input_tokens, 4500)
 
-    # Filter out empty outputs
     outputs = [o for o in tool_outputs if o and o.strip()]
 
+    # Build conversation history block
+    history_block = ""
+    if history and route != 'screener':
+        history_block = "<conversation_history>\n"
+        for turn in history[-6:]:
+            role = turn.get("role", "user")
+            # Smart truncation: assistant messages are verbose, user messages are short
+            content = turn.get("content", "")
+            if role == "assistant":
+                content = content[:600]
+            else:
+                content = content[:400]
+            history_block += f"<{role}>{content}</{role}>\n"
+        history_block += "</conversation_history>\n\n"
+
     if not outputs:
-        # No context — still ask the question
         return (
+            f"{history_block}"
             f"QUESTION: {question}\n\n"
             "No live data was retrieved for this query. "
             "Do NOT invent prices, RSI values, or indicator numbers. "
@@ -371,7 +359,6 @@ def build_rag_prompt(
             "for current data. You may explain concepts generally.\n"
         )
 
-    # Build context block
     def _build_prompt(parts: list[str]) -> str:
         xml_parts = []
         for part in parts:
@@ -386,53 +373,48 @@ def build_rag_prompt(
                 xml_parts.append(f"<graph_data{sym_attr}>\n{part_str}\n</graph_data>")
             elif "Recent news for" in part_str:
                 xml_parts.append(f"<news_data{sym_attr}>\n{part_str}\n</news_data>")
+            elif "NO_NEWS_FOUND" in part_str:
+                xml_parts.append(f"<news_data{sym_attr}>\nNO_NEWS_FOUND. Do not mention any news sources. Do not invent headlines.\n</news_data>")
             elif "From " in part_str:
                 xml_parts.append(f"<vector_data>\n{part_str}\n</vector_data>")
             else:
                 xml_parts.append(f"<additional_context>\n{part_str}\n</additional_context>")
-                
+
         context = "\n".join(xml_parts)
         return (
+            f"{history_block}"
             f"<context>\n{context}\n</context>\n\n"
             f"QUESTION: {question}\n\n"
-            "INSTRUCTIONS: Using ONLY the context above, answer concisely.\n"
-            "- You MUST write your step-by-step thinking process inside a `<thinking>` block before the final answer.\n"
-            "- The UI already displays a PriceCard, SignalsTable, and a News Section with the actual headlines.\n"
-            "- Do NOT list LTP, Volume, Range, RSI, MACD, EMA, BB values as bullet points.\n"
-            "- Do NOT list news headlines as bullet points.\n"
-            "- Instead, provide a 2-3 sentence SYNTHESIS combining price action, indicator momentum, and news sentiment.\n"
-            "- NEVER include a 'Compare' or 'Comparison' section unless multiple stocks were queried.\n"
-            "- NEVER explain what indicators mean or how they work.\n"
-            "- NEVER write '[context unclear]' or similar placeholders.\n"
-            "- Begin your response with: <thinking>\n"
+            "INSTRUCTIONS:\n"
+            "- Answer using ONLY the context above and conversation_history for follow-ups.\n"
+            "- Write in flowing prose like a senior analyst — NO bullet points, NO headers, NO numbered lists.\n"
+            "- Lead with the single most interesting insight, not a price recap.\n"
+            "- Weave indicators and news into ONE narrative paragraph per stock.\n"
+            "- The UI already shows price cards and news headlines — do NOT repeat raw numbers or list headlines.\n"
+            "- If <news_data> is empty or says NO_NEWS_FOUND: say 'No recent news found for [SYMBOL].' Do NOT invent news.\n"
+            "- If a symbol appears in the question but has no context data, say so directly.\n"
+            "- End with: DISCLAIMER: This is for educational purposes only. Not financial advice.\n"
         )
 
     def _estimate_tokens(text: str) -> int:
-        """Estimate token count: words / 0.75."""
         return max(1, int(len(text.split()) / 0.75))
 
-    # Iteratively truncate if over budget
     working_outputs = list(outputs)
     prompt = _build_prompt(working_outputs)
     iterations = 0
-    max_iterations = 10  # safety guard
+    max_iterations = 10
 
     while _estimate_tokens(prompt) > max_input_tokens and iterations < max_iterations:
-        # Find the longest output
         longest_idx = max(range(len(working_outputs)),
                          key=lambda i: len(working_outputs[i]))
         current = working_outputs[longest_idx]
-
-        # Truncate by 20%
         new_len = int(len(current) * 0.8)
         if new_len < 50:
-            # Too short — remove entirely
             working_outputs.pop(longest_idx)
             if not working_outputs:
                 break
         else:
             working_outputs[longest_idx] = current[:new_len] + "..."
-
         prompt = _build_prompt(working_outputs)
         iterations += 1
 
@@ -440,11 +422,6 @@ def build_rag_prompt(
         logger.warning(
             "RAG prompt truncated after %d iterations (budget: %d tokens)",
             iterations, max_input_tokens,
-            extra={
-                "event": "prompt_truncation",
-                "iterations": iterations,
-                "max_tokens": max_input_tokens,
-            },
         )
 
     return prompt
@@ -458,24 +435,16 @@ async def stream_llm(
     """
     Streaming LLM call with fallback chain.
 
-    Tries providers in priority order. For each provider, sends
-    stream=True to the OpenAI-compatible chat completions endpoint,
-    then parses SSE data lines and yields individual tokens.
+    Yields str tokens as they arrive, then a final
+    ("__meta__", provider_name, tokens_used) tuple.
 
-    Yields:
-        str: Individual content tokens as they arrive.
-        tuple: ("__meta__", provider_name, tokens_used) as the final yield,
-               so the caller knows which provider was used and how many tokens.
-
-    If ALL streaming attempts fail, falls back to non-streaming
-    call_llm() and yields the entire response at once.
+    Falls back to non-streaming call_llm() if all streaming attempts fail.
     """
     errors = []
 
     for provider in PROVIDERS:
         name = provider["name"]
 
-        # Skip if no API key configured (except Ollama)
         api_key = None
         if provider["api_key_env"]:
             api_key = config(provider["api_key_env"], default="")
@@ -483,7 +452,6 @@ async def stream_llm(
                 errors.append(f"{name}: no API key")
                 continue
 
-        # Skip if provider marked exhausted
         if is_llm_provider_exhausted(name):
             errors.append(f"{name}: exhausted")
             continue
@@ -496,7 +464,6 @@ async def stream_llm(
                 token_count += 1
                 yield token
 
-            # Track approximate token usage
             if isinstance(prompt_or_messages, list):
                 prompt_text = " ".join([m.get("content", "") for m in prompt_or_messages])
             else:
@@ -504,50 +471,31 @@ async def stream_llm(
             prompt_tokens = int(len(prompt_text.split()) / 0.75)
             track_llm_tokens(name, prompt_tokens + token_count)
 
-            logger.info(
-                "stream_llm via %s: ~%d tokens streamed",
-                name, token_count,
-                extra={
-                    "event": "stream_llm",
-                    "provider": name,
-                    "tokens_streamed": token_count,
-                },
-            )
-            # Yield metadata as final item
+            logger.info("stream_llm via %s: ~%d tokens streamed", name, token_count)
             yield ("__meta__", name, prompt_tokens + token_count)
             return
 
-        except _ProviderRateLimited as e:
+        except _ProviderRateLimited:
             mark_llm_provider_exhausted(name, ttl=3600)
             errors.append(f"{name}: 429")
-            logger.warning(
-                "stream_llm %s rate limited", name,
-                extra={"event": "stream_rate_limited", "provider": name},
-            )
+            logger.warning("stream_llm %s rate limited", name)
 
-        except _ProviderAuthError as e:
+        except _ProviderAuthError:
             mark_llm_provider_exhausted(name, ttl=86400)
             errors.append(f"{name}: auth error")
-            logger.warning(
-                "stream_llm %s auth error", name,
-                extra={"event": "stream_auth_error", "provider": name},
-            )
+            logger.warning("stream_llm %s auth error", name)
 
         except Exception as e:
             errors.append(f"{name}: {e}")
-            logger.warning(
-                "stream_llm %s failed: %s", name, e,
-                extra={"event": "stream_provider_error", "provider": name},
-            )
+            logger.warning("stream_llm %s failed: %s", name, e)
 
     # All streaming attempts failed — fall back to non-streaming
     logger.warning(
         "All stream providers failed (%s), falling back to call_llm",
         "; ".join(errors),
-        extra={"event": "stream_fallback"},
     )
     try:
-        answer, provider_name, tokens_used = await call_llm(prompt, max_tokens)
+        answer, provider_name, tokens_used = await call_llm(prompt_or_messages, max_tokens)
         yield answer
         yield ("__meta__", provider_name, tokens_used)
     except RuntimeError:
@@ -565,8 +513,7 @@ async def stream_llm_chat(
 ) -> AsyncGenerator[str | tuple, None]:
     """
     Lightweight streaming LLM call for casual conversation.
-    Uses CHAT_SYSTEM_PROMPT (friendly, no closed-book restriction).
-    Max 200 tokens — keeps responses concise.
+    Uses CHAT_SYSTEM_PROMPT. Max 200 tokens.
     """
     prompt = f"User: {question}\nAssistant:"
     async for token in _stream_with_system(CHAT_SYSTEM_PROMPT, prompt, max_tokens=200):
@@ -595,7 +542,6 @@ async def _stream_with_system(
             errors.append(f"{name}: exhausted")
             continue
         try:
-            name_ = provider["name"]
             url = provider["base_url"]
             model = provider["model"]
             auth_style = provider["auth_style"]
@@ -620,17 +566,17 @@ async def _stream_with_system(
                 async with client.stream("POST", url, json=body, headers=headers) as resp:
                     if resp.status_code == 429:
                         await resp.aread()
-                        mark_llm_provider_exhausted(name_, ttl=3600)
-                        errors.append(f"{name_}: 429")
+                        mark_llm_provider_exhausted(name, ttl=3600)
+                        errors.append(f"{name}: 429")
                         continue
                     if resp.status_code in (401, 403):
                         await resp.aread()
-                        mark_llm_provider_exhausted(name_, ttl=86400)
-                        errors.append(f"{name_}: auth error")
+                        mark_llm_provider_exhausted(name, ttl=86400)
+                        errors.append(f"{name}: auth error")
                         continue
                     if resp.status_code >= 400:
                         await resp.aread()
-                        errors.append(f"{name_}: HTTP {resp.status_code}")
+                        errors.append(f"{name}: HTTP {resp.status_code}")
                         continue
                     import json as _json
                     async for line in resp.aiter_lines():
@@ -649,8 +595,8 @@ async def _stream_with_system(
                         except Exception:
                             continue
             prompt_tokens = int(len(user_prompt.split()) / 0.75)
-            track_llm_tokens(name_, prompt_tokens + token_count)
-            yield ("__meta__", name_, prompt_tokens + token_count)
+            track_llm_tokens(name, prompt_tokens + token_count)
+            yield ("__meta__", name, prompt_tokens + token_count)
             return
         except Exception as e:
             errors.append(f"{name}: {e}")
@@ -658,7 +604,6 @@ async def _stream_with_system(
 
     # Fallback: non-streaming
     try:
-        import httpx as _httpx
         for provider in PROVIDERS:
             name = provider["name"]
             api_key = None
@@ -686,7 +631,7 @@ async def _stream_with_system(
                 "max_tokens": max_tokens,
                 "temperature": 0.75,
             }
-            async with _httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(url, json=body, headers=headers)
                 resp.raise_for_status()
                 data = resp.json()
@@ -710,29 +655,21 @@ async def _stream_provider(
 ) -> AsyncGenerator[str, None]:
     """
     Streams tokens from a single OpenAI-compatible provider.
-
-    Sends stream=True, reads the response line by line,
-    parses SSE 'data: {...}' lines, and yields delta.content tokens.
-
-    Raises:
-        _ProviderRateLimited on 429
-        _ProviderAuthError on 401/403
-        Exception on any other error
+    Raises _ProviderRateLimited, _ProviderAuthError, or Exception on failure.
     """
     name = provider["name"]
     url = provider["base_url"]
     model = provider["model"]
     auth_style = provider["auth_style"]
 
-    # Build headers
     headers = {"Content-Type": "application/json"}
     if auth_style == "bearer" and api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     elif auth_style == "query_param" and api_key:
+        # Google AI Studio: ?key= param ONLY, no Bearer header
         separator = "&" if "?" in url else "?"
         url = f"{url}{separator}key={api_key}"
 
-    # Build request body with stream=True
     if isinstance(prompt_or_messages, list):
         messages_payload = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -754,10 +691,7 @@ async def _stream_provider(
     start = time.time()
 
     async with httpx.AsyncClient(timeout=60.0) as client:
-        async with client.stream(
-            "POST", url, json=body, headers=headers
-        ) as resp:
-            # Handle error status codes before reading body
+        async with client.stream("POST", url, json=body, headers=headers) as resp:
             if resp.status_code == 429:
                 await resp.aread()
                 raise _ProviderRateLimited(f"{name} returned 429")
@@ -766,25 +700,15 @@ async def _stream_provider(
                 raise _ProviderAuthError(f"{name} returned {resp.status_code}")
             if resp.status_code >= 400:
                 await resp.aread()
-                raise Exception(
-                    f"{name} returned HTTP {resp.status_code}: "
-                    f"{resp.text[:200]}"
-                )
+                raise Exception(f"{name} returned HTTP {resp.status_code}: {resp.text[:200]}")
 
-            # Parse SSE lines
             async for line in resp.aiter_lines():
                 line = line.strip()
-                if not line:
+                if not line or not line.startswith("data:"):
                     continue
-                if not line.startswith("data:"):
-                    continue
-
                 data_str = line[5:].strip()
-
-                # End of stream marker
                 if data_str == "[DONE]":
                     break
-
                 try:
                     import json
                     chunk = json.loads(data_str)
@@ -795,15 +719,7 @@ async def _stream_provider(
                         if content:
                             yield content
                 except (json.JSONDecodeError, KeyError, IndexError):
-                    # Skip malformed chunks
                     continue
 
     latency_ms = int((time.time() - start) * 1000)
-    logger.info(
-        "Streamed from %s in %dms", name, latency_ms,
-        extra={
-            "event": "stream_complete",
-            "provider": name,
-            "latency_ms": latency_ms,
-        },
-    )
+    logger.info("Streamed from %s in %dms", name, latency_ms)

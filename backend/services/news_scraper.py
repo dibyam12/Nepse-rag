@@ -42,6 +42,103 @@ from services.cache_service import get_cached_news, cache_news
 
 logger = logging.getLogger("nepse_rag")
 
+# --- Relevance Filter for news_scraper (Change 3A) ---
+import re
+from datetime import datetime, timedelta
+
+FINANCIAL_KEYWORDS = [
+    'dividend', 'ipo', 'agm', 'egm', 'bonus', 'right share',
+    'profit', 'loss', 'eps', 'quarter', 'annual report', 'merger',
+    'acquisition', 'capital', 'interest rate', 'nrb', 'sebon',
+    'listing', 'delisting', 'price', 'volume', 'trading',
+    'bank', 'finance', 'insurance', 'hydropower', 'microfinance',
+    'nepse', 'share', 'stock', 'ltp', 'market'
+]
+
+TITLE_BLOCKLIST = [
+    'performing in nepal', 'concert', 'movie', 'cricket', 'football',
+    'live video', 'weather', 'election', 'politics', 'tourism',
+    'recipe', 'health tip', 'festival'
+]
+
+def _strip_markdown(text: str) -> str:
+    if not text:
+        return ""
+    text = re.sub(r'#{1,6}\s*', '', text)        # headers
+    text = re.sub(r'\*{1,2}([^*]+)\*{1,2}', r'\1', text)  # bold/italic
+    text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)  # links
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
+def _is_relevant_news(article: dict, symbol: str, stock_name: str = "") -> bool:
+    """
+    Relevance filter: symbol OR company name first word must appear
+    somewhere in title+excerpt. Generic financial keywords alone are NOT enough.
+    """
+    title = (article.get('title', '') or article.get('headline', '') or '').lower()
+    excerpt = (article.get('excerpt', '') or article.get('summary', '') or article.get('body', '') or article.get('snippet', '') or '').lower()
+    text = title + ' ' + excerpt
+
+    # Block obviously irrelevant titles
+    if any(block in title for block in TITLE_BLOCKLIST):
+        return False
+
+    # Symbol OR company name first word must appear in text
+    symbol_lower = symbol.lower()
+    first_word = stock_name.split()[0].lower() if stock_name else ""
+
+    symbol_match = symbol_lower in text
+    name_match = first_word and len(first_word) > 2 and first_word in text
+
+    if not symbol_match and not name_match:
+        return False
+
+    # Stricter check for non-primary sources (not sharesansar/merolagani/nepsealpha)
+    # The symbol or company name first word must appear in the title specifically.
+    nepal_financial_sources = {'sharesansar.com', 'merolagani.com', 'nepsealpha.com'}
+    source = article.get('source', '').lower()
+    is_primary = any(p in source for p in nepal_financial_sources)
+    if not is_primary:
+        url = article.get('url', '')
+        if url:
+            try:
+                domain = _extract_domain(url).lower()
+                if any(p in domain for p in nepal_financial_sources):
+                    is_primary = True
+            except Exception:
+                pass
+
+    if not is_primary:
+        title_symbol_match = symbol_lower in title
+        title_name_match = first_word and len(first_word) > 2 and first_word in title
+        if not title_symbol_match and not title_name_match:
+            return False
+
+    # Filter articles older than 6 months if date is available
+    pub_date = article.get('published_at') or article.get('date') or article.get('published_date') or article.get('publishedAt')
+    if pub_date:
+        try:
+            if isinstance(pub_date, str):
+                parsed_dt = _parse_date(pub_date)
+                if parsed_dt:
+                    parsed = datetime.combine(parsed_dt, datetime.min.time())
+                else:
+                    parsed = datetime.fromisoformat(pub_date.replace('Z', '+00:00')[:19])
+            else:
+                import datetime as dt_mod
+                if isinstance(pub_date, dt_mod.date) and not isinstance(pub_date, dt_mod.datetime):
+                    parsed = datetime.combine(pub_date, datetime.min.time())
+                else:
+                    parsed = pub_date
+            
+            if datetime.now() - parsed > timedelta(days=180):
+                return False
+        except Exception:
+            pass
+
+    return True
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -146,55 +243,75 @@ async def _get_company_name(symbol: str) -> str:
 
 async def scrape_sharesansar(symbol: str) -> list[dict]:
     """
-    ShareSansar AJAX endpoint — returns HTML fragment with news links.
-    Tries two endpoints with multiple selector fallbacks.
+    ShareSansar AJAX endpoint — returns company-specific news.
+    First GETs the company detail page to extract token and companyid,
+    then POSTs to /company-news to fetch real news items.
     """
-    endpoints = [
-        f"https://www.sharesansar.com/newslist?symbol={symbol.upper()}",
-        f"https://www.sharesansar.com/company/{symbol.upper()}",
-    ]
-
-    for url in endpoints:
-        try:
-            async with httpx.AsyncClient(
-                timeout=httpx.Timeout(6.0, connect=3.0),
-                headers={**HEADERS, "X-Requested-With": "XMLHttpRequest"},
-                follow_redirects=True,
-            ) as client:
-                resp = await client.get(url)
-
+    url = f"https://www.sharesansar.com/company/{symbol.upper()}"
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(10.0, connect=4.0),
+            headers=HEADERS,
+            follow_redirects=True,
+        ) as client:
+            resp = await client.get(url)
             if resp.status_code != 200:
-                continue
+                logger.warning("scrape_sharesansar(%s) GET page failed: %d", symbol, resp.status_code)
+                return []
 
             soup = BeautifulSoup(resp.text, "html.parser")
+            
+            # Extract CSRF token
+            token_tag = soup.find('meta', attrs={'name': '_token'})
+            token = token_tag.get('content') if token_tag else None
+            
+            # Extract internal company ID
+            company_id_tag = soup.find(id='companyid')
+            company_id = company_id_tag.get_text(strip=True) if company_id_tag else None
+
+            if not token or not company_id:
+                logger.warning("scrape_sharesansar(%s) token or companyid not found", symbol)
+                return []
+
+            # POST to /company-news
+            post_url = "https://www.sharesansar.com/company-news"
+            post_headers = {
+                **HEADERS,
+                "X-CSRF-Token": token,
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": url,
+            }
+            post_data = {
+                "company": company_id,
+                "draw": "1",
+                "start": "0",
+                "length": "12",
+                "search[value]": "",
+                "search[regex]": "false",
+            }
+            
+            post_resp = await client.post(post_url, headers=post_headers, data=post_data)
+            if post_resp.status_code != 200:
+                logger.warning("scrape_sharesansar(%s) POST news failed: %d", symbol, post_resp.status_code)
+                return []
+
+            news_data = post_resp.json()
+            data_list = news_data.get('data', [])
             results = []
 
-            # Try selectors in order of specificity
-            selector_groups = [
-                "a[href*='/newsdetail/']",
-                ".featured-news-list a",
-                ".news-list a",
-                ".company-news a",
-                "article a",
-                ".news-item a",
-            ]
-
-            links = []
-            for sel in selector_groups:
-                links = soup.select(sel)
-                if links:
-                    break
-
-            for link in links[:8]:
-                headline = link.get_text(strip=True)
-                href = link.get("href", "")
-                if href and not href.startswith("http"):
-                    href = "https://www.sharesansar.com" + href
-                parent = link.parent
-                date_tag = parent.find(
-                    class_=lambda c: c and "date" in c.lower()
-                ) if parent else None
-                date_text = date_tag.get_text(strip=True) if date_tag else ""
+            for item in data_list:
+                title_html = item.get("title", "")
+                if not title_html:
+                    continue
+                # Parse title and href from HTML link tag inside title
+                title_soup = BeautifulSoup(title_html, "html.parser")
+                a_tag = title_soup.find("a")
+                if not a_tag:
+                    continue
+                headline = a_tag.get_text(strip=True)
+                href = a_tag.get("href", "")
+                
+                date_text = item.get("published_date") or ""
 
                 if headline and len(headline) > 10:
                     results.append({
@@ -205,14 +322,11 @@ async def scrape_sharesansar(symbol: str) -> list[dict]:
                         "snippet": "",
                     })
 
-            if results:
-                logger.debug("scrape_sharesansar(%s): %d items from %s", symbol, len(results), url)
-                return results
+            logger.debug("scrape_sharesansar(%s): found %d news items", symbol, len(results))
+            return results
 
-        except Exception as e:
-            logger.warning("scrape_sharesansar(%s) endpoint %s: %s", symbol, url, e)
-            continue
-
+    except Exception as e:
+        logger.warning("scrape_sharesansar(%s) failed: %s", symbol, e)
     return []
 
 
@@ -230,7 +344,7 @@ async def scrape_merolagani(symbol: str) -> list[dict]:
 
     try:
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(6.0, connect=3.0),
+            timeout=httpx.Timeout(10.0, connect=4.0),
             headers={
                 **HEADERS,
                 "Referer": f"https://merolagani.com/CompanyDetail.aspx?symbol={symbol}",
@@ -240,6 +354,11 @@ async def scrape_merolagani(symbol: str) -> list[dict]:
             resp = await client.get(api_url)
 
         if resp.status_code != 200:
+            return []
+
+        # Check if response is HTML (redirected to 404.aspx page served with status 200)
+        if "html" in resp.headers.get("content-type", "").lower() or resp.text.strip().startswith("<!DOCTYPE"):
+            logger.debug("scrape_merolagani(%s): handler returned HTML instead of JSON (likely 404 page)", symbol)
             return []
 
         # Try JSON first
@@ -318,7 +437,7 @@ async def scrape_nepsealpha(symbol: str) -> list[dict]:
     json_url = f"https://nepsealpha.com/nepse/1/company/{sym}/news"
     try:
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(6.0, connect=3.0),
+            timeout=httpx.Timeout(10.0, connect=4.0),
             headers={**HEADERS, "X-Requested-With": "XMLHttpRequest"},
             follow_redirects=True,
         ) as client:
@@ -355,7 +474,7 @@ async def scrape_nepsealpha(symbol: str) -> list[dict]:
     html_url = f"https://nepsealpha.com/stocks/{sym}/news"
     try:
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(6.0, connect=3.0),
+            timeout=httpx.Timeout(10.0, connect=4.0),
             headers=HEADERS,
             follow_redirects=True,
         ) as client:
@@ -430,9 +549,10 @@ async def scrape_nepalstock(symbol: str) -> list[dict]:
     url = f"https://nepalstock.com/company/detail/{symbol.upper()}"
     try:
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(8.0, connect=3.0),
+            timeout=httpx.Timeout(12.0, connect=4.0),
             headers=HEADERS,
             follow_redirects=True,
+            verify=False,
         ) as client:
             resp = await client.get(url)
 
@@ -502,7 +622,7 @@ async def fetch_rss_for_symbol(symbol: str, source_name: str, feed_url: str) -> 
     sym_lower = symbol.lower()
 
     try:
-        async with httpx.AsyncClient(timeout=6.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
                 feed_url,
                 headers={"User-Agent": HEADERS["User-Agent"]},
@@ -626,24 +746,24 @@ async def get_news_for_symbol(
     # ── Concurrent fetch from ALL sources ──────────────────────
     # Each wrapped in wait_for so a slow source never blocks others
     source_coros = {
-        "sharesansar":     asyncio.wait_for(scrape_sharesansar(symbol), timeout=7.0),
-        "merolagani":      asyncio.wait_for(scrape_merolagani(symbol), timeout=7.0),
-        "nepsealpha":      asyncio.wait_for(scrape_nepsealpha(symbol), timeout=7.0),
-        "nepalstock":      asyncio.wait_for(scrape_nepalstock(symbol), timeout=8.0),
+        "sharesansar":     asyncio.wait_for(scrape_sharesansar(symbol), timeout=12.0),
+        "merolagani":      asyncio.wait_for(scrape_merolagani(symbol), timeout=12.0),
+        "nepsealpha":      asyncio.wait_for(scrape_nepsealpha(symbol), timeout=12.0),
+        "nepalstock":      asyncio.wait_for(scrape_nepalstock(symbol), timeout=12.0),
         "rss-sharesansar": asyncio.wait_for(
             fetch_rss_for_symbol(symbol, "sharesansar-rss", RSS_FEEDS["sharesansar-rss"]),
-            timeout=6.0,
+            timeout=10.0,
         ),
         "rss-merolagani":  asyncio.wait_for(
             fetch_rss_for_symbol(symbol, "merolagani-rss", RSS_FEEDS["merolagani-rss"]),
-            timeout=6.0,
+            timeout=10.0,
         ),
         "ddg-multisite":   asyncio.wait_for(
             ddg_search_multi_site(symbol, stock_name, count=8),
-            timeout=10.0,
+            timeout=15.0,
         ),
-        "newsapi":         asyncio.wait_for(newsapi_search(newsapi_query, count=4), timeout=8.0),
-        "gnews":           asyncio.wait_for(gnews_search(symbol, stock_name, count=5), timeout=8.0),
+        "newsapi":         asyncio.wait_for(newsapi_search(newsapi_query, count=4), timeout=12.0),
+        "gnews":           asyncio.wait_for(gnews_search(symbol, stock_name, count=5), timeout=12.0),
     }
 
     source_names = list(source_coros.keys())
@@ -675,6 +795,9 @@ async def get_news_for_symbol(
 
     # Filter profile/index pages
     unique = [i for i in unique if _is_article_url(i.get("url", ""), symbol)]
+
+    # Filter by relevance (Change 3B)
+    unique = [a for a in unique if _is_relevant_news(a, symbol, stock_name)]
 
     # Sort by recency — items with dates first
     def _sort_key(item):
@@ -714,11 +837,11 @@ async def get_news_for_symbol(
         {
             "headline": (item.get("headline") or item.get("title", ""))[:200],
             "url": item.get("url", ""),
-            "summary": item.get("summary", "")[:500],
+            "summary": _strip_markdown(item.get("summary", ""))[:500],
             "published_date": str(item.get("published_date") or item.get("publishedAt") or ""),
             "source": item.get("source") or item.get("source_provider") or "web",
             "symbol": symbol,
-            "body": item.get("body", ""),
+            "body": _strip_markdown(item.get("body", "")),
         }
         for item in unique[:max_articles]
         if item.get("headline") or item.get("title")

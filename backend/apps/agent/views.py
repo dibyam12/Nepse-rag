@@ -79,6 +79,42 @@ def _save_messages(request, question, symbol, result, conversation_id=None):
     return convo.id
 
 
+def _enrich_signals_with_sector(signals):
+    """
+    Enriches signals with a fallback sector using SQL data and Graph data.
+    """
+    if not signals:
+        return signals
+
+    from services.db_service import get_stock_info
+    from services.graph_rag import query_stock_relationships
+    from services.agent import MERGED_SYMBOLS_MAP
+
+    all_signals_list = signals if isinstance(signals, list) else [signals]
+
+    for sig in all_signals_list:
+        if isinstance(sig, dict) and sig.get("symbol"):
+            sym = sig["symbol"]
+            active_symbol = MERGED_SYMBOLS_MAP.get(sym, sym)
+
+            sql_data = {}
+            try:
+                sql_data = get_stock_info(active_symbol) or {}
+            except Exception:
+                pass
+
+            graph_data = {}
+            try:
+                graph_data = query_stock_relationships(active_symbol) or {}
+            except Exception:
+                pass
+
+            sector = sql_data.get('sector') or graph_data.get('sector') or 'N/A'
+            sig["sector"] = sector
+
+    return signals
+
+
 class QueryView(APIView):
     """
     POST /api/query/
@@ -149,6 +185,9 @@ class QueryView(APIView):
                 {"error": "Internal error", "detail": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+        if result.get("signals"):
+            result["signals"] = _enrich_signals_with_sector(result["signals"])
 
         convo_id = _save_messages(
             request, question, symbol, result, conversation_id
@@ -239,27 +278,38 @@ class StreamQueryView(View):
             loop.close()
 
     async def _async_stream(self, request, question, symbol, conversation_id):
-        """Async generator that produces SSE event strings."""
-        from services.agent import (
-            sql_tool, graph_tool, vector_tool, news_tool,
+        """
+        Async generator that produces SSE event strings.
+
+        Architecture:
+          - Cache hits:          replay tokens directly (no graph)
+          - CHAT route:          stream_llm_chat (no graph)
+          - Screener route:      direct db call (no graph)
+          - All other routes:    run_agent_streaming() → astream_events v2
+                                 The graph emits status events automatically
+                                 as each node executes, then we stream the
+                                 LLM answer from final_state via stream_llm.
+        """
+        from services.agent import run_agent_streaming
+        from services.query_router import classify_query, ROUTE_CHAT, extract_symbols
+        from services.llm_client import (
+            stream_llm, stream_llm_chat, build_rag_prompt,
+            NO_CONTEXT_RESPONSE, PROVIDERS,
         )
-        from services.query_router import classify_query, ROUTE_CHAT
-        from services.llm_client import stream_llm, stream_llm_chat, build_rag_prompt, NO_CONTEXT_RESPONSE
         from services.cache_service import (
-            get_cached_llm_response, cache_llm_response,
+            get_cached_llm_response, cache_llm_response, is_llm_provider_exhausted,
         )
+        from decouple import config as _decouple_config
 
         total_start = time.time()
 
-        # ── 1. Check cache first ──────────────────────────────────────────
+        # ── 1. Check cache ────────────────────────────────────────────────
         cached = get_cached_llm_response(question, symbol)
         if cached:
             answer = cached.get("answer", "")
             chunk_size = 10
             for i in range(0, len(answer), chunk_size):
-                chunk = answer[i:i + chunk_size]
-                yield f"data: {json.dumps({'type': 'token', 'content': chunk})}\n\n"
-
+                yield f"data: {json.dumps({'type': 'token', 'content': answer[i:i+chunk_size]})}\n\n"
             if cached.get("signals"):
                 yield f"data: {json.dumps({'type': 'signals', 'data': cached['signals']})}\n\n"
             if cached.get("citations"):
@@ -268,14 +318,12 @@ class StreamQueryView(View):
                 yield f"data: {json.dumps({'type': 'route', 'data': cached['route_used']})}\n\n"
             if cached.get("tools_called"):
                 yield f"data: {json.dumps({'type': 'tools', 'data': cached['tools_called']})}\n\n"
-            yield (
-                f"data: {json.dumps({'type': 'provider', 'data': cached.get('llm_provider_used', ''), 'tokens': cached.get('tokens_used', 0)})}\n\n"
-            )
+            yield f"data: {json.dumps({'type': 'provider', 'data': cached.get('llm_provider_used', ''), 'tokens': cached.get('tokens_used', 0)})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
-        # ── 1.5 Fetch conversation history & Check Redundancy ──────────────
-        history_messages = []
+        # ── 1.5 Fetch conversation history & check redundancy ─────────────
+        history = []
         omit_signals = False
         omit_citations = False
         q_lower = (question or "").lower()
@@ -288,13 +336,7 @@ class StreamQueryView(View):
                     db_msgs = DBMessage.objects.filter(
                         conversation_id=convo_id
                     ).order_by('-created_at')[:6]
-                    res = [{
-                        "role": m.role,
-                        "content": m.content,
-                        "has_signals": bool(m.signals),
-                        "has_citations": bool(m.citations)
-                    } for m in list(reversed(db_msgs))]
-                    return res
+                    return list(reversed(db_msgs))
                 except Exception as e:
                     logger.warning("Failed to fetch conversation history: %s", e)
                     return []
@@ -302,13 +344,14 @@ class StreamQueryView(View):
             history_data = await asyncio.to_thread(_fetch_history)
             if history_data:
                 for m in history_data:
-                    history_messages.append({
-                        "role": m["role"],
-                        "content": m["content"]
+                    trunc_len = 600 if m.role == 'assistant' else 400
+                    history.append({
+                        "role": m.role,
+                        "content": (m.content or "")[:trunc_len],
+                        "has_signals": bool(getattr(m, "signals", None)),
+                        "has_citations": bool(getattr(m, "citations", None)),
                     })
-                
-                # Check if we should omit signals/citations to reduce redundancy
-                last_assistant = next((m for m in reversed(history_data) if m["role"] == 'assistant'), None)
+                last_assistant = next((m for m in reversed(history_data) if m.role == 'assistant'), None)
                 if last_assistant:
                     explicit_request = any(w in q_lower for w in [
                         "show", "price", "news", "chart", "table", "indicators", "latest price",
@@ -318,24 +361,59 @@ class StreamQueryView(View):
                         omit_signals = True
                         omit_citations = True
 
-        # ── 2. Route the query ────────────────────────────────────────────
-        from services.query_router import extract_symbols
+        # ── 2. Classify query ─────────────────────────────────────────────
         q_symbols = extract_symbols(question)
 
-        # Only use the URL parameter symbol if no symbols were extracted from the question
+        # If no symbols in current question, try to recover from conversation history
+        # This handles follow-ups like "give me news about them" after comparing NICA+NCCB
+        if not q_symbols and history:
+            history_symbols = []
+            seen_syms = set()
+            for msg in reversed(history):
+                if msg.get("role") == "user":
+                    msg_syms = extract_symbols(msg.get("content", ""))
+                    for s in msg_syms:
+                        if s not in seen_syms:
+                            seen_syms.add(s)
+                            history_symbols.append(s)
+                    if history_symbols:
+                        break  # use symbols from most recent user message that had them
+            if history_symbols:
+                q_symbols = history_symbols
+
         if not q_symbols and symbol:
             enriched_question = f"{question} (regarding {symbol})"
             decision = classify_query(enriched_question)
             if not decision.symbols:
                 decision.symbols = [symbol]
             question = enriched_question
+        elif q_symbols:
+            # Inject recovered symbols into the question for proper routing
+            sym_str = " ".join(q_symbols)
+            enriched_question = f"{question} (regarding {sym_str})"
+            decision = classify_query(enriched_question)
+            if not decision.symbols:
+                decision.symbols = q_symbols
+            question = enriched_question
         else:
             decision = classify_query(question)
 
         route = decision.route
         all_symbols = list(decision.symbols)
+        if all_symbols:
+            symbol = all_symbols[0]
 
-        # ── CHAT short-circuit ────────────────────────────────────
+        _ROUTE_LABELS = {
+            'full_agent':  'Full Agent (SQL + Graph + News + Vector)',
+            'sql_graph':   'SQL + Graph retrieval',
+            'compare':     'Multi-symbol comparison',
+            'vector_only': 'Knowledge base search',
+            'screener':    'Stock screener',
+            'chat':        'Chat',
+        }
+        yield f"data: {json.dumps({'type': 'status', 'message': f'Query classified → {_ROUTE_LABELS.get(route, route)}' })}\n\n"
+
+        # ── CHAT short-circuit (bypasses graph) ───────────────────────────
         if route == ROUTE_CHAT:
             full_answer = []
             provider_used = "unknown"
@@ -343,8 +421,7 @@ class StreamQueryView(View):
             async for token in stream_llm_chat(question):
                 if isinstance(token, tuple) and token[0] == "__meta__":
                     provider_used = token[1]
-                    if len(token) > 2:
-                        tokens_used = token[2]
+                    tokens_used = token[2] if len(token) > 2 else 0
                     continue
                 full_answer.append(token)
                 yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
@@ -353,155 +430,164 @@ class StreamQueryView(View):
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
-        # Set the active symbol to the primary symbol queried
-        if all_symbols:
-            symbol = all_symbols[0]
+        # ── SCREENER short-circuit (bypasses graph) ───────────────────────
+        if route == 'screener':
+            from services.agent import sql_tool, graph_tool, vector_tool, news_tool
+            from services.query_router import ROUTE_VECTOR_ONLY, ROUTE_SQL_GRAPH, ROUTE_FULL_AGENT, ROUTE_COMPARE
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Running stock screener query...'})}\n\n"
+            from services.db_service import get_stocks_by_price_filter
+            stocks = await asyncio.to_thread(
+                get_stocks_by_price_filter,
+                sector=decision.sector,
+                max_price=decision.price_below,
+                min_price=decision.price_above,
+                limit=8,
+            )
+            tool_outputs = [stocks]
+            tools_called = ["sql_tool"]
+            all_citations = []
+            signals_payload = {}
 
-        from services.query_router import (
-            ROUTE_VECTOR_ONLY, ROUTE_SQL_GRAPH,
-            ROUTE_FULL_AGENT, ROUTE_COMPARE,
-        )
+            yield f"data: {json.dumps({'type': 'route', 'data': route})}\n\n"
+            yield f"data: {json.dumps({'type': 'tools', 'data': tools_called})}\n\n"
 
-        # ── 3. Run retrieval tools ────────────────────────────────────────
-        tools_called = []
-        all_citations = []
-        all_signals_list = []  # List of signals dicts, one per symbol
-        tool_outputs = []
+            source_count = len(tool_outputs)
+            yield f"data: {json.dumps({'type': 'status', 'message': f'{source_count} data source(s) gathered — building context window...'})}\n\n"
+            for _p in PROVIDERS:
+                _key = _decouple_config(_p["api_key_env"], default="") if _p["api_key_env"] else "local"
+                if _key and not is_llm_provider_exhausted(_p["name"]):
+                    _pname = _p["name"]
+                    yield f"data: {json.dumps({'type': 'status', 'message': f'Generating analysis via {_pname}...'})}\n\n"
+                    break
 
-        if route in (ROUTE_SQL_GRAPH, ROUTE_FULL_AGENT, ROUTE_COMPARE):
-            # FIX: Iterate ALL symbols, not just the first one from the URL param
-            syms_to_fetch = all_symbols if all_symbols else ([symbol] if symbol else [])
-            for sym in syms_to_fetch:
-                if not sym:
+            prompt = build_rag_prompt(question, tool_outputs, route=route, history=history)
+            full_answer = []
+            provider_used = "unknown"
+            tokens_used = 0
+            llm_max_tokens = 400
+            async for token in stream_llm(prompt, max_tokens=llm_max_tokens):
+                if isinstance(token, tuple) and token[0] == "__meta__":
+                    provider_used = token[1]
+                    tokens_used = token[2] if len(token) > 2 else 0
                     continue
-                yield f"data: {json.dumps({'type': 'status', 'message': f'Querying database for {sym} price & indicators...'})}\n\n"
-                sql_text, sql_cites, sql_signals = await sql_tool(sym)
-                if sql_text:
-                    tool_outputs.append(sql_text)
-                    if "sql_tool" not in tools_called:
-                        tools_called.append("sql_tool")
-                    all_citations.extend(sql_cites)
-                    if sql_signals:
-                        all_signals_list.append(sql_signals)
+                full_answer.append(token)
+                yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
 
-                yield f"data: {json.dumps({'type': 'status', 'message': f'Mapping {sym} sector & peer relationships...'})}\n\n"
-                graph_text, graph_cites = await graph_tool(question, sym)
-                if graph_text:
-                    tool_outputs.append(graph_text)
-                    if "graph_tool" not in tools_called:
-                        tools_called.append("graph_tool")
-                    all_citations.extend(graph_cites)
-
-        if route in (ROUTE_FULL_AGENT, ROUTE_COMPARE):
-            # FIX: Fetch news for ALL symbols CONCURRENTLY (not sequentially)
-            syms_to_fetch = [s for s in (all_symbols or ([symbol] if symbol else [])) if s]
-            if syms_to_fetch:
-                syms_label = ", ".join(syms_to_fetch)
-                yield f"data: {json.dumps({'type': 'status', 'message': f'Scraping news sources for {syms_label} (ShareSansar, MeroLagani, NepseAlpha, RSS)...'})}\n\n"
-                news_results = await asyncio.gather(
-                    *[
-                        asyncio.wait_for(news_tool(sym), timeout=22.0)
-                        for sym in syms_to_fetch
-                    ],
-                    return_exceptions=True,
-                )
-                for i, result in enumerate(news_results):
-                    sym = syms_to_fetch[i]
-                    if isinstance(result, asyncio.TimeoutError):
-                        logger.warning(
-                            "news_tool(%s): timed out in SSE stream", sym,
-                            extra={"event": "news_tool_sse_timeout", "symbol": sym},
-                        )
-                    elif isinstance(result, Exception):
-                        logger.warning(
-                            "news_tool(%s) error in SSE stream: %s", sym, result,
-                            extra={"event": "news_tool_sse_error", "symbol": sym},
-                        )
-                    else:
-                        news_text, news_cites = result
-                        if news_text:
-                            tool_outputs.append(news_text)
-                            if "news_tool" not in tools_called:
-                                tools_called.append("news_tool")
-                            all_citations.extend(news_cites)
-
-        # Only run vector_tool if the router included it in tools_needed
-        if "vector_tool" in decision.tools_needed:
-            yield f"data: {json.dumps({'type': 'status', 'message': 'Searching NEPSE knowledge base for relevant context...'})}\n\n"
-            vec_text, vec_cites = await vector_tool(question)
-            if vec_text:
-                tool_outputs.append(vec_text)
-                tools_called.append("vector_tool")
-                all_citations.extend(vec_cites)
-
-        # ── 4. Send route + tools before streaming starts ─────────────────
-        yield f"data: {json.dumps({'type': 'route', 'data': route})}\n\n"
-        yield f"data: {json.dumps({'type': 'tools', 'data': tools_called})}\n\n"
-
-        # Send ALL signals (array for multi-symbol, single dict for single)
-        signals_payload = {}
-        if all_signals_list:
-            signals_payload = all_signals_list if len(all_signals_list) > 1 else all_signals_list[0]
-            if not omit_signals:
-                yield f"data: {json.dumps({'type': 'signals', 'data': signals_payload})}\n\n"
-
-        if not tool_outputs:
-            answer_text = NO_CONTEXT_RESPONSE
-            chunk_size = 10
-            for i in range(0, len(answer_text), chunk_size):
-                chunk = answer_text[i:i + chunk_size]
-                yield f"data: {json.dumps({'type': 'token', 'content': chunk})}\n\n"
+            answer_text = "".join(full_answer)
+            if "DISCLAIMER" not in answer_text:
+                answer_text += DISCLAIMER
+                yield f"data: {json.dumps({'type': 'token', 'content': DISCLAIMER})}\n\n"
 
             total_latency = int((time.time() - total_start) * 1000)
+            yield f"data: {json.dumps({'type': 'provider', 'data': provider_used, 'tokens': tokens_used})}\n\n"
 
             full_response = {
-                "answer": answer_text,
-                "signals": [] if omit_signals else signals_payload,
-                "citations": [] if omit_citations else all_citations,
-                "route_used": route,
-                "tools_called": tools_called,
-                "latency_ms": total_latency,
-                "llm_provider_used": "none",
-                "tokens_used": 0,
+                "answer": answer_text, "signals": signals_payload,
+                "citations": all_citations, "route_used": route,
+                "tools_called": tools_called, "latency_ms": total_latency,
+                "llm_provider_used": provider_used, "tokens_used": tokens_used,
             }
             try:
                 cache_llm_response(question, symbol, full_response, ttl=3600)
             except Exception:
                 pass
-
             await asyncio.to_thread(_save_messages, request, question, symbol, full_response, conversation_id)
-
-            yield f"data: {json.dumps({'type': 'provider', 'data': 'none', 'tokens': 0})}\n\n"
             yield f"data: {json.dumps({'type': 'done', 'latency_ms': total_latency})}\n\n"
             return
 
-        # ── 5. Build RAG prompt and stream LLM response ───────────────────
-        yield f"data: {json.dumps({'type': 'status', 'message': 'Synthesizing data and generating analysis...'})}\n\n"
-        prompt = build_rag_prompt(question, tool_outputs, route=route)
+        # ── 3. MAIN PATH: run_agent_streaming via astream_events v2 ──────
+        from services.query_router import ROUTE_VECTOR_ONLY, ROUTE_SQL_GRAPH, ROUTE_FULL_AGENT, ROUTE_COMPARE
+
+        final_state: dict = {}
+        emitted_statuses: set = set()
+
+        async for agent_event in run_agent_streaming(question, symbol):
+            etype = agent_event.get("type")
+
+            if etype == "status":
+                msg = agent_event["message"]
+                # Deduplicate status messages
+                if msg not in emitted_statuses:
+                    emitted_statuses.add(msg)
+                    yield f"data: {json.dumps({'type': 'status', 'message': msg})}\n\n"
+
+            elif etype == "final_state":
+                final_state = agent_event.get("state", {})
+
+            elif etype == "error":
+                yield f"data: {json.dumps({'type': 'error', 'message': agent_event.get('message', 'Agent error')})}\n\n"
+                yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                return
+
+        # ── 4. Extract data from final state ──────────────────────────────
+        route_used    = final_state.get("route", route)
+        tools_called  = final_state.get("tools_called", [])
+        all_citations = final_state.get("citations", [])
+
+        raw_signals = final_state.get("signals", {})
+        all_signals_list = raw_signals if isinstance(raw_signals, list) else ([raw_signals] if raw_signals else [])
+        signals_payload  = all_signals_list if len(all_signals_list) > 1 else (all_signals_list[0] if all_signals_list else {})
+
+        if signals_payload:
+            signals_payload = _enrich_signals_with_sector(signals_payload)
+
+        yield f"data: {json.dumps({'type': 'route', 'data': route_used})}\n\n"
+        yield f"data: {json.dumps({'type': 'tools', 'data': tools_called})}\n\n"
+        if signals_payload and not omit_signals:
+            yield f"data: {json.dumps({'type': 'signals', 'data': signals_payload})}\n\n"
+            if isinstance(signals_payload, dict) and signals_payload.get("symbol"):
+                pass  # lastSymbol set on frontend via signals.symbol
+
+        # ── 5. Stream LLM answer from final state ─────────────────────────
+        # The graph's synthesize_node already called the LLM (non-streaming).
+        # We replay the stored answer as tokens for the typewriter effect.
+        # For the best UX, we re-stream using stream_llm over the same prompt.
+        tool_outputs = [
+            final_state.get(k, "")
+            for k in ("sql_output", "graph_output", "vector_output", "news_output")
+            if final_state.get(k, "").strip()
+        ]
+
         full_answer = []
         provider_used = "unknown"
         tokens_used = 0
-        # Use fewer tokens for single-symbol queries (UI cards show the data)
-        llm_max_tokens = 800 if route == ROUTE_COMPARE else 400
 
-        llm_payload = history_messages + [{"role": "user", "content": prompt}] if history_messages else prompt
-        async for token in stream_llm(llm_payload, max_tokens=llm_max_tokens):
-            if isinstance(token, tuple) and token[0] == "__meta__":
-                provider_used = token[1]
-                if len(token) > 2:
-                    tokens_used = token[2]
-                continue
-            full_answer.append(token)
-            yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
+        if tool_outputs:
+            source_count = len(tool_outputs)
+            yield f"data: {json.dumps({'type': 'status', 'message': f'{source_count} data source(s) gathered — building context window...'})}\n\n"
+
+            # Show which provider we'll use
+            for _p in PROVIDERS:
+                _key = _decouple_config(_p["api_key_env"], default="") if _p["api_key_env"] else "local"
+                if _key and not is_llm_provider_exhausted(_p["name"]):
+                    _pname = _p["name"]
+                    yield f"data: {json.dumps({'type': 'status', 'message': f'Generating analysis via {_pname}...'})}\n\n"
+                    break
+
+            prompt = build_rag_prompt(question, tool_outputs, route=route_used, history=history)
+            llm_max_tokens = 800 if route_used == ROUTE_COMPARE else 400
+
+            async for token in stream_llm(prompt, max_tokens=llm_max_tokens):
+                if isinstance(token, tuple) and token[0] == "__meta__":
+                    provider_used = token[1]
+                    tokens_used = token[2] if len(token) > 2 else 0
+                    continue
+                full_answer.append(token)
+                yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
+        else:
+            # No context — replay NO_CONTEXT_RESPONSE as tokens
+            chunk_size = 10
+            for i in range(0, len(NO_CONTEXT_RESPONSE), chunk_size):
+                chunk = NO_CONTEXT_RESPONSE[i:i+chunk_size]
+                full_answer.append(chunk)
+                yield f"data: {json.dumps({'type': 'token', 'content': chunk})}\n\n"
 
         answer_text = "".join(full_answer)
-
         if "DISCLAIMER" not in answer_text:
-            disclaimer_token = DISCLAIMER
-            yield f"data: {json.dumps({'type': 'token', 'content': disclaimer_token})}\n\n"
-            answer_text += disclaimer_token
+            answer_text += DISCLAIMER
+            yield f"data: {json.dumps({'type': 'token', 'content': DISCLAIMER})}\n\n"
 
-        # ── 6. Send citations + provider after streaming ──────────────────
+        # ── 6. Send citations + metadata ──────────────────────────────────
         if all_citations and not omit_citations:
             yield f"data: {json.dumps({'type': 'citations', 'data': all_citations})}\n\n"
 
@@ -509,12 +595,12 @@ class StreamQueryView(View):
 
         total_latency = int((time.time() - total_start) * 1000)
 
-        # ── 7. Cache the full response ────────────────────────────────────
+        # ── 7. Cache + save ───────────────────────────────────────────────
         full_response = {
             "answer": answer_text,
-            "signals": [] if omit_signals else signals_payload,
+            "signals": {} if omit_signals else signals_payload,
             "citations": [] if omit_citations else all_citations,
-            "route_used": route,
+            "route_used": route_used,
             "tools_called": tools_called,
             "latency_ms": total_latency,
             "llm_provider_used": provider_used,
@@ -524,21 +610,20 @@ class StreamQueryView(View):
             cache_llm_response(question, symbol, full_response, ttl=3600)
         except Exception:
             pass
-
-        # ── 8. Save to conversation history ───────────────────────────────
         await asyncio.to_thread(_save_messages, request, question, symbol, full_response, conversation_id)
 
-        # ── 9. Done event ─────────────────────────────────────────────────
+        # ── 8. Done ───────────────────────────────────────────────────────
         yield f"data: {json.dumps({'type': 'done', 'latency_ms': total_latency})}\n\n"
 
         logger.info(
             "SSE stream complete: route=%s, tools=%s, provider=%s, %dms",
-            route, tools_called, provider_used, total_latency,
+            route_used, tools_called, provider_used, total_latency,
             extra={
                 "event": "sse_query",
                 "question": question[:100],
                 "symbol": symbol,
-                "route": route,
+                "route": route_used,
                 "latency_ms": total_latency,
             },
         )
+

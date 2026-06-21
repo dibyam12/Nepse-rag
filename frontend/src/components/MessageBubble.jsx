@@ -4,6 +4,7 @@
  * User messages: right-aligned teal bubble.
  * Assistant messages: avatar header + tool chips + structured content sections.
  */
+import { useState, useEffect } from 'react';
 import { TrendingUp } from 'lucide-react';
 import LoadingIndicator from './LoadingIndicator';
 import StatusIndicator from './StatusIndicator';
@@ -65,6 +66,22 @@ function extractThinking(content) {
 
 export default function MessageBubble({ message }) {
   const isUser = message.role === 'user';
+
+  const [showStreamingContent, setShowStreamingContent] = useState(!message.isStreaming);
+
+  useEffect(() => {
+    if (!message.isStreaming) {
+      setShowStreamingContent(true);
+      return;
+    }
+
+    if (message.isStreaming && !showStreamingContent) {
+      const timer = setTimeout(() => {
+        setShowStreamingContent(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [message.isStreaming, showStreamingContent]);
 
   if (isUser) {
     return (
@@ -138,46 +155,52 @@ export default function MessageBubble({ message }) {
       )}
 
       <div className="bubble-assistant">
-        {/* Loading state — show step timeline during streaming */}
-        {isThinking && (
-          <StatusIndicator
-            statusMessage={message.statusMessage}
-            steps={message.statusSteps}
-          />
-        )}
+        {!showStreamingContent ? (
+          <LoadingIndicator />
+        ) : (
+          <>
+            {/* Loading state — show step timeline during streaming */}
+            {isThinking && (
+              <StatusIndicator
+                statusMessage={message.statusMessage}
+                steps={message.statusSteps}
+              />
+            )}
 
-        {/* Price card(s) — one per symbol */}
-        {signalsList.map((sig, idx) =>
-          sig?.close != null ? (
-            <PriceCard
-              key={sig.symbol || idx}
-              symbol={sig.symbol || symbol}
-              signals={sig}
-            />
-          ) : null
-        )}
+            {/* Price card(s) — one per symbol */}
+            {signalsList.map((sig, idx) =>
+              sig?.close != null ? (
+                <PriceCard
+                  key={sig.symbol || idx}
+                  symbol={sig.symbol || symbol}
+                  signals={sig}
+                />
+              ) : null
+            )}
 
-        {/* Main LLM text */}
-        {displayContent && (
-          <div
-            className="prose"
-            dangerouslySetInnerHTML={{ __html: mdToHtml(displayContent) }}
-          />
-        )}
+            {/* Main LLM text */}
+            {displayContent && (
+              <div
+                className="prose"
+                dangerouslySetInnerHTML={{ __html: mdToHtml(displayContent) }}
+              />
+            )}
 
-        {/* Technical indicators (show for all symbols in the list) */}
-        {signalsList.map((sig, idx) => (
-          sig && Object.keys(sig).length > 1 ? (
-            <SignalsTable key={sig.symbol || idx} signals={sig} />
-          ) : null
-        ))}
+            {/* Technical indicators (show for all symbols in the list) */}
+            {signalsList.map((sig, idx) => (
+              sig && Object.keys(sig).length > 1 ? (
+                <SignalsTable key={sig.symbol || idx} signals={sig} />
+              ) : null
+            ))}
 
-        {/* News */}
-        <NewsSection citations={citations} symbol={symbol} content={content} />
+            {/* News */}
+            <NewsSection citations={citations} symbol={symbol} content={content} />
 
-        {/* Sources / Citations */}
-        {citations && citations.length > 0 && (
-          <CitationList citations={citations} />
+            {/* Sources / Citations */}
+            {citations && citations.length > 0 && (
+              <CitationList citations={citations} />
+            )}
+          </>
         )}
       </div>
 

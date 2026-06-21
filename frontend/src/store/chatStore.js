@@ -15,6 +15,10 @@ const useChatStore = create((set, get) => ({
   lastSymbol: null,
   symbols: [],
 
+  // ── Token buffer state (50ms batching for smooth typewriter effect) ──
+  _tokenBuffers: {},   // { [messageId: string]: string[] }
+  _flushTimers:  {},   // { [messageId: string]: timeoutId }
+
   // ── Conversation State ────────────────────────────
   conversations: [],
   activeConversationId: null,
@@ -72,31 +76,64 @@ const useChatStore = create((set, get) => ({
   },
 
   appendToken: (messageId, token) => {
+    const s = get();
+
+    // Accumulate token into the buffer
+    const buf = s._tokenBuffers[messageId] || [];
+    buf.push(token);
+
+    // Cancel any pending flush timer for this message
+    const existingTimer = s._flushTimers[messageId];
+    if (existingTimer) clearTimeout(existingTimer);
+
+    // Schedule a flush in 50ms
+    const timerId = setTimeout(() => {
+      const current = get();
+      const pending = (current._tokenBuffers[messageId] || []).join('');
+      if (!pending) return;
+      set((state) => ({
+        _tokenBuffers: { ...state._tokenBuffers, [messageId]: [] },
+        _flushTimers:  { ...state._flushTimers,  [messageId]: null },
+        messages: state.messages.map((m) =>
+          m.id === messageId
+            ? { ...m, content: m.content + pending }
+            : m
+        ),
+      }));
+    }, 50);
+
     set((s) => ({
-      messages: s.messages.map((m) =>
-        m.id === messageId
-          ? { ...m, content: m.content + token }
-          : m
-      ),
+      _tokenBuffers: { ...s._tokenBuffers, [messageId]: buf },
+      _flushTimers:  { ...s._flushTimers,  [messageId]: timerId },
     }));
   },
 
   finalizeMessage: (messageId, data) => {
+    // Force-flush any remaining buffered tokens before marking done
+    const state = get();
+    const timer = state._flushTimers[messageId];
+    if (timer) clearTimeout(timer);
+    const remaining = (state._tokenBuffers[messageId] || []).join('');
+
     set((s) => ({
+      _tokenBuffers: { ...s._tokenBuffers, [messageId]: [] },
+      _flushTimers:  { ...s._flushTimers,  [messageId]: null },
       messages: s.messages.map((m) =>
         m.id === messageId
           ? {
               ...m,
+              // Append any unflushed tokens first
+              content: m.content + remaining,
               isStreaming: false,
               statusMessage: '',
               statusSteps: [],
-              signals: data.signals || m.signals,
-              citations: data.citations || m.citations,
-              toolsUsed: data.toolsUsed || m.toolsUsed,
-              routeUsed: data.routeUsed || m.routeUsed,
+              signals:     data.signals     || m.signals,
+              citations:   data.citations   || m.citations,
+              toolsUsed:   data.toolsUsed   || m.toolsUsed,
+              routeUsed:   data.routeUsed   || m.routeUsed,
               llmProvider: data.llmProvider || m.llmProvider,
-              tokenUsage: data.tokenUsage || m.tokenUsage,
-              latencyMs: data.latencyMs || m.latencyMs,
+              tokenUsage:  data.tokenUsage  || m.tokenUsage,
+              latencyMs:   data.latencyMs   || m.latencyMs,
             }
           : m
       ),
@@ -179,8 +216,10 @@ const useChatStore = create((set, get) => ({
                     ? {
                         ...m,
                         statusMessage: data.message,
-                        // Accumulate steps for the timeline display
-                        statusSteps: [...(m.statusSteps || []), data.message],
+                        // Accumulate steps for timeline — deduplicate
+                        statusSteps: (m.statusSteps || []).includes(data.message)
+                          ? m.statusSteps
+                          : [...(m.statusSteps || []), data.message],
                       }
                     : m
                 ),
