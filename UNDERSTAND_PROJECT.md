@@ -20,6 +20,7 @@ Here is the exact purpose of every file in the backend codebase, so you can poin
 9. **[graph_rag.py](file:///d:/Home/BE/projects/nepse_rag/backend/services/graph_rag.py)**: Queries the sector-peer graph database in memory using JSON-based node-edge relationships.
 10. **[web_search.py](file:///d:/Home/BE/projects/nepse_rag/backend/services/web_search.py)**: Queries DuckDuckGo and NewsAPI as fallbacks for live news searches.
 11. **[cache_service.py](file:///d:/Home/BE/projects/nepse_rag/backend/services/cache_service.py)**: Manages redis/file caches, keeps track of LLM token counters, and handles API rate-limiting sleep cycles.
+12. **[groundedness.py](file:///d:/Home/BE/projects/nepse_rag/backend/services/groundedness.py)**: Performs post-generation groundedness checks by splitting response sentences into claims and scoring them via cross-encoder entailment against context. Appends a warning if score is below 0.5.
 
 ### Django Apps Layer (`backend/apps/`)
 1. **`accounts/`**: Manages user authentication, profile serialization, registration, login/logout endpoints, and database models (`Conversation`, `Message`) to store chat logs.
@@ -49,15 +50,20 @@ Here is the exact purpose of every file in the backend codebase, so you can poin
 
 ### C. How are Model Responses Evaluated and how do you determine which is "Right"?
 We evaluate our system across two primary dimensions:
-1.  **Deterministic Route Verification**:
-    - We use a test suite (`test_questions.json`) to map sample questions to their `expected_tools` (e.g. asking for RSI must trigger `sql_tool`). We run an automated script to verify the Query Router selects the correct tools.
-2.  **RAGAS Quality Metrics**:
+1.  **Deterministic Route Verification & Quality Gate Scripts**:
+    - **Off-Topic Deflection (`eval_negative.py`)**: Checks 18 queries (politics, weather, Everest, Tesla, Bitcoin) to verify the system rejects off-topic chats.
+    - **News Integrity (`eval_news.py`)**: Validates news fetches for 5 symbols, confirming markdown stripping and ensuring Indian NHPC is blocked.
+    - **Retrieval Diversity (`eval_retrieval.py`)**: Tests source file diversity across 10 queries, validating that cross-encoder reranking is active and functional.
+2.  **RAGAS Quality Metrics (`eval_runner.py`)**:
+    - Uses a gold dataset of 30 hand-crafted test questions (`test_questions.json`).
+    - Uses Google AI (Gemini) as the LLM judge for evaluation.
     - **Faithfulness**: Evaluates whether the LLM's final answer is derived *only* from the retrieved context. (If the LLM outputs a price or number not found in the XML context block, its faithfulness score drops, signaling a hallucination).
-    - **Answer Relevance**: Checks if the response directly addresses the user's question, penalizing rambling.
-    - **Context Recall**: Verifies that the retrieval tools successfully retrieved the actual information required to answer the query.
+    - **Answer Relevancy**: Checks if the response directly addresses the user's question, penalizing rambling.
+    - **Context Precision**: Verifies that the retrieval tools successfully retrieved the actual information required to answer the query.
 *   **How to determine which is "Right"?**
     - The ground truth is the database and scrapers.
     - We verify that the model's `<thinking>` block contains a **Chain-of-Verification (CoV)** where it lists every claim and marks it as `[VERIFIED: <source>]`. Any final response where the values match the XML data block and has zero external fabrications is determined to be a correct ("right") response.
+    - RAGAS targets: Faithfulness > 0.8, Answer Relevancy > 0.7, Context Precision > 0.6.
 
 ---
 

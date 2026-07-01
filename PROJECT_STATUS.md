@@ -15,7 +15,7 @@
 | 3 | RAG System (Vector + Graph) | COMPLETE | 100% |
 | 4 | Agentic LLM Orchestration (LangGraph) | COMPLETE | 100% |
 | 5 | Frontend (React + Vite) | COMPLETE | 100% |
-| 6 | Evaluation & Documentation | IN PROGRESS | 30% |
+| 6 | Evaluation & Documentation | COMPLETE | 100% |
 
 ---
 
@@ -331,3 +331,29 @@ nepse_rag/
 - Disabled Google CSE (403) and SerpAPI (429) with placeholder functions
 - Added `services/cache_service.py` with TTL-based caching + LLM token tracking
 - Verified pipeline: NewsAPI returns 2 articles, DuckDuckGo returns 3-5 per symbol
+
+---
+
+## Phase 6: Evaluation & Documentation — COMPLETE
+
+### What Was Done
+- [x] **Cross-Encoder Reranking (`services/vector_rag.py`)**: Integrated `cross-encoder/ms-marco-MiniLM-L-6-v2` to rerank top-10 bi-encoder ChromaDB retrievals, returning top-3. This prevents broad files like `fundamental_analysis_guide.txt` from dominating search results.
+- [x] **Post-Generation Groundedness Checker (`services/groundedness.py`)**: Built an entailment-based checker using the cross-encoder to grade LLM answers against context. If the average groundedness score is `< 0.5`, the system appends a warning disclaimer to the streamed response.
+- [x] **RAGAS Evaluation Suite (`evaluation/eval_runner.py`)**: Implemented a full test suite with 30 representative questions across 7 categories (stock analysis, news, anti-hallucination, definitional, comparison, negative prompts, and sub-related). Uses Google AI (Gemini) as the LLM judge.
+- [x] **Negative Prompt Rejection Evaluator (`evaluation/eval_negative.py`)**: Automated checking of off-topic deflection (Mt Everest, Tesla, Bitcoin, politics, weather) to ensure the agent stays in character.
+- [x] **News Reliability Test (`evaluation/eval_news.py`)**: Direct validation of news fetches for 5 symbols (NABIL, NICA, NHPC, SBL, UPPER) checking for articles, markdown leaks, and Indian NHPC filtering.
+- [x] **Retrieval Diversity Test (`evaluation/eval_retrieval.py`)**: Tests source file diversity and checks the effectiveness of cross-encoder reranking.
+- [x] **Bug Fixes**:
+  - [x] Strict anti-hallucination rules (Rule 8: Forbidden financial ratios list in `llm_client.py`).
+  - [x] Ambiguous symbol disambiguation (NHPC Nepal-specific filters in `news_scraper.py`).
+  - [x] Clear conversation history in screener-to-query transitions to avoid history context pollution in `views.py`.
+  - [x] Tighter regex-based symbol matching (expanded `_EXCLUDED_WORDS` in `query_router.py`).
+  - [x] Robust markdown, HTML, and entity stripping in frontend `NewsSection.jsx`.
+
+### Key Files
+- `services/groundedness.py` — Entailment-based groundedness checker
+- `evaluation/eval_runner.py` — RAGAS metric runner using Gemini judge
+- `evaluation/eval_negative.py` — Off-topic query rejection tests
+- `evaluation/eval_news.py` — News pipeline validator (no markdown, no Indian NHPC)
+- `evaluation/eval_retrieval.py` — Vector retrieval diversity and reranking checks
+- `evaluation/test_questions.json` — 30-question gold dataset

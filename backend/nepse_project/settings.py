@@ -225,8 +225,10 @@ GRAPH_DATA_PATH = str(BASE_DIR / 'indexes' / 'graph_data.json')
 # Vector RAG — chunk_size=256 to fit 300-token tool output budget
 VECTOR_CHUNK_SIZE = 256
 VECTOR_CHUNK_OVERLAP = 30
-VECTOR_TOP_K = 4
-VECTOR_MIN_SCORE = 0.25  # Filter low-relevance chunks to avoid off-topic noise
+VECTOR_TOP_K = 10             # Over-retrieve count (bi-encoder)
+VECTOR_RERANK_TOP_K = 3       # Final count after cross-encoder reranking
+VECTOR_MIN_SCORE = 0.25       # Filter low-relevance chunks to avoid off-topic noise
+CROSS_ENCODER_MODEL = 'cross-encoder/ms-marco-MiniLM-L-6-v2'  # Reranking model
 
 # Graph RAG
 GRAPH_REBUILD_ON_STARTUP = False

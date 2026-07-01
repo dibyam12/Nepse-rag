@@ -5,7 +5,28 @@
  */
 import { ExternalLink, AlertCircle, Clock } from 'lucide-react';
 
-const cleanSnippet = (text) => text?.replace(/[#*_`]/g, '').slice(0, 120);
+/**
+ * Strips markdown, HTML tags, and entities from text.
+ * Handles: [text](url), ![img](url), **bold**, *italic*, `code`,
+ *          ### headers, <tags>, &entities;, excessive whitespace.
+ */
+const stripMarkdown = (text) => {
+  if (!text) return '';
+  return text
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '')            // ![img](url) remove
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')           // [text](url) → text
+    .replace(/<[^>]+>/g, '')                            // HTML tags
+    .replace(/&[a-z]+;/gi, ' ')                        // HTML entities
+    .replace(/#{1,6}\s*/g, '')                          // Headers
+    .replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1')           // Bold/italic
+    .replace(/`([^`]+)`/g, '$1')                        // Inline code
+    .replace(/\n{2,}/g, ' ')                            // Multiple newlines
+    .replace(/\s+/g, ' ')                               // Collapse whitespace
+    .trim();
+};
+
+const cleanSnippet = (text) => stripMarkdown(text).slice(0, 150);
+const cleanHeadline = (text) => stripMarkdown(text).slice(0, 300);
 
 export default function NewsSection({ citations, symbol, content }) {
   const newsCitations = citations?.filter((c) => c.type === 'news') || [];
@@ -84,7 +105,7 @@ export default function NewsSection({ citations, symbol, content }) {
           <div className="news-item">
             <div className="news-dot" />
             <div className="news-content">
-              <div className="news-title">{article.headline || 'No title'}</div>
+              <div className="news-title">{cleanHeadline(article.headline || 'No title')}</div>
               {(article.summary || article.excerpt || article.body || article.snippet) && (
                 <div className="news-snippet">
                   {cleanSnippet(article.summary || article.excerpt || article.body || article.snippet)}

@@ -61,6 +61,11 @@ TITLE_BLOCKLIST = [
     'recipe', 'health tip', 'festival'
 ]
 
+# Symbols that clash with Indian/global companies — require Nepal context
+AMBIGUOUS_SYMBOLS = {'NHPC', 'NTC', 'SBI', 'API', 'NFS'}
+NEPAL_MARKERS = ['nepal', 'nepse', 'nepali', 'kathmandu', 'nrb', 'sebon', 'pokhara', 'biratnagar']
+NEPAL_DOMAINS = ['sharesansar', 'merolagani', 'nepsealpha', 'nepalstock', 'nepalipaisa', 'sharehubnepal', '.com.np']
+
 def _strip_markdown(text: str) -> str:
     if not text:
         return ""
@@ -136,6 +141,16 @@ def _is_relevant_news(article: dict, symbol: str, stock_name: str = "") -> bool:
                 return False
         except Exception:
             pass
+
+    # Extra disambiguation for symbols that clash with Indian/global companies
+    # e.g. NHPC (Nepal) vs NHPC (India), NTC (Nepal) vs NTC (India)
+    if symbol.upper() in AMBIGUOUS_SYMBOLS:
+        combined_text = (title + ' ' + excerpt + ' ' + article.get('source', '')).lower()
+        url = (article.get('url', '') or '').lower()
+        has_nepal = any(m in combined_text or m in url for m in NEPAL_MARKERS)
+        has_nepal_domain = any(d in url for d in NEPAL_DOMAINS)
+        if not has_nepal and not has_nepal_domain:
+            return False
 
     return True
 

@@ -432,6 +432,9 @@ class StreamQueryView(View):
 
         # ── SCREENER short-circuit (bypasses graph) ───────────────────────
         if route == 'screener':
+            # Clear history for screener queries — screener results should
+            # never pollute follow-up context or inject spurious symbols
+            history = []
             from services.agent import sql_tool, graph_tool, vector_tool, news_tool
             from services.query_router import ROUTE_VECTOR_ONLY, ROUTE_SQL_GRAPH, ROUTE_FULL_AGENT, ROUTE_COMPARE
             yield f"data: {json.dumps({'type': 'status', 'message': 'Running stock screener query...'})}\n\n"
@@ -586,6 +589,35 @@ class StreamQueryView(View):
         if "DISCLAIMER" not in answer_text:
             answer_text += DISCLAIMER
             yield f"data: {json.dumps({'type': 'token', 'content': DISCLAIMER})}\n\n"
+
+        # ── 5.5. Groundedness check (best-effort, non-blocking) ───────────
+        try:
+            from services.groundedness import check_groundedness
+            context_chunks = [
+                final_state.get(k, "")
+                for k in ("sql_output", "graph_output", "vector_output", "news_output")
+                if final_state.get(k, "").strip()
+            ]
+            if context_chunks:
+                g_result = await asyncio.to_thread(
+                    check_groundedness, answer_text, context_chunks
+                )
+                if g_result.score < 0.5:
+                    grounding_note = (
+                        "\n\n⚠️ [Note: some claims in this response could not be "
+                        "fully verified from available data. Please cross-check "
+                        "specific figures on sharesansar.com or merolagani.com.]"
+                    )
+                    answer_text += grounding_note
+                    yield f"data: {json.dumps({'type': 'token', 'content': grounding_note})}\n\n"
+
+                logger.info(
+                    "Groundedness score for '%s': %.2f (%d flagged / %d total)",
+                    question[:50], g_result.score,
+                    len(g_result.flagged_claims), g_result.total_claims,
+                )
+        except Exception as e:
+            logger.warning("Groundedness check failed (non-fatal): %s", e)
 
         # ── 6. Send citations + metadata ──────────────────────────────────
         if all_citations and not omit_citations:

@@ -1,17 +1,272 @@
 [
   {
-    "question": "What is the current RSI of NABIL?",
-    "expected_tools": ["sql_tool"],
-    "category": "indicator_query"
+    "question": "What is the current price and technical analysis of NABIL?",
+    "category": "stock_analysis",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "NABIL's current close price, RSI, MACD and other indicators from database with sector context.",
+    "expected_behavior": "Should return actual SQL data with price, RSI, MACD values from database",
+    "negative": false
   },
   {
-    "question": "Compare NABIL with its sector peers",
+    "question": "Show me NICA signals and indicators",
+    "category": "stock_analysis",
+    "expected_route": "sql_graph",
     "expected_tools": ["sql_tool", "graph_tool"],
-    "category": "comparison"
+    "ground_truth": "NICA's OHLCV data and technical indicators from Neon DB.",
+    "expected_behavior": "Should display price card with indicators, no invented data",
+    "negative": false
+  },
+  {
+    "question": "Tell me about NHPC stock",
+    "category": "stock_analysis",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "NHPC (Nepal Hydro) price data and sector info. News should be Nepal-specific only.",
+    "expected_behavior": "Should show Nepal NHPC data, NOT Indian NHPC articles",
+    "negative": false
+  },
+  {
+    "question": "What is the RSI and MACD of SBL?",
+    "category": "stock_analysis",
+    "expected_route": "sql_graph",
+    "expected_tools": ["sql_tool", "graph_tool"],
+    "ground_truth": "SBL's RSI and MACD values from the indicators database.",
+    "expected_behavior": "Should return actual RSI and MACD values, not generic explanations",
+    "negative": false
+  },
+  {
+    "question": "How is UPPER performing?",
+    "category": "stock_analysis",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "UPPER's current price, indicators, and recent news.",
+    "expected_behavior": "Should show UPPER data with analyst-style commentary",
+    "negative": false
   },
   {
     "question": "What are the latest news about NABIL?",
-    "expected_tools": ["news_tool"],
-    "category": "news_query"
+    "category": "news_query",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "Recent news articles about Nabil Bank from Nepali financial sources.",
+    "expected_behavior": "Should return real articles from sharesansar/merolagani, no markdown artifacts",
+    "negative": false
+  },
+  {
+    "question": "Give me news for NICA",
+    "category": "news_query",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "Recent news articles about NIC Asia Bank.",
+    "expected_behavior": "Real articles, no off-topic results",
+    "negative": false
+  },
+  {
+    "question": "Any recent announcements for NHPC?",
+    "category": "news_query",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "Nepal NHPC hydro company news only, not Indian NHPC.",
+    "expected_behavior": "Nepal-only results, Indian NHPC articles filtered out",
+    "negative": false
+  },
+  {
+    "question": "What's happening with SBL stock recently?",
+    "category": "news_query",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "Recent SBL news and price movement.",
+    "expected_behavior": "Real Nepali source articles, clean headlines",
+    "negative": false
+  },
+  {
+    "question": "Latest news for UPPER",
+    "category": "news_query",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "Recent Upper Tamakoshi hydro news.",
+    "expected_behavior": "Should return real articles or say no recent news found",
+    "negative": false
+  },
+  {
+    "question": "What is NABIL's NPL ratio?",
+    "category": "anti_hallucination",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "Data not available — check quarterly reports on sharesansar.com or merolagani.com",
+    "expected_behavior": "Should say data not available, NOT invent 3.37% or any specific number",
+    "negative": false
+  },
+  {
+    "question": "What is NICA's ROE?",
+    "category": "anti_hallucination",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "That specific ratio is not in current data.",
+    "expected_behavior": "Should say data not available, NOT invent a percentage",
+    "negative": false
+  },
+  {
+    "question": "Tell me NABIL's P/E ratio and book value",
+    "category": "anti_hallucination",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "P/E ratio and book value are not in current data.",
+    "expected_behavior": "Should say not available, NOT fabricate numbers",
+    "negative": false
+  },
+  {
+    "question": "What is SBL's cost of funds and CD ratio?",
+    "category": "anti_hallucination",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "Those specific ratios are not in current data.",
+    "expected_behavior": "Should say not available, direct to quarterly reports",
+    "negative": false
+  },
+  {
+    "question": "What is NHPC's net profit margin for last quarter?",
+    "category": "anti_hallucination",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "Quarterly financial data is not available in current context.",
+    "expected_behavior": "Should say not available, NOT invent quarterly figures",
+    "negative": false
+  },
+  {
+    "question": "What is RSI?",
+    "category": "definitional",
+    "expected_route": "vector_only",
+    "expected_tools": ["vector_tool"],
+    "ground_truth": "RSI (Relative Strength Index) is a momentum oscillator that measures the speed and change of price movements on a scale of 0-100.",
+    "expected_behavior": "Should explain RSI from indicator_explanations.txt, not fundamental_analysis_guide.txt",
+    "negative": false
+  },
+  {
+    "question": "Explain MACD indicator",
+    "category": "definitional",
+    "expected_route": "vector_only",
+    "expected_tools": ["vector_tool"],
+    "ground_truth": "MACD (Moving Average Convergence Divergence) shows the relationship between two moving averages of a security's price.",
+    "expected_behavior": "Should explain MACD from domain knowledge docs",
+    "negative": false
+  },
+  {
+    "question": "What are the NEPSE trading rules?",
+    "category": "definitional",
+    "expected_route": "vector_only",
+    "expected_tools": ["vector_tool"],
+    "ground_truth": "NEPSE trading rules from nepse_rules.txt covering circuit breakers, trading hours, etc.",
+    "expected_behavior": "Should retrieve from nepse_rules.txt or faq_nepse_trading.txt",
+    "negative": false
+  },
+  {
+    "question": "Compare NABIL and NICA",
+    "category": "comparison",
+    "expected_route": "compare",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "Side-by-side comparison of NABIL and NICA price, indicators, sector, and news.",
+    "expected_behavior": "Should analyze BOTH symbols, not drop one",
+    "negative": false
+  },
+  {
+    "question": "Which is better: SBL or NABIL?",
+    "category": "comparison",
+    "expected_route": "compare",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "Comparison with explicit ranking based on technical indicators.",
+    "expected_behavior": "Should compare both and give a ranked assessment",
+    "negative": false
+  },
+  {
+    "question": "Compare NHPC vs UPPER",
+    "category": "comparison",
+    "expected_route": "compare",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "Hydropower sector comparison of NHPC and UPPER.",
+    "expected_behavior": "Both symbols analyzed, sector noted as hydropower",
+    "negative": false
+  },
+  {
+    "question": "What is the height of Mt Everest?",
+    "category": "negative_offtopic",
+    "expected_route": "vector_only",
+    "expected_tools": ["vector_tool"],
+    "ground_truth": "I only discuss NEPSE-listed stocks.",
+    "expected_behavior": "Should politely decline — not a stock market question",
+    "negative": true
+  },
+  {
+    "question": "Should I buy Tesla stock?",
+    "category": "negative_offtopic",
+    "expected_route": "vector_only",
+    "expected_tools": [],
+    "ground_truth": "I only discuss NEPSE-listed stocks. Tesla is not listed on NEPSE.",
+    "expected_behavior": "Should decline — Tesla is not a NEPSE stock",
+    "negative": true
+  },
+  {
+    "question": "What is Bitcoin price today?",
+    "category": "negative_offtopic",
+    "expected_route": "vector_only",
+    "expected_tools": [],
+    "ground_truth": "I only discuss NEPSE-listed stocks. Bitcoin is cryptocurrency, not NEPSE.",
+    "expected_behavior": "Should decline — crypto is out of scope",
+    "negative": true
+  },
+  {
+    "question": "Who is the Prime Minister of Nepal?",
+    "category": "negative_offtopic",
+    "expected_route": "chat",
+    "expected_tools": [],
+    "ground_truth": "I only discuss NEPSE-listed stocks and Nepal's stock market.",
+    "expected_behavior": "Should decline — political question, not stock-related",
+    "negative": true
+  },
+  {
+    "question": "What is the weather in Kathmandu today?",
+    "category": "negative_offtopic",
+    "expected_route": "vector_only",
+    "expected_tools": [],
+    "ground_truth": "I only discuss NEPSE-listed stocks. Weather is out of scope.",
+    "expected_behavior": "Should decline — weather is out of scope",
+    "negative": true
+  },
+  {
+    "question": "Is Nepal's GDP growing?",
+    "category": "sub_related",
+    "expected_route": "vector_only",
+    "expected_tools": ["vector_tool"],
+    "ground_truth": "May answer from NRB monetary policy context but should not use sql_tool or news_tool.",
+    "expected_behavior": "May discuss from domain knowledge, no stock-specific tools fired",
+    "negative": false
+  },
+  {
+    "question": "What does NRB do for the stock market?",
+    "category": "sub_related",
+    "expected_route": "vector_only",
+    "expected_tools": ["vector_tool"],
+    "ground_truth": "NRB regulates monetary policy which affects NEPSE through interest rates and liquidity.",
+    "expected_behavior": "Should answer from nrb_monetary_policy_context.txt",
+    "negative": false
+  },
+  {
+    "question": "How does SEBON regulate the market?",
+    "category": "sub_related",
+    "expected_route": "vector_only",
+    "expected_tools": ["vector_tool"],
+    "ground_truth": "SEBON is the securities regulator. Answer from sebon_circulars.txt.",
+    "expected_behavior": "Should answer from domain knowledge docs",
+    "negative": false
+  },
+  {
+    "question": "What are the best mutual funds in Nepal?",
+    "category": "sub_related",
+    "expected_route": "vector_only",
+    "expected_tools": ["vector_tool"],
+    "ground_truth": "May list mutual fund categories from domain knowledge but should not recommend specific funds.",
+    "expected_behavior": "Should discuss from domain knowledge, not fabricate specific fund performance",
+    "negative": false
   }
 ]

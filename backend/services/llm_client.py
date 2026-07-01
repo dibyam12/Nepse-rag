@@ -82,7 +82,14 @@ SYSTEM_PROMPT = (
     "6. NEVER extrapolate or calculate values not explicitly given.\n"
     "7. NEVER state specific financial ratios (NPL%, NPM%, ROE%, CAR%) for a named company "
     "unless that exact figure appears in the <context> block with its source. "
-    "Fabricating financial metrics is worse than saying 'data not available.'\n\n"
+    "Fabricating financial metrics is worse than saying 'data not available.'\n"
+    "8. FORBIDDEN FABRICATIONS — Do not generate ANY of these unless they appear in <context>:\n"
+    "   NPL ratio, Net Profit Margin, ROE, ROA, CAR, Cost of Funds, CD ratio, "
+    "   P/E ratio, P/B ratio, Book Value, EPS (specific number), Dividend Yield, "
+    "   operating profit, net interest income, provisions, loan loss ratio.\n"
+    "   If the user asks for any of these, respond: "
+    "   'That specific ratio is not in my current data. Check the company's latest "
+    "   quarterly report on sharesansar.com or merolagani.com for audited figures.'\n\n"
 
     "## INDICATOR CONSISTENCY RULES:\n"
     "1. RSI < 40: use bearish language. Never suggest buying.\n"
@@ -155,7 +162,7 @@ PROVIDERS = [
         "model": "gemini-2.5-flash",
         "priority": 2,
         "daily_token_limit": 1_500_000,
-        "auth_style": "query_param",   # ?key=<key> — NOT Bearer header
+        "auth_style": "bearer",
     },
     {
         "name": "openrouter",

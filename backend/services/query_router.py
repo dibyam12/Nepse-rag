@@ -82,6 +82,15 @@ _EXCLUDED_WORDS = frozenset({
     "HIM", "HIS", "LET", "PUT", "TOP", "TRY", "WHO", "WHY",
     "BIG", "END", "FAR", "GET", "GOT", "RUN", "SET", "SIT",
     "TEN", "YES", "YET", "NOT", "OUT",
+    # Additional false-positive words (common in financial queries)
+    "BOD", "NET", "FEE", "AIM", "KEY", "LOW", "ODD", "MAP",
+    "LOG", "TAX", "PAY", "CUT", "LED", "RAN", "FIT", "GAP",
+    "MET", "WON", "API", "ADD", "AVG", "MAX", "MIN", "SUM",
+    "DAY", "PER", "ALSO", "BEST", "JUST", "ONLY", "VERY",
+    "WHAT", "WHEN", "WILL", "WITH", "YOUR", "GOOD", "MUCH",
+    "SOME", "THAN", "THEM", "THEN", "THIS", "THAT", "FROM",
+    "SHOW", "TELL", "GIVE", "TAKE", "MAKE", "LIKE", "LIST",
+    "FALL", "FELL", "RISE", "ROSE", "DROP", "HIGH", "OPEN",
     # Trading terms (not tickers)
     "BUY", "SELL", "HOLD", "LONG", "SHORT", "BULL", "BEAR",
     # Indicator abbreviations (not tickers)

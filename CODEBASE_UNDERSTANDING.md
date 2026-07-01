@@ -68,9 +68,18 @@ nepse_rag/
 │   │   ├── indicators.py            # Technical indicator computation (pandas_ta)
 │   │   ├── news_scraper.py          # News pipeline: ShareSansar, MeroLagani, NepseAlpha scraping + DDG + NewsAPI
 │   │   ├── web_search.py            # DDG search, NewsAPI search, fetch_article() for URL text extraction
-│   │   ├── vector_rag.py            # ChromaDB vector search over domain docs
+│   │   ├── vector_rag.py            # ChromaDB vector search over domain docs + cross-encoder reranking
 │   │   ├── graph_rag.py             # JSON knowledge graph: sector/peer lookups
-│   │   └── cache_service.py         # Django DB cache helpers
+│   │   ├── cache_service.py         # Django DB cache helpers
+│   │   └── groundedness.py          # ⭐ Post-generation groundedness safety check (entailment based)
+│   ├── evaluation/                  # ⭐ EVALUATION SUITE ⭐
+│   │   ├── __init__.py
+│   │   ├── test_questions.json      # 30 golden test cases
+│   │   ├── eval_runner.py           # RAGAS metrics runner (Gemini LLM judge)
+│   │   ├── eval_news.py             # Direct news fetch & format validator
+│   │   ├── eval_retrieval.py        # Vector retrieval diversity validator
+│   │   ├── eval_negative.py         # Off-topic deflection validator
+│   │   └── results/                 # JSON outputs for completed evaluation runs
 │   ├── docs/                        # 18 domain knowledge .txt files (embedded into ChromaDB)
 │   ├── indexes/                     # graph_store.json + ChromaDB persistent data
 │   ├── chroma_db/                   # ChromaDB storage directory
@@ -289,6 +298,30 @@ The `StreamQueryView._async_stream()` yields these SSE events in order:
 | 5 | `citations` | Array of citation objects |
 | 6 | `provider` | Provider name + token count |
 | 7 | `done` | Latency in ms |
+
+### groundedness.py — Groundedness Checker
+
+Built as an entailment-based safety guard.
+- **Trigger**: Runs at the end of the streaming pipeline (views.py) as a best-effort, non-blocking asynchronous task.
+- **Model**: Reuses the `cross-encoder/ms-marco-MiniLM-L-6-v2` singleton loaded for vector reranking.
+- **Process**:
+  1. Splits the LLM response into sentence-level claims (filtering out thinking tags and boilerplate disclaimers).
+  2. Scores each claim against the combined retrieved context (`sql_output`, `graph_output`, `vector_output`, `news_output`).
+  3. If a claim scores `< 0.3`, it is flagged.
+  4. If the overall average score is `< 0.5`, it appends a disclaimer warning: `⚠️ [Note: some claims in this response could not be fully verified from available data...]` so users are alerted.
+
+### evaluation/ — Automated Test Suite
+
+A complete framework to ensure retrieval quality and guard against regressions:
+- **`test_questions.json`**: Gold dataset containing 30 hand-crafted test questions covering stock analysis (5), news queries (5), anti-hallucination (5), definitional (3), comparison (3), negative/off-topic prompts (5), and sub-related topics (4).
+- **`eval_runner.py`**: Executes the RAGAS evaluation. Uses Google AI (Gemini) as the LLM judge. Computes:
+  - *Faithfulness*: Groundedness of response in context.
+  - *Answer Relevancy*: How well the answer matches the question.
+  - *Context Precision*: Accuracy of retrieval.
+  - Also outputs basic metrics like route accuracy, tool recall, negative deflection rate, and average latency.
+- **`eval_negative.py`**: Evaluates boundary and off-topic prompt rejection (Mt. Everest, crypto, etc.) to ensure the bot politely redirects off-topic chatter.
+- **`eval_news.py`**: Directly invokes `news_tool` for 5 key symbols to verify article presence, ensure markdown elements are stripped, and check that Indian NHPC results are blocked.
+- **`eval_retrieval.py`**: Directly calls `query_vector_rag` across 10 queries, validating source diversity and confirming that `fundamental_analysis_guide.txt` doesn't dominate.
 
 ---
 

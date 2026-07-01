@@ -16,6 +16,7 @@ import time
 import logging
 
 import chromadb
+from sentence_transformers import CrossEncoder
 from django.conf import settings
 
 from llama_index.core import (
@@ -32,11 +33,13 @@ from services.cache_service import get_cached_vector_rag, cache_vector_rag
 
 logger = logging.getLogger('nepse_rag')
 
-# ── Module-level singleton ────────────────────────────────────
+# ── Module-level singletons ───────────────────────────────────
 _index = None
 _embed_model = None
+_cross_encoder = None
 
 COLLECTION_NAME = "nepse_docs"
+CROSS_ENCODER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 
 def _get_embed_model():
@@ -58,6 +61,89 @@ def _get_embed_model():
         logger.info("Embedding model loaded in %dms", latency,
                      extra={'event': 'embed_model_load', 'latency_ms': latency})
     return _embed_model
+
+
+def _get_cross_encoder():
+    """
+    Returns the cross-encoder model singleton for reranking.
+    Loads cross-encoder/ms-marco-MiniLM-L-6-v2 (~80MB) on first call.
+    Used by both vector_rag (reranking) and groundedness checker.
+    """
+    global _cross_encoder
+    if _cross_encoder is None:
+        model_name = getattr(settings, 'CROSS_ENCODER_MODEL', CROSS_ENCODER_MODEL)
+        logger.info("Loading cross-encoder model: %s", model_name)
+        start = time.time()
+        _cross_encoder = CrossEncoder(model_name, device='cpu')
+        latency = int((time.time() - start) * 1000)
+        logger.info("Cross-encoder loaded in %dms", latency,
+                     extra={'event': 'cross_encoder_load', 'latency_ms': latency})
+    return _cross_encoder
+
+
+def get_cross_encoder_model():
+    """Public accessor for the cross-encoder singleton (shared with groundedness checker)."""
+    return _get_cross_encoder()
+
+
+def _rerank(question: str, results: list[dict], top_k: int = 3) -> list[dict]:
+    """
+    Reranks retrieval results using cross-encoder scoring.
+
+    The bi-encoder (all-MiniLM-L6-v2) is fast but imprecise —
+    it often ranks broad docs like fundamental_analysis_guide.txt
+    too high. The cross-encoder scores each (question, passage)
+    pair jointly, giving much better relevance ranking.
+
+    Args:
+        question: The user's query.
+        results: List of dicts from initial retrieval (must have 'text' key).
+        top_k: Number of results to keep after reranking.
+
+    Returns:
+        Top-k results sorted by cross-encoder score (descending).
+    """
+    if len(results) <= top_k:
+        return results
+
+    ce = _get_cross_encoder()
+    pairs = [(question, r['text']) for r in results]
+    scores = ce.predict(pairs)
+
+    for i, score in enumerate(scores):
+        results[i]['rerank_score'] = round(float(score), 4)
+
+    # Sort results by score descending
+    results.sort(key=lambda x: x['rerank_score'], reverse=True)
+
+    # Diversity filter: allow at most 2 chunks from the same source file
+    reranked = []
+    file_counts = {}
+    for r in results:
+        src = r.get('source_file', 'unknown')
+        file_counts[src] = file_counts.get(src, 0) + 1
+        if file_counts[src] <= 2:
+            reranked.append(r)
+        if len(reranked) == top_k:
+            break
+
+    # Fallback to standard slice if diversity filtering under-retrieved
+    if len(reranked) < min(top_k, len(results)):
+        reranked = results[:top_k]
+
+    # Log what changed
+    original_sources = [r['source_file'] for r in results[:top_k]]
+    kept_sources = [r['source_file'] for r in reranked]
+    dropped_sources = [s for s in original_sources if s not in kept_sources]
+
+    if dropped_sources:
+        logger.info(
+            "Reranking kept %s, dropped %s",
+            kept_sources, dropped_sources,
+            extra={'event': 'rerank', 'kept': kept_sources, 'dropped': dropped_sources},
+        )
+
+    return reranked
 
 
 def _get_chroma_collection():
@@ -183,23 +269,27 @@ def query_vector_rag(question: str, top_k: int = None) -> list[dict]:
 
     Steps:
     1. Check cache (TTL 30 min)
-    2. If miss: query ChromaDB via LlamaIndex retriever
-    3. Format results, cache, return
+    2. If miss: over-retrieve from ChromaDB (top_10)
+    3. Format results
+    4. Rerank with cross-encoder, keep top_3
+    5. Cache and return
 
     Args:
         question: Natural language query
-        top_k: Number of chunks to retrieve (default from settings)
+        top_k: Number of chunks to over-retrieve (default from settings)
 
     Returns:
         List of dicts, each with:
         - text: chunk content (capped at 300 tokens / ~1200 chars)
         - source_file: original filename
-        - score: similarity score (0-1)
+        - score: bi-encoder similarity score (0-1)
+        - rerank_score: cross-encoder relevance score (optional)
 
     Returns empty list if index is not built or query fails.
     """
     if top_k is None:
-        top_k = getattr(settings, 'VECTOR_TOP_K', 3)
+        top_k = getattr(settings, 'VECTOR_TOP_K', 10)
+    rerank_top_k = getattr(settings, 'VECTOR_RERANK_TOP_K', 3)
     min_score = getattr(settings, 'VECTOR_MIN_SCORE', 0.0) or 0.0
 
     # 1. Check cache
@@ -208,7 +298,7 @@ def query_vector_rag(question: str, top_k: int = None) -> list[dict]:
         logger.debug("vector_rag cache hit for: %s", question[:50])
         return cached
 
-    # 2. Query index
+    # 2. Over-retrieve from index (top_10)
     try:
         start = time.time()
         index = _get_index()
@@ -242,14 +332,23 @@ def query_vector_rag(question: str, top_k: int = None) -> list[dict]:
             'score': score,
         })
 
-    # 4. Cache and return
+    # 4. Rerank with cross-encoder (top_10 → top_3)
+    pre_rerank_count = len(results)
+    try:
+        results = _rerank(question, results, top_k=rerank_top_k)
+    except Exception as e:
+        logger.warning("Cross-encoder reranking failed, using bi-encoder order: %s", e)
+        results = results[:rerank_top_k]
+
+    # 5. Cache and return
     cache_vector_rag(question, results)
     logger.info(
-        "vector_rag: %d chunks for '%s' (%dms)",
-        len(results), question[:50], latency,
+        "vector_rag: %d→%d chunks for '%s' (%dms)",
+        pre_rerank_count, len(results), question[:50], latency,
         extra={
             'event': 'vector_rag_query',
-            'chunks': len(results),
+            'chunks_before_rerank': pre_rerank_count,
+            'chunks_after_rerank': len(results),
             'latency_ms': latency,
         }
     )
