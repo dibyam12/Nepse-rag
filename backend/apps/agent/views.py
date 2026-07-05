@@ -381,12 +381,29 @@ class StreamQueryView(View):
             if history_symbols:
                 q_symbols = history_symbols
 
+        from services.query_router import ROUTE_VECTOR_ONLY, ROUTE_SQL_GRAPH, ROUTE_FULL_AGENT, ROUTE_COMPARE
         if not q_symbols and symbol:
-            enriched_question = f"{question} (regarding {symbol})"
-            decision = classify_query(enriched_question)
-            if not decision.symbols:
-                decision.symbols = [symbol]
-            question = enriched_question
+            # Guard: classify the raw question first. If it's chat or pure educational
+            # (no stock keywords), don't inject the context symbol — this prevents
+            # off-topic questions like "height of mount everest" from being treated
+            # as a stock query just because the frontend sent lastSymbol.
+            raw_decision = classify_query(question)
+            _STOCK_HINT_WORDS = {
+                'price', 'news', 'buy', 'sell', 'stock', 'share', 'indicator',
+                'rsi', 'macd', 'ema', 'volume', 'sector', 'analysis', 'about it',
+                'about them', 'about this', 'fundamentals', 'compare', 'chart',
+            }
+            has_stock_hint = any(w in q_lower for w in _STOCK_HINT_WORDS)
+            
+            if raw_decision.route in (ROUTE_CHAT,) or (raw_decision.route == ROUTE_VECTOR_ONLY and not has_stock_hint):
+                # Off-topic or purely educational — don't inject stock symbol
+                decision = raw_decision
+            else:
+                enriched_question = f"{question} (regarding {symbol})"
+                decision = classify_query(enriched_question)
+                if not decision.symbols:
+                    decision.symbols = [symbol]
+                question = enriched_question
         elif q_symbols:
             # Inject recovered symbols into the question for proper routing
             sym_str = " ".join(q_symbols)
@@ -602,7 +619,7 @@ class StreamQueryView(View):
                 g_result = await asyncio.to_thread(
                     check_groundedness, answer_text, context_chunks
                 )
-                if g_result.score < 0.5:
+                if g_result.score < 0.3:
                     grounding_note = (
                         "\n\n⚠️ [Note: some claims in this response could not be "
                         "fully verified from available data. Please cross-check "

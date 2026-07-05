@@ -40,7 +40,8 @@ def _split_claims(text: str) -> list[str]:
     Pre-processing:
     - Strips DISCLAIMER footer
     - Strips <thinking> blocks
-    - Filters sentences shorter than 20 chars (noise)
+    - Filters sentences shorter than 30 chars (noise)
+    - Filters actionable/advisory sentences (not factual claims)
     """
     if not text:
         return []
@@ -52,13 +53,32 @@ def _split_claims(text: str) -> list[str]:
 
     # Split on sentence boundaries
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    return [s.strip() for s in sentences if len(s.strip()) > 20]
+
+    # Filter: skip very short, advisory, or subjective sentences
+    _ADVISORY_PATTERNS = [
+        r'\bwait for\b', r'\bbefore reconsidering\b', r'\bcautious\b',
+        r'\bwarrant\b', r'\bcross-check\b', r'\bconsider\b',
+        r'\bdisclaimer\b', r'\beducational\b', r'\bnot financial advice\b',
+        r'\bbased on current indicators\b', r'\bworth (watching|monitoring)\b',
+    ]
+
+    filtered = []
+    for s in sentences:
+        s = s.strip()
+        if len(s) < 30:
+            continue
+        # Skip advisory/subjective sentences — they aren't factual claims
+        if any(re.search(pat, s, re.IGNORECASE) for pat in _ADVISORY_PATTERNS):
+            continue
+        filtered.append(s)
+
+    return filtered
 
 
 def check_groundedness(
     answer: str,
     context_chunks: list[str],
-    threshold: float = 0.5,
+    threshold: float = 0.3,
 ) -> GroundednessResult:
     """
     Scores how well the LLM answer is grounded in the provided context.

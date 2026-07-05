@@ -704,9 +704,12 @@ async def _empty_sql_result():
 
 
 async def parallel_retrieve_node(state: AgentState) -> dict:
-    """Full agent: runs all 4 tools concurrently for all symbols."""
+    """Full agent / compare: runs tools concurrently for all symbols.
+    Skips vector_tool for compare route (no educational docs needed)."""
     symbols = state.get("symbols", []) or ([state.get("symbol")] if state.get("symbol") else [])
     question = state["question"]
+    route = state.get("route", "")
+    skip_vector = (route == "compare")
 
     tasks = []
     # Gather SQL tasks
@@ -721,8 +724,9 @@ async def parallel_retrieve_node(state: AgentState) -> dict:
     for sym in symbols:
         if sym:
             tasks.append(news_tool(sym))
-    # Gather Vector task
-    tasks.append(vector_tool(question))
+    # Gather Vector task (skip for compare route — avoids irrelevant docs)
+    if not skip_vector:
+        tasks.append(vector_tool(question))
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -780,14 +784,15 @@ async def parallel_retrieve_node(state: AgentState) -> dict:
             else:
                 logger.warning("parallel news_tool failed for %s: %s", sym, res)
 
-    # Parse Vector
-    vec_res = results[idx]
-    if not isinstance(vec_res, Exception):
-        vec_text, vec_cites = vec_res
-        if vec_text:
-            tools_called.append("vector_tool")
-    else:
-        logger.warning("parallel vector_tool failed: %s", vec_res)
+    # Parse Vector (skipped for compare route)
+    if not skip_vector and idx < len(results):
+        vec_res = results[idx]
+        if not isinstance(vec_res, Exception):
+            vec_text, vec_cites = vec_res
+            if vec_text:
+                tools_called.append("vector_tool")
+        else:
+            logger.warning("parallel vector_tool failed: %s", vec_res)
 
     all_citations = (
         state.get("citations", [])
@@ -846,8 +851,10 @@ def _route_decision(state: AgentState) -> str:
         return "sql_node"
     elif route == ROUTE_VECTOR_ONLY:
         return "vector_node"
-    elif route in (ROUTE_SQL_GRAPH, ROUTE_COMPARE):
+    elif route == ROUTE_SQL_GRAPH:
         return "sql_node"
+    elif route == ROUTE_COMPARE:
+        return "parallel_retrieve_node"
     elif route == ROUTE_FULL_AGENT:
         return "parallel_retrieve_node"
     return "vector_node"

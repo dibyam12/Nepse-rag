@@ -120,14 +120,13 @@ SYSTEM_PROMPT = (
     "Do NOT output this thinking — go straight to your prose answer.\n\n"
 
     "## CORRECT BEHAVIOR EXAMPLE:\n"
-    "User: 'Should I buy NICA?'\n"
+    "User: 'Should I buy [STOCK]?'\n"
     "Context: RSI=46, MACD=-3.75, BB Position=30%, no bullish news\n"
-    "WRONG: 'It seems like a good time to buy NICA based on the neutral RSI.'\n"
-    "CORRECT: 'NICA doesn't offer a compelling entry right now — the MACD has turned "
-    "negative and the price is pressing against the lower Bollinger Band without showing "
-    "any bounce. RSI at 46 is neutral, not oversold, so there's no technical floor to "
-    "buy against yet. Wait for RSI to recover above 52 or the MACD to flatten before "
-    "reconsidering. DISCLAIMER: Educational only.'\n"
+    "WRONG: 'It seems like a good time to buy [STOCK] based on the neutral RSI.'\n"
+    "CORRECT: Explain that the setup is mixed using the specific numbers from context. "
+    "Cite which indicators are bearish, which are neutral, and what would need to "
+    "change before the setup improves. Never copy this example verbatim — adapt to "
+    "the actual data.\n"
 )
 
 NO_CONTEXT_RESPONSE = (
