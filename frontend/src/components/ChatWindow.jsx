@@ -7,15 +7,15 @@
  */
 import { useState, useRef, useEffect } from 'react';
 import {
-  Send, Menu, Sun, Moon, LogIn, LogOut, User,
+  Send, Sun, Moon,
   TrendingUp, ShieldAlert, X
 } from 'lucide-react';
 import useChatStore from '../store/chatStore';
 import useThemeStore from '../store/themeStore';
 import MessageBubble from './MessageBubble';
 
-export default function ChatWindow({ onToggleSidebar, onOpenAuth }) {
-  const { messages, isLoading, sendMessage, user, logout, lastSymbol, setLastSymbol } = useChatStore();
+export default function ChatWindow() {
+  const { messages, isLoading, sendMessage, lastSymbol, setLastSymbol } = useChatStore();
   const { isDark, toggle: toggleTheme } = useThemeStore();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -58,14 +58,6 @@ export default function ChatWindow({ onToggleSidebar, onOpenAuth }) {
                          border-b border-surface-200 dark:border-surface-800
                          bg-white/80 dark:bg-surface-900/80 backdrop-blur-xl">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <button 
-            onClick={onToggleSidebar}
-            className="p-2 -ml-2 text-surface-500 hover:text-surface-900 dark:hover:text-surface-100 rounded-lg transition-colors"
-            title="Toggle Sidebar"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-brand-500/10 flex items-center justify-center border border-brand-500/20">
               <TrendingUp className="w-5 h-5 text-brand-600 dark:text-brand-400" />
@@ -92,37 +84,6 @@ export default function ChatWindow({ onToggleSidebar, onOpenAuth }) {
           >
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
-
-          <div className="w-px h-4 bg-surface-200 dark:bg-surface-800 mx-1" />
-
-          {user ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-2.5 py-1.5 bg-surface-100 dark:bg-surface-800 rounded-lg">
-                <User className="w-3.5 h-3.5 text-surface-500" />
-                <span className="text-xs font-medium text-surface-700 dark:text-surface-300">
-                  {user.username}
-                </span>
-              </div>
-              <button
-                onClick={logout}
-                className="p-2 text-surface-500 hover:text-red-600 dark:hover:text-red-400
-                           hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
-                title="Logout"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={onOpenAuth}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium
-                         text-surface-700 dark:text-surface-200 hover:text-brand-600 dark:hover:text-brand-400
-                         hover:bg-brand-50 dark:hover:bg-brand-500/10 rounded-xl transition-colors"
-            >
-              <LogIn className="w-4 h-4" />
-              <span className="hidden sm:inline">Login</span>
-            </button>
-          )}
         </div>
       </header>
 

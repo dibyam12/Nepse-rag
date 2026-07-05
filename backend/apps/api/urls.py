@@ -15,8 +15,6 @@ urlpatterns = [
     path('sectors/', views.SectorsListView.as_view(), name='sectors'),
     path('health/', views.HealthCheckView.as_view(), name='health'),
 
-    # Auth & conversations
-    path('auth/', include('apps.accounts.urls')),
 
     # RAG test endpoints
     path('rag/', include('apps.rag.urls')),

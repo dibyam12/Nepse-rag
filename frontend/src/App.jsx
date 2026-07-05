@@ -1,17 +1,15 @@
 /**
  * App.jsx — Root application component.
  *
- * Layout: QueryHistory sidebar + ChatWindow main area.
+ * Layout: ChatWindow main area.
  * Providers: TanStack QueryClientProvider.
- * On mount: initialize theme, load symbols, load conversations.
+ * On mount: initialize theme, load symbols.
  */
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import useChatStore from './store/chatStore';
 import useThemeStore from './store/themeStore';
 import ChatWindow from './components/ChatWindow';
-import QueryHistory from './components/QueryHistory';
-import AuthModal from './components/AuthModal';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,10 +21,8 @@ const queryClient = new QueryClient({
 });
 
 function AppContent() {
-  const { loadSymbols, loadConversations, user } = useChatStore();
+  const { loadSymbols } = useChatStore();
   const { init: initTheme } = useThemeStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
 
   // Initialize on mount
   useEffect(() => {
@@ -34,35 +30,13 @@ function AppContent() {
     loadSymbols();
   }, []);
 
-  // Load conversations when user logs in
-  useEffect(() => {
-    if (user) {
-      loadConversations();
-    }
-  }, [user]);
-
   return (
     <div className="flex h-screen overflow-hidden
                     bg-surface-50 dark:bg-surface-950">
-      {/* Sidebar */}
-      <QueryHistory
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
-
       {/* Main chat area */}
       <div className="flex-1 flex flex-col min-w-0">
-        <ChatWindow
-          onToggleSidebar={() => setSidebarOpen((s) => !s)}
-          onOpenAuth={() => setAuthOpen(true)}
-        />
+        <ChatWindow />
       </div>
-
-      {/* Auth modal */}
-      <AuthModal
-        isOpen={authOpen}
-        onClose={() => setAuthOpen(false)}
-      />
     </div>
   );
 }
