@@ -296,6 +296,7 @@ class StreamQueryView(View):
             stream_llm, stream_llm_chat, build_rag_prompt,
             NO_CONTEXT_RESPONSE, PROVIDERS,
         )
+        from services.golden_matcher import match_golden
         from services.cache_service import (
             get_cached_llm_response, cache_llm_response, is_llm_provider_exhausted,
         )
@@ -328,6 +329,17 @@ class StreamQueryView(View):
         omit_citations = False
         q_lower = (question or "").lower()
 
+        is_followup = request.GET.get("is_followup", "false") == "true"
+        if is_followup:
+            explicit_request = any(w in q_lower for w in [
+                "show", "price", "news", "chart", "table", "indicators", "latest price",
+                "ohlcv", "volume", "rsi", "macd", "ema", "bollinger", "signals", "get news",
+                "compare", "vs", "history", "historical"
+            ])
+            if not explicit_request:
+                omit_signals = True
+                omit_citations = True
+
         if conversation_id:
             def _fetch_history():
                 try:
@@ -351,15 +363,17 @@ class StreamQueryView(View):
                         "has_signals": bool(getattr(m, "signals", None)),
                         "has_citations": bool(getattr(m, "citations", None)),
                     })
-                last_assistant = next((m for m in reversed(history_data) if m.role == 'assistant'), None)
-                if last_assistant:
-                    explicit_request = any(w in q_lower for w in [
-                        "show", "price", "news", "chart", "table", "indicators", "latest price",
-                        "ohlcv", "volume", "rsi", "macd", "ema", "bollinger", "signals", "get news"
-                    ])
-                    if not explicit_request:
-                        omit_signals = True
-                        omit_citations = True
+                if not is_followup:
+                    last_assistant = next((m for m in reversed(history_data) if m.role == 'assistant'), None)
+                    if last_assistant:
+                        explicit_request = any(w in q_lower for w in [
+                            "show", "price", "news", "chart", "table", "indicators", "latest price",
+                            "ohlcv", "volume", "rsi", "macd", "ema", "bollinger", "signals", "get news",
+                            "compare", "vs", "history", "historical"
+                        ])
+                        if not explicit_request:
+                            omit_signals = True
+                            omit_citations = True
 
         # ── 2. Classify query ─────────────────────────────────────────────
         q_symbols = extract_symbols(question)
@@ -392,6 +406,7 @@ class StreamQueryView(View):
                 'price', 'news', 'buy', 'sell', 'stock', 'share', 'indicator',
                 'rsi', 'macd', 'ema', 'volume', 'sector', 'analysis', 'about it',
                 'about them', 'about this', 'fundamentals', 'compare', 'chart',
+                'history', 'historical',
             }
             has_stock_hint = any(w in q_lower for w in _STOCK_HINT_WORDS)
             
@@ -419,6 +434,12 @@ class StreamQueryView(View):
         all_symbols = list(decision.symbols)
         if all_symbols:
             symbol = all_symbols[0]
+            yield f"data: {json.dumps({'type': 'active_symbols', 'data': all_symbols})}\n\n"
+
+        # ── Golden prompt detection ───────────────────────────────────────
+        golden_match = match_golden(question, all_symbols)
+        if golden_match:
+            logger.info("Golden prompt matched: %s", golden_match["id"])
 
         _ROUTE_LABELS = {
             'full_agent':  'Full Agent (SQL + Graph + News + Vector)',
@@ -480,7 +501,7 @@ class StreamQueryView(View):
                     yield f"data: {json.dumps({'type': 'status', 'message': f'Generating analysis via {_pname}...'})}\n\n"
                     break
 
-            prompt = build_rag_prompt(question, tool_outputs, route=route, history=history)
+            prompt = build_rag_prompt(question, tool_outputs, route=route, history=history, golden_match=golden_match)
             full_answer = []
             provider_used = "unknown"
             tokens_used = 0
@@ -564,7 +585,7 @@ class StreamQueryView(View):
         # For the best UX, we re-stream using stream_llm over the same prompt.
         tool_outputs = [
             final_state.get(k, "")
-            for k in ("sql_output", "graph_output", "vector_output", "news_output")
+            for k in ("sql_output", "graph_output", "vector_output", "news_output", "historical_output")
             if final_state.get(k, "").strip()
         ]
 
@@ -584,7 +605,7 @@ class StreamQueryView(View):
                     yield f"data: {json.dumps({'type': 'status', 'message': f'Generating analysis via {_pname}...'})}\n\n"
                     break
 
-            prompt = build_rag_prompt(question, tool_outputs, route=route_used, history=history)
+            prompt = build_rag_prompt(question, tool_outputs, route=route_used, history=history, golden_match=golden_match)
             llm_max_tokens = 800 if route_used == ROUTE_COMPARE else 400
 
             async for token in stream_llm(prompt, max_tokens=llm_max_tokens):
@@ -612,21 +633,21 @@ class StreamQueryView(View):
             from services.groundedness import check_groundedness
             context_chunks = [
                 final_state.get(k, "")
-                for k in ("sql_output", "graph_output", "vector_output", "news_output")
+                for k in ("sql_output", "graph_output", "vector_output", "news_output", "historical_output")
                 if final_state.get(k, "").strip()
             ]
             if context_chunks:
                 g_result = await asyncio.to_thread(
                     check_groundedness, answer_text, context_chunks
                 )
-                if g_result.score < 0.3:
-                    grounding_note = (
-                        "\n\n⚠️ [Note: some claims in this response could not be "
-                        "fully verified from available data. Please cross-check "
-                        "specific figures on sharesansar.com or merolagani.com.]"
-                    )
-                    answer_text += grounding_note
-                    yield f"data: {json.dumps({'type': 'token', 'content': grounding_note})}\n\n"
+                # NOTE: ms-marco cross-encoder is a relevance model, not an
+                # entailment model. Analytical prose about raw data always scores
+                # low, causing false-positive warnings on every response.
+                # We log the score for RAGAS evaluation but no longer display
+                # the warning to users.
+                # if g_result.score < 0.3:
+                #     grounding_note = (...)
+                #     yield grounding_note
 
                 logger.info(
                     "Groundedness score for '%s': %.2f (%d flagged / %d total)",

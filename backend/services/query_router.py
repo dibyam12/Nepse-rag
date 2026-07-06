@@ -52,7 +52,10 @@ FULL_AGENT_KEYWORDS = [
     "what happened", "crash", "surge", "rally", "dump",
     "status", "update", "market",
     "fundamental", "eps", "profit", "npl", "earnings",
-    "balance sheet", "revenue", "pe ratio"
+    "balance sheet", "revenue", "pe ratio",
+    # Temporal keywords — trigger historical data fetching
+    "years ago", "year ago", "last year", "historically",
+    "history", "historical", "changed", "over time",
 ]
 
 COMPARE_KEYWORDS = [
@@ -112,6 +115,39 @@ MERGED_SYMBOLS_MAP = {
 }
 
 
+# ── Temporal Patterns ─────────────────────────────────────────
+TEMPORAL_PATTERNS = [
+    (r'(\d+)\s*years?\s*ago',       'years_ago'),    # "3 years ago"
+    (r'price\s*(?:in|of|from)\s*(\d{4})', 'year'),   # "price in 2023"
+    (r'last\s*(\d+)\s*years?',      'years_ago'),    # "last 3 years"
+    (r'(?:since|from)\s*(\d{4})',   'year'),          # "since 2020"
+    (r'\b(\d{4})\b.*(?:price|close|data)', 'year'),   # "2023 price"
+    (r'(?:history|historical)',      'history'),       # "price history"
+    (r'how much.*(?:changed|change)', 'change'),       # "how much has it changed"
+]
+
+
+def extract_temporal_params(question: str) -> dict:
+    """Extract temporal parameters from a question.
+    Returns: {years_ago: int} or {target_year: int} or {} if not temporal."""
+    from datetime import date
+    q_lower = question.lower()
+    for pattern, param_type in TEMPORAL_PATTERNS:
+        match = re.search(pattern, q_lower)
+        if match:
+            if param_type == 'years_ago':
+                return {'years_ago': int(match.group(1))}
+            elif param_type == 'year':
+                year = int(match.group(1))
+                if 1990 <= year <= date.today().year:
+                    return {'target_year': year}
+            elif param_type == 'history':
+                return {'years_ago': 5}  # Default: show 5 year history
+            elif param_type == 'change':
+                return {'years_ago': 3}  # Default: compare vs 3 years ago
+    return {}
+
+
 @dataclass
 class RouteDecision:
     """
@@ -122,6 +158,7 @@ class RouteDecision:
                ROUTE_FULL_AGENT, ROUTE_COMPARE, ROUTE_CHAT, ROUTE_SCREENER.
         symbols: Extracted NEPSE ticker symbols from the query.
         tools_needed: List of tool names the agent will call.
+        temporal_params: {years_ago: int} or {target_year: int} for historical queries.
     """
     route: str
     symbols: list = field(default_factory=list)
@@ -129,6 +166,7 @@ class RouteDecision:
     price_below: int = None
     price_above: int = None
     sector: str = None
+    temporal_params: dict = field(default_factory=dict)
 
 
 _KNOWN_SYMBOLS = None
@@ -362,10 +400,13 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
             elif not is_definitional and (wants_data or _has_keyword(q_lower, ["news", "latest"])):
                 tools = [t for t in tools if t != "vector_tool"]
 
-        decision = RouteDecision(route=route, symbols=symbols, tools_needed=tools)
+        decision = RouteDecision(
+            route=route, symbols=symbols, tools_needed=tools,
+            temporal_params=extract_temporal_params(question),
+        )
         logger.info(
-            "Query routed to %s: '%s' (symbols=%s)",
-            route, question[:60], symbols,
+            "Query routed to %s: '%s' (symbols=%s, temporal=%s)",
+            route, question[:60], symbols, decision.temporal_params or None,
             extra={"event": "query_route", "route": route, "symbols": symbols},
         )
         return decision
@@ -386,7 +427,12 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
         return _decide(ROUTE_VECTOR_ONLY, ["vector_tool"])
 
     # 4. SQL + Graph — technical analysis, price data
+    #    BUT: if temporal intent detected, upgrade to full_agent so historical_tool fires
     if _has_keyword(q_lower, SQL_GRAPH_KEYWORDS):
+        temporal = extract_temporal_params(question)
+        if temporal:
+            return _decide(ROUTE_FULL_AGENT,
+                           ["sql_tool", "graph_tool", "news_tool", "historical_tool"])
         return _decide(ROUTE_SQL_GRAPH, ["sql_tool", "graph_tool"])
 
     # 5. If symbols are present but no keyword matched, default to full_agent

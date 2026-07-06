@@ -49,6 +49,7 @@ class AgentState(TypedDict):
     graph_output: str
     vector_output: str
     news_output: str
+    historical_output: str  # NEW
     citations: list
     tools_called: list
     final_answer: str
@@ -59,6 +60,8 @@ class AgentState(TypedDict):
     price_below: int
     price_above: int
     sector: str
+    temporal_params: dict   # NEW
+
 
 
 # ══════════════════════════════════════════════════════════════
@@ -192,12 +195,13 @@ async def sql_tool(symbol: str, days: int = 7) -> tuple[str, list[dict], dict]:
     is_merged = (active_symbol != symbol_upper)
 
     try:
-        from services.db_service import get_latest_ohlcv, get_latest_indicators, get_stock_info
+        from services.db_service import get_latest_ohlcv, get_latest_indicators, get_stock_info, get_recent_history
 
-        ohlcv, indicators, range_52w = await asyncio.gather(
+        ohlcv, indicators, range_52w, recent_history = await asyncio.gather(
             get_latest_ohlcv(active_symbol),
             get_latest_indicators(active_symbol),
             _fetch_52w_range(active_symbol),
+            get_recent_history(active_symbol, 10),
         )
 
         if not ohlcv:
@@ -342,6 +346,13 @@ async def sql_tool(symbol: str, days: int = 7) -> tuple[str, list[dict], dict]:
         if pct_change is not None: signals["pct_change"] = round(pct_change, 2)
         if week52_high is not None: signals["week52_high"] = week52_high
         if week52_low  is not None: signals["week52_low"]  = week52_low
+
+        if recent_history:
+            signals["recent_prices"] = [
+                round(float(h["close"]), 2)
+                for h in sorted(recent_history, key=lambda x: x["date"])
+                if h.get("close") is not None
+            ]
 
         logger.info(
             "sql_tool(%s): close=%.1f, rsi=%s",
@@ -561,6 +572,83 @@ async def news_tool(symbol: str) -> tuple[str, list[dict]]:
         )
         return "", []
 
+
+async def historical_tool(symbol: str, years_ago: int = None, target_year: int = None) -> tuple[str, list[dict]]:
+    """
+    Fetches historical price comparison data for symbol.
+    Returns: (text_summary, citations)
+    """
+    if not symbol:
+        return "", []
+
+    symbol_upper = symbol.upper()
+    active_symbol = MERGED_SYMBOLS_MAP.get(symbol_upper, symbol_upper)
+
+    from services.db_service import get_price_n_years_ago, get_price_at_date
+    from datetime import date as date_cls
+
+    # Determine dates
+    if years_ago is not None:
+        hist_data = await get_price_n_years_ago(active_symbol, years_ago)
+        time_period = f"{years_ago} year{'s' if years_ago > 1 else ''} ago"
+    elif target_year is not None:
+        target_date = f"{target_year}-07-01"  # middle of the year
+        hist_data = await get_price_at_date(active_symbol, target_date)
+        time_period = f"in {target_year}"
+    else:
+        # Default to 3 years ago if none provided
+        hist_data = await get_price_n_years_ago(active_symbol, 3)
+        time_period = "3 years ago"
+
+    # Get current price
+    current_data = await get_price_at_date(active_symbol, date_cls.today().strftime("%Y-%m-%d"))
+
+    if not hist_data:
+        return f"Historical price comparison for {symbol_upper}: Data not available for {time_period}.", []
+
+    if not current_data:
+        # If today is not in DB (e.g. weekend/holiday), fetch latest row overall from DB
+        from services.db_service import get_latest_ohlcv
+        latest_ohlcv = await get_latest_ohlcv(active_symbol)
+        if latest_ohlcv:
+            current_data = {
+                'symbol': active_symbol,
+                'date': latest_ohlcv.get('date'),
+                'close': latest_ohlcv.get('close'),
+            }
+
+    if not current_data or current_data.get('close') is None:
+        return f"Historical price comparison for {symbol_upper}: Could not retrieve current price to perform comparison.", []
+
+    hist_price = hist_data['close']
+    curr_price = current_data['close']
+    abs_change = curr_price - hist_price
+    pct_change = ((curr_price - hist_price) / hist_price * 100) if hist_price else 0
+    direction = "increase" if abs_change > 0 else "decrease" if abs_change < 0 else "no change"
+
+    summary_text = (
+        f"Historical comparison for {symbol_upper}:\n"
+        f"- Historical Date: {hist_data['date']} ({time_period})\n"
+        f"- Historical Close: NPR {hist_price:,.2f}\n"
+        f"- Current Date: {current_data['date']}\n"
+        f"- Current Close: NPR {curr_price:,.2f}\n"
+        f"Price change: NPR {abs_change:+,.2f} ({pct_change:+.2f}%) [{direction}]"
+    )
+
+    citations = [{
+        "type": "historical",
+        "symbol": symbol_upper,
+        "historical_date": hist_data['date'],
+        "historical_price": hist_price,
+        "current_date": current_data['date'],
+        "current_price": curr_price,
+        "pct_change": round(pct_change, 2),
+        "direction": direction,
+    }]
+
+    return summary_text, citations
+
+
 # ══════════════════════════════════════════════════════════════
 # LANGGRAPH NODES
 # ══════════════════════════════════════════════════════════════
@@ -578,12 +666,24 @@ async def route_node(state: AgentState) -> dict:
         decision = classify_query(question, context_symbol)
         symbols = decision.symbols
 
+    # Safety net: if symbols is STILL empty but the frontend sent a context
+    # symbol (lastSymbol), inject it. This handles follow-ups like
+    # "give me news about it" where the pronoun doesn't resolve to a ticker.
+    if not symbols and context_symbol:
+        symbols = [context_symbol.upper()]
+        logger.info(
+            "route_node: no symbols found, injecting context symbol '%s'",
+            context_symbol,
+            extra={"event": "symbol_inject_fallback", "symbol": context_symbol},
+        )
+
     result = {
         "route": decision.route,
         "symbols": symbols,
         "price_below": decision.price_below,
         "price_above": decision.price_above,
         "sector": decision.sector,
+        "temporal_params": getattr(decision, "temporal_params", {}),
     }
     if symbols:
         result["symbol"] = symbols[0]
@@ -710,6 +810,7 @@ async def parallel_retrieve_node(state: AgentState) -> dict:
     question = state["question"]
     route = state.get("route", "")
     skip_vector = (route == "compare")
+    temporal_params = state.get("temporal_params", {})
 
     tasks = []
     # Gather SQL tasks
@@ -724,6 +825,16 @@ async def parallel_retrieve_node(state: AgentState) -> dict:
     for sym in symbols:
         if sym:
             tasks.append(news_tool(sym))
+    # Gather Historical tasks (if temporal intent detected)
+    has_temporal = bool(temporal_params)
+    if has_temporal:
+        for sym in symbols:
+            if sym:
+                tasks.append(historical_tool(
+                    sym,
+                    years_ago=temporal_params.get("years_ago"),
+                    target_year=temporal_params.get("target_year"),
+                ))
     # Gather Vector task (skip for compare route — avoids irrelevant docs)
     if not skip_vector:
         tasks.append(vector_tool(question))
@@ -733,6 +844,7 @@ async def parallel_retrieve_node(state: AgentState) -> dict:
     sql_texts, sql_cites, all_signals = [], [], []
     graph_texts, graph_cites = [], []
     news_texts, news_cites = [], []
+    hist_texts, hist_cites = [], []
     vec_text, vec_cites = "", []
     tools_called = []
 
@@ -784,6 +896,22 @@ async def parallel_retrieve_node(state: AgentState) -> dict:
             else:
                 logger.warning("parallel news_tool failed for %s: %s", sym, res)
 
+    # Parse Historical
+    if has_temporal:
+        for sym in symbols:
+            if sym:
+                res = results[idx]
+                idx += 1
+                if not isinstance(res, Exception):
+                    text, cites = res
+                    if text:
+                        hist_texts.append(text)
+                        hist_cites.extend(cites)
+                        if "historical_tool" not in tools_called:
+                            tools_called.append("historical_tool")
+                else:
+                    logger.warning("parallel historical_tool failed for %s: %s", sym, res)
+
     # Parse Vector (skipped for compare route)
     if not skip_vector and idx < len(results):
         vec_res = results[idx]
@@ -796,16 +924,17 @@ async def parallel_retrieve_node(state: AgentState) -> dict:
 
     all_citations = (
         state.get("citations", [])
-        + sql_cites + graph_cites + news_cites + vec_cites
+        + sql_cites + graph_cites + news_cites + hist_cites + vec_cites
     )
 
     result = {
-        "sql_output":    "\n\n".join(sql_texts),
-        "graph_output":  "\n\n".join(graph_texts),
-        "vector_output": vec_text,
-        "news_output":   "\n\n".join(news_texts),
-        "citations":     all_citations,
-        "tools_called":  state.get("tools_called", []) + tools_called,
+        "sql_output":        "\n\n".join(sql_texts),
+        "graph_output":      "\n\n".join(graph_texts),
+        "vector_output":     vec_text,
+        "news_output":       "\n\n".join(news_texts),
+        "historical_output": "\n\n".join(hist_texts),
+        "citations":         all_citations,
+        "tools_called":      state.get("tools_called", []) + tools_called,
     }
     if all_signals:
         result["signals"] = all_signals if len(all_signals) > 1 else all_signals[0]
@@ -820,7 +949,7 @@ async def synthesize_node(state: AgentState) -> dict:
     """
     tool_outputs = [
         state.get(k, "")
-        for k in ("sql_output", "graph_output", "vector_output", "news_output")
+        for k in ("sql_output", "graph_output", "vector_output", "news_output", "historical_output")
         if state.get(k, "").strip()
     ]
 
@@ -940,12 +1069,13 @@ async def run_agent_streaming(
     initial_state: AgentState = {
         "question": question, "symbol": symbol, "symbols": [],
         "route": "", "sql_output": "", "graph_output": "",
-        "vector_output": "", "news_output": "",
+        "vector_output": "", "news_output": "", "historical_output": "",
         "citations": [], "tools_called": [],
         "final_answer": "", "llm_provider": "",
         "latency_ms": 0, "signals": {},
         "tokens_used": 0,
         "price_below": None, "price_above": None, "sector": "",
+        "temporal_params": {},
     }
 
     final_output: dict = {}
@@ -1015,10 +1145,12 @@ async def run_agent(question: str, symbol: str = "") -> dict:
     initial_state: AgentState = {
         "question": question, "symbol": symbol, "symbols": [],
         "route": "", "sql_output": "", "graph_output": "",
-        "vector_output": "", "news_output": "",
+        "vector_output": "", "news_output": "", "historical_output": "",
         "citations": [], "tools_called": [],
         "final_answer": "", "llm_provider": "",
         "latency_ms": 0, "signals": {},
+        "price_below": None, "price_above": None, "sector": "",
+        "temporal_params": {},
     }
 
     try:
@@ -1043,7 +1175,7 @@ async def run_agent(question: str, symbol: str = "") -> dict:
     # ── LLM synthesis (single call — synthesize_node is a passthrough) ──
     tool_outputs = [
         final_state.get(k, "")
-        for k in ("sql_output", "graph_output", "vector_output", "news_output")
+        for k in ("sql_output", "graph_output", "vector_output", "news_output", "historical_output")
         if final_state.get(k, "").strip()
     ]
 

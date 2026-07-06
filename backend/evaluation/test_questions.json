@@ -268,5 +268,80 @@
     "ground_truth": "May list mutual fund categories from domain knowledge but should not recommend specific funds.",
     "expected_behavior": "Should discuss from domain knowledge, not fabricate specific fund performance",
     "negative": false
+  },
+  {
+    "question": "What was NABIL's price 3 years ago?",
+    "category": "historical",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "historical_tool"],
+    "ground_truth": "NABIL's closing price around July 2023 from the Neon database.",
+    "expected_behavior": "Should show actual historical price from DB, not fabricate using 52W range",
+    "negative": false
+  },
+  {
+    "question": "How much has NICA changed in the last 5 years?",
+    "category": "historical",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "historical_tool"],
+    "ground_truth": "Price comparison between NICA 5 years ago and today with % change.",
+    "expected_behavior": "Should calculate actual % change from DB data, cite both dates",
+    "negative": false
+  },
+  {
+    "question": "Compare NABIL price in 2020 vs today",
+    "category": "historical",
+    "expected_route": "compare",
+    "expected_tools": ["sql_tool", "graph_tool", "historical_tool"],
+    "ground_truth": "Side-by-side price comparison with dates and % change for NABIL from 2020 to current.",
+    "expected_behavior": "Should use historical_tool to fetch 2020 price, compute change",
+    "negative": false
+  },
+  {
+    "question": "Show me SBL price history for the last year",
+    "category": "historical",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "historical_tool"],
+    "ground_truth": "SBL price from ~1 year ago and current price with direction and magnitude of change.",
+    "expected_behavior": "Should show actual prices from both dates with change calculation",
+    "negative": false
+  },
+  {
+    "question": "What was UPPER price in 2018?",
+    "category": "historical",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "historical_tool"],
+    "ground_truth": "UPPER price from 2018 if data exists, or 'data not available' if before listing.",
+    "expected_behavior": "Should show 2018 price from DB or explicitly say data not available -- never fabricate",
+    "negative": false
+  },
+  {
+    "question": "Should I buy NABIL?",
+    "category": "follow_up_context",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "news_tool"],
+    "ground_truth": "Analysis of NABIL indicators without direct buy/sell advice.",
+    "expected_behavior": "Must NOT contain 'I recommend', 'you should buy', or 'I would caution against buying'",
+    "negative": false,
+    "check_no_advice": true
+  },
+  {
+    "question": "Tell me about it",
+    "category": "follow_up_context",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool"],
+    "ground_truth": "Should use symbol from context (NABIL), not fail or pick wrong stock.",
+    "expected_behavior": "Must resolve pronoun from conversation context symbol",
+    "negative": false,
+    "requires_context_symbol": "NABIL"
+  },
+  {
+    "question": "What caused the price to change so much?",
+    "category": "follow_up_context",
+    "expected_route": "full_agent",
+    "expected_tools": ["sql_tool", "graph_tool", "historical_tool"],
+    "ground_truth": "Should explain market factors, sector trends, corporate actions causing price change.",
+    "expected_behavior": "Must reference actual price data and provide contextual causal explanation",
+    "negative": false
   }
 ]
+

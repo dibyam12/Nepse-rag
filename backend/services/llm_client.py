@@ -89,7 +89,25 @@ SYSTEM_PROMPT = (
     "   operating profit, net interest income, provisions, loan loss ratio.\n"
     "   If the user asks for any of these, respond: "
     "   'That specific ratio is not in my current data. Check the company's latest "
-    "   quarterly report on sharesansar.com or merolagani.com for audited figures.'\n\n"
+    "   quarterly report on sharesansar.com or merolagani.com for audited figures.'\n"
+    "9. When <historical_data> is present in the context, use it for time comparisons. "
+    "State the exact prices and dates from the data. Calculate the percentage change. "
+    "Explain what the change means in the context of the sector and market.\n\n"
+
+    "## HISTORICAL COMPARISON RULES:\n"
+    "1. When comparing past vs present, state both prices and the exact dates from <historical_data>.\n"
+    "2. Calculate and state the percentage change (this is computed in the data).\n"
+    "3. Explain possible causes using: sector trends, market-wide movements, "
+    "corporate actions (mergers, splits, bonus shares), and any news in context.\n"
+    "4. NEVER say 'Data not available' if <historical_data> is present.\n\n"
+
+    "## NATURAL CONVERSATION RULES:\n"
+    "1. For follow-up questions (check <conversation_history>), do NOT repeat "
+    "information already given in the previous response.\n"
+    "2. If the user asks 'should I buy it?' after discussing a stock, give a FRESH "
+    "analysis angle — don't repeat the same indicators paragraph.\n"
+    "3. When the user says 'it/this/them', always resolve from conversation history.\n"
+    "4. Vary your sentence structure — never start consecutive responses the same way.\n\n"
 
     "## INDICATOR CONSISTENCY RULES:\n"
     "1. RSI < 40: use bearish language. Never suggest buying.\n"
@@ -99,7 +117,12 @@ SYSTEM_PROMPT = (
     "RSI > 55 AND price is above EMA.\n"
     "5. MACD positive: acknowledge bullish momentum.\n"
     "6. Conflicting indicators: always say 'mixed signals' and explain. Never pick one side.\n"
-    "7. NEVER give a buy or sell conclusion without citing which 2+ indicators support it.\n\n"
+    "7. NEVER give a buy or sell recommendation. You are an analyst, not an advisor. "
+    "FORBIDDEN phrases: 'I would recommend', 'I would caution against buying', "
+    "'you should buy/sell', 'consider purchasing', 'it might be a good time to buy'. "
+    "Instead, present what the indicators show and let the user decide. "
+    "Example: 'The MACD is bearish and RSI is neutral at 46 — there is no clear "
+    "technical floor to buy against.' NOT: 'I would recommend waiting to buy.'\n\n"
 
     "## COMPARISON RULES:\n"
     "1. Discuss ALL mentioned symbols — never drop one.\n"
@@ -328,6 +351,7 @@ def build_rag_prompt(
     max_input_tokens: int = 3000,
     route: str = None,
     history: list[dict] = None,
+    golden_match: dict = None,
 ) -> str:
     """
     Assembles the final RAG prompt from tool outputs.
@@ -373,7 +397,9 @@ def build_rag_prompt(
             sym_match = re.search(r"\b([A-Z]{2,6})\b", part_str)
             sym_attr = f" symbol=\"{sym_match.group(1)}\"" if sym_match else ""
 
-            if "SQL DATA:" in part_str or "Indicators:" in part_str:
+            if "Historical comparison" in part_str or "Price change:" in part_str:
+                xml_parts.append(f"<historical_data{sym_attr}>\n{part_str}\n</historical_data>")
+            elif "SQL DATA:" in part_str or "Indicators:" in part_str:
                 xml_parts.append(f"<sql_data{sym_attr}>\n{part_str}\n</sql_data>")
             elif "Graph Context:" in part_str:
                 xml_parts.append(f"<graph_data{sym_attr}>\n{part_str}\n</graph_data>")
@@ -387,6 +413,22 @@ def build_rag_prompt(
                 xml_parts.append(f"<additional_context>\n{part_str}\n</additional_context>")
 
         context = "\n".join(xml_parts)
+
+        # If golden prompt matched, add structure guidance
+        if golden_match:
+            template = golden_match.get("response_template", "")
+            slot_rules = golden_match.get("slot_rules", {})
+            rules_text = "\n".join(f"- {k}: {v}" for k, v in slot_rules.items())
+            golden_block = (
+                f"<ideal_structure>\n"
+                f"Use this response structure (fill in actual data from context):\n"
+                f"{template}\n\n"
+                f"Slot guidelines:\n{rules_text}\n"
+                f"IMPORTANT: Use the ACTUAL numbers from <context>, not these placeholders.\n"
+                f"</ideal_structure>\n\n"
+            )
+            context = golden_block + context
+
         return (
             f"{history_block}"
             f"<context>\n{context}\n</context>\n\n"

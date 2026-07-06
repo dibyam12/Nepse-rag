@@ -2,9 +2,9 @@ import hashlib
 from django.core.cache import cache
 
 # TTL constants
-TTL_INDICATORS = 900       # 15 minutes
-TTL_OHLCV      = 900       # 15 minutes
-TTL_NEWS       = 3600      # 1 hour
+TTL_INDICATORS = 21600     # 6 hours
+TTL_OHLCV      = 21600     # 6 hours
+TTL_NEWS       = 1800      # 30 minutes
 TTL_LLM        = 3600      # 1 hour
 TTL_SYMBOLS    = 86400     # 24 hours
 

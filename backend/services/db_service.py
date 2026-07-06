@@ -385,3 +385,152 @@ def get_stocks_by_price_filter(sector=None, max_price=None, min_price=None, limi
             f"Date: {r['date']}"
         )
     return "\n".join(result_lines)
+
+
+# ── Historical Price Queries (from Neon DB) ───────────────────
+
+async def get_price_at_date(symbol: str, target_date: str) -> dict | None:
+    """
+    Gets the closest available OHLCV row to a specific date.
+
+    Uses a ±7 day window to find the nearest trading day.
+    Returns: {symbol, date, close, open, high, low, volume} or None.
+    """
+    sym = symbol.upper()
+
+    import asyncio
+    from datetime import datetime, timedelta
+
+    if isinstance(target_date, str):
+        try:
+            parsed = datetime.strptime(target_date, "%Y-%m-%d").date()
+        except ValueError:
+            logger.warning("get_price_at_date: invalid date format: %s", target_date)
+            return None
+    else:
+        parsed = target_date
+
+    # Search ±7 days around target to find nearest trading day
+    date_from = (parsed - timedelta(days=7)).strftime("%Y-%m-%d")
+    date_to = (parsed + timedelta(days=7)).strftime("%Y-%m-%d")
+
+    start = time.time()
+    rows = await asyncio.to_thread(
+        execute_neon_query,
+        "SELECT symbol, date, open, high, low, close, volume "
+        "FROM stocks_stockdata "
+        "WHERE symbol = %s AND date BETWEEN %s AND %s "
+        "ORDER BY ABS(date - %s::date) ASC LIMIT 1",
+        (sym, date_from, date_to, parsed.strftime("%Y-%m-%d"))
+    )
+    latency = int((time.time() - start) * 1000)
+
+    if not rows:
+        logger.info(
+            "get_price_at_date(%s, %s): no data found",
+            sym, target_date,
+            extra={"event": "historical_miss", "symbol": sym},
+        )
+        return None
+
+    row = rows[0]
+    result = {
+        'symbol': row['symbol'],
+        'date': str(row['date']),
+        'open': float(row['open']) if row['open'] is not None else None,
+        'high': float(row['high']) if row['high'] is not None else None,
+        'low': float(row['low']) if row['low'] is not None else None,
+        'close': float(row['close']) if row['close'] is not None else None,
+        'volume': int(row['volume']) if row['volume'] is not None else 0,
+    }
+
+    logger.info(
+        "get_price_at_date(%s, %s): close=%.1f on %s (%dms)",
+        sym, target_date, result['close'], result['date'], latency,
+        extra={"event": "historical_fetch", "symbol": sym, "latency_ms": latency},
+    )
+    return result
+
+
+async def get_price_n_years_ago(symbol: str, years: int) -> dict | None:
+    """
+    Gets price closest to N years ago from today.
+    Convenience wrapper around get_price_at_date.
+    """
+    from datetime import date, timedelta
+
+    # Approximate N years ago (accounts for leap years)
+    target = date.today() - timedelta(days=years * 365)
+    return await get_price_at_date(symbol, target.strftime("%Y-%m-%d"))
+
+
+async def get_price_change_summary(
+    symbol: str, from_date: str, to_date: str
+) -> dict:
+    """
+    Returns price change summary between two dates.
+
+    If to_date is today or in the future and has no data (data lag / holiday),
+    falls back to the latest available OHLCV row from get_latest_ohlcv().
+
+    Returns: {
+        symbol, from_price, from_date, to_price, to_date,
+        abs_change, pct_change, direction
+    }
+    Returns dict with error key if from_date data is missing.
+    """
+    from datetime import date as date_cls
+
+    from_data = await get_price_at_date(symbol, from_date)
+    to_data = await get_price_at_date(symbol, to_date)
+
+    # If to_date lookup failed but to_date is today or future, fall back to latest row
+    if not to_data:
+        try:
+            parsed_to = date_cls.fromisoformat(to_date[:10])
+        except (ValueError, TypeError):
+            parsed_to = date_cls.today()
+
+        if parsed_to >= date_cls.today():
+            try:
+                latest = await get_latest_ohlcv(symbol)
+                if latest:
+                    to_data = latest
+                    logger.info(
+                        "get_price_change_summary(%s): to_date fallback to latest row %s",
+                        symbol, latest.get('date'),
+                    )
+            except Exception as e:
+                logger.warning(
+                    "get_price_change_summary(%s): latest fallback failed: %s",
+                    symbol, e,
+                )
+
+    if not from_data or not to_data:
+        missing = []
+        if not from_data:
+            missing.append(f"from_date={from_date}")
+        if not to_data:
+            missing.append(f"to_date={to_date}")
+        return {
+            "symbol": symbol.upper(),
+            "error": f"No price data available for: {', '.join(missing)}",
+        }
+
+    from_price = from_data['close']
+    to_price = to_data['close']
+    abs_change = to_price - from_price
+    pct_change = ((to_price - from_price) / from_price * 100) if from_price else 0
+    direction = "increase" if abs_change > 0 else "decrease" if abs_change < 0 else "no change"
+
+    return {
+        "symbol": symbol.upper(),
+        "from_price": round(from_price, 2),
+        "from_date": from_data['date'],
+        "to_price": round(to_price, 2),
+        "to_date": to_data['date'],
+        "abs_change": round(abs_change, 2),
+        "pct_change": round(pct_change, 2),
+        "direction": direction,
+    }
+

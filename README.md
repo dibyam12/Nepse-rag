@@ -8,6 +8,12 @@ NEPSE AI Research Assistant is an AI-powered web assistant that answers question
 
 ## Recent Features & Updates
 
+### Phase 7 — Golden Prompts & Historical Comparison (2026-07-06)
+- **Golden Prompts**: Intercepts queries matching templates in `golden_prompts.json` using a two-pass `golden_matcher.py` pattern matching framework, injecting formatting rules directly into the LLM system prompt.
+- **Historical Comparison RAG**: Added temporal intent classifications ("N years ago", "since YYYY", etc.) and added `historical_tool` in `agent.py` to compare prices against historical milestones.
+- **Evaluation Suite Complete**: Added targeted validators `eval_historical.py`, `eval_followup.py`, and `eval_golden.py` along with custom metrics for relative comparison correctness, tool execution, and advisory phrasing compliance.
+- **Caching Standardized**: Aligned cache limits (6h for indicators/ohlcv, 30m for news, 1h for LLM) supporting both Redis and file caching backends.
+
 ### Phase 5 — UI Polish (2026-05-08)
 - **PriceCard component** — shows close price, % change, day range, 52W range, VWAP in a structured card
 - **Indicator Grid (SignalsTable)** — color-coded RSI/MACD/EMA/Bollinger status badges
@@ -166,8 +172,6 @@ python scripts/build_graph_index.py
 
 ---
 
-## Architecture Decisions
-
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | LLMs | API LLMs + Ollama fallback | No GPU available; RAG pipeline compensates for domain knowledge gap |
@@ -175,3 +179,4 @@ python scripts/build_graph_index.py
 | ASGI Server | Daphne | Required for async SSE streaming; WSGI servers (Gunicorn) are synchronous |
 | Ollama | llama3.2:3b | OpenAI-compatible endpoint, no API key, offline resilience |
 | Neon DB | Read-only | Remote production DB — all writes go through the data provider, not the app |
+| Caching | Redis / File-Based | Optimized EOD load: 6h TTL for OHLCV/indicators, 30m for news, 1h for LLM replies |

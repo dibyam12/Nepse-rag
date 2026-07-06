@@ -34,7 +34,8 @@ The UI shows: PriceCards, SignalsTables, News sections, collapsible `<thinking>`
 | **Web Search** | DuckDuckGo (`ddgs` package), NewsAPI, direct HTML scraping |
 | **Frontend** | React 18 + Vite + Zustand (state) + Axios + Lucide icons |
 | **Styling** | Vanilla CSS with CSS custom properties (dark/light theme) |
-| **Caching** | Django database cache (1-hour TTL for LLM responses, news) |
+| **Styling** | Vanilla CSS with CSS custom properties (dark/light theme) |
+| **Caching** | Django File-Based or Redis cache (6-hour TTL for OHLCV and Indicators, 30-minute TTL for news, 1-hour TTL for LLM responses) |
 
 ---
 
@@ -313,15 +314,21 @@ Built as an entailment-based safety guard.
 ### evaluation/ — Automated Test Suite
 
 A complete framework to ensure retrieval quality and guard against regressions:
-- **`test_questions.json`**: Gold dataset containing 30 hand-crafted test questions covering stock analysis (5), news queries (5), anti-hallucination (5), definitional (3), comparison (3), negative/off-topic prompts (5), and sub-related topics (4).
-- **`eval_runner.py`**: Executes the RAGAS evaluation. Uses Google AI (Gemini) as the LLM judge. Computes:
+- **`test_questions.json`**: Gold dataset containing 38 hand-crafted test questions covering stock analysis, news queries, anti-hallucination, definitional, comparison, negative/off-topic prompts, sub-related topics, historical queries, and multi-turn conversational context flow.
+- **`eval_runner.py`**: Executes the evaluation suite. Uses Google AI (Gemini) as the LLM judge. Computes:
   - *Faithfulness*: Groundedness of response in context.
   - *Answer Relevancy*: How well the answer matches the question.
   - *Context Precision*: Accuracy of retrieval.
+  - *Historical Accuracy*: Precision of relative price comparisons.
+  - *Historical Tool Routing*: Verifies that temporal queries invoke `historical_tool`.
+  - *No-Advice Compliance*: Ensures no buy/sell advisory phrases are output.
   - Also outputs basic metrics like route accuracy, tool recall, negative deflection rate, and average latency.
-- **`eval_negative.py`**: Evaluates boundary and off-topic prompt rejection (Mt. Everest, crypto, etc.) to ensure the bot politely redirects off-topic chatter.
-- **`eval_news.py`**: Directly invokes `news_tool` for 5 key symbols to verify article presence, ensure markdown elements are stripped, and check that Indian NHPC results are blocked.
-- **`eval_retrieval.py`**: Directly calls `query_vector_rag` across 10 queries, validating source diversity and confirming that `fundamental_analysis_guide.txt` doesn't dominate.
+- **`eval_historical.py`**: Validates historical data lookups, date parsing, delta calculations, and `historical_tool` output structure.
+- **`eval_followup.py`**: Tests turn-based conversational symbol resolution, non-repetition rules, no-advice compliance, and empty history safety clearings.
+- **`eval_golden.py`**: Verifies pattern detection in the `golden_matcher` and formatting compliance in the LLM response.
+- **`eval_negative.py`**: Evaluates boundary and off-topic prompt rejection.
+- **`eval_news.py`**: Directly invokes `news_tool` to verify article presence, markdown stripping, and Indian NHPC filters.
+- **`eval_retrieval.py`**: Validates vector search diversity and cross-encoder reranking.
 
 ---
 
@@ -431,21 +438,21 @@ venv\Scripts\python.exe test_phase4_live.py  # E2E tests (calls actual LLM)
 
 ## 10. Known Limitations & Current Gaps
 
-1. **OHLCV data staleness**: Neon DB data is from 2026-04-17. The web price fallback often fails to parse prices from scraped HTML.
+1. **OHLCV data staleness**: Neon DB data is from 2026-04-17. The web price fallback extracts raw snippets when exact scraping fails.
 
 2. **News deduplication is URL-only**: Same story from different sources isn't deduplicated by content similarity.
 
-3. **Single-round conversation**: No multi-turn memory. Each query is independent (context symbol is the only carryover).
-
 ---
 
-## 11. Recent Changes (2026-06-04)
+## 11. Recent Changes (2026-07-06)
 
+- **Caching Alignment**: Standardized the caching architecture to support both environment-switchable Redis and FileBasedCache backends. Aligned caching TTLs with the system architecture specifications: OHLCV (`6 Hours`), Indicators (`6 Hours`), News (`30 Minutes`), and LLM responses (`1 Hour`) to minimize Neon DB connection loads.
+- **Golden Prompt Matching**: Added `golden_prompts.json` and a two-pass `golden_matcher.py` (regex matches checked first globally, then falling back to sequence matcher ratios to prevent false positive shadowings). Matched templates are injected into `views.py` before prompting.
+- **Historical Comparison RAG**: Extended `db_service.py` to compute multi-year backtests. Implemented `historical_tool` in `agent.py` to compile relative changes and wired temporal intent detection in `query_router.py` to upgrade routed queries to agents handling comparison tasks. Added automatic latest-row fallback in `get_price_change_summary` to prevent crashes when todays data hasn't yet loaded.
+- **Evaluation Completion**: Added `eval_historical.py`, `eval_followup.py`, and `eval_golden.py` checking performance across historical data, multi-turn contexts, and ideal response structures. Added `historical_accuracy`, `historical_tool_routing`, and `no_advice_compliance` metrics to `eval_runner.py`.
 - **Richer News**: Scraping full article bodies for top results using `fetch_article()` with site-specific selectors, stripping boilerplates, and passing excerpts to the LLM context.
 - **Live SSE Agent Status Indicators**: Added real-time SSE progress events (e.g., "Fetching price data for NICA...") shown dynamically in the frontend message bubble with matching icons.
 - **Anti-Hallucination & Prompt Engineering**: Added grounding rules, a few-shot example, response prefilling, and chain-of-verification checks in the `<thinking>` block. Tagged XML blocks with symbols.
-- **Word-boundary keyword matching**: `_has_keyword()` with `\b` regex prevents false positives (e.g., "eps" in "nepse")
-- **NEPSE excluded from symbols**: Added "NEPSE" to `_EXCLUDED_WORDS` so "What are the NEPSE trading rules?" routes to `vector_only` not `full_agent`
 - **Merged symbols support**: NCCB→KBL, MEGA→NIMB etc. transparently queried
 - **Context pollution fix**: Explicit symbols in query override stale URL param symbol
 - **CoT reasoning**: `<thinking>` blocks with collapsible UI
@@ -454,4 +461,4 @@ venv\Scripts\python.exe test_phase4_live.py  # E2E tests (calls actual LLM)
 
 ---
 
-*Last updated: 2026-06-04*
+*Last updated: 2026-07-06*

@@ -86,7 +86,18 @@ TEST_QUERIES = [
         "expected_primary": "compare_methodology.txt",
         "should_not_dominate": None,
     },
+    {
+        "query": "How do bonus shares affect stock price?",
+        "expected_primary": "corporate_actions_guide.txt",
+        "should_not_dominate": "fundamental_analysis_guide.txt",
+    },
+    {
+        "query": "What causes stock prices to change over time?",
+        "expected_primary": "fundamental_analysis_guide.txt",
+        "should_not_dominate": None,
+    },
 ]
+
 
 
 def test_retrieval_quality():

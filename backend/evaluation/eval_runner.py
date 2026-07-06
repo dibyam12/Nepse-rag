@@ -39,6 +39,11 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "nepse_project.settings")
 import django
 django.setup()
 
+# Ensure UTF-8 output on Windows (fixes cp1252 emoji errors)
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 logger = logging.getLogger("nepse_rag")
 
 # ── Paths ─────────────────────────────────────────────────────
@@ -197,6 +202,25 @@ def compute_basic_metrics(results: list[dict]) -> dict:
     hallucination_detected = 0
     hallucination_total = 0
 
+    # New: Historical metrics
+    historical_correct = 0
+    historical_total = 0
+    historical_tool_correct = 0
+
+    # New: No-advice compliance
+    advice_violations = 0
+    advice_total = 0
+    FORBIDDEN_ADVICE = [
+        "i would recommend",
+        "you should buy",
+        "you should sell",
+        "i would caution against buying",
+        "consider purchasing",
+        "it might be a good time to buy",
+        "i recommend",
+        "my recommendation",
+    ]
+
     for r in results:
         # Route accuracy
         if r.get("route_actual") == r.get("expected_route"):
@@ -242,6 +266,24 @@ def compute_basic_metrics(results: list[dict]) -> dict:
             ]):
                 hallucination_detected += 1
 
+        # Historical accuracy: answer must cite a real year/date from DB
+        if r.get("category") == "historical":
+            historical_total += 1
+            answer = r.get("answer", "")
+            # Must mention at least one actual year in the answer (not fabricated)
+            if any(yr in answer for yr in ["2018", "2019", "2020", "2021", "2022", "2023", "2024"]):
+                historical_correct += 1
+            # Check if historical_tool was actually called
+            if "historical_tool" in r.get("tools_actual", []):
+                historical_tool_correct += 1
+
+        # No-advice compliance
+        if r.get("check_no_advice"):
+            advice_total += 1
+            answer_lower = r.get("answer", "").lower()
+            if any(p in answer_lower for p in FORBIDDEN_ADVICE):
+                advice_violations += 1
+
     n = len(results)
     return {
         "route_accuracy": round(route_correct / n, 4) if n else 0,
@@ -249,8 +291,12 @@ def compute_basic_metrics(results: list[dict]) -> dict:
         "avg_latency_ms": round(total_latency / n) if n else 0,
         "negative_rejection_rate": round(negative_correct / negative_total, 4) if negative_total else None,
         "anti_hallucination_rate": round(hallucination_detected / hallucination_total, 4) if hallucination_total else None,
+        "historical_accuracy": round(historical_correct / historical_total, 4) if historical_total else None,
+        "historical_tool_routing": round(historical_tool_correct / historical_total, 4) if historical_total else None,
+        "no_advice_compliance": round(1 - advice_violations / advice_total, 4) if advice_total else None,
         "total_questions": n,
     }
+
 
 
 def print_results(results: list[dict], basic_metrics: dict, ragas_scores: dict):
@@ -269,10 +315,29 @@ def print_results(results: list[dict], basic_metrics: dict, ragas_scores: dict):
         if r.get("error"):
             print(f"    ERROR: {r['error']}")
 
-    # Basic metrics
+    # Basic metrics with targets
+    BASIC_TARGETS = {
+        "route_accuracy":           (0.8,  "% of queries routed correctly"),
+        "tool_accuracy":            (0.8,  "% of queries using correct tools"),
+        "negative_rejection_rate":  (0.9,  "% of off-topic queries correctly rejected"),
+        "anti_hallucination_rate":  (0.8,  "% of anti-hallucination checks passing"),
+        "historical_accuracy":      (0.8,  "% of historical queries citing real DB dates"),
+        "historical_tool_routing":  (0.9,  "% of historical queries invoking historical_tool"),
+        "no_advice_compliance":     (1.0,  "% of advice queries without forbidden phrases"),
+    }
     print("\n── Basic Metrics ──")
     for key, value in basic_metrics.items():
-        if value is not None:
+        if value is None or key == "total_questions" or key == "avg_latency_ms":
+            if key == "avg_latency_ms":
+                print(f"  {'avg_latency_ms':30s}: {value} ms")
+            elif key == "total_questions":
+                print(f"  {'total_questions':30s}: {value}")
+            continue
+        target, desc = BASIC_TARGETS.get(key, (None, ""))
+        if target is not None:
+            status = "✓ PASS" if value >= target else "✗ FAIL"
+            print(f"  {key:30s}: {value:.4f}  (target: ≥{target})  {status}")
+        else:
             print(f"  {key:30s}: {value}")
 
     # RAGAS scores
@@ -327,7 +392,7 @@ def save_results(results: list[dict], basic_metrics: dict, ragas_scores: dict, o
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
-    print(f"\n📄 Results saved to: {filepath}")
+    print(f"\n[+] Results saved to: {filepath}")
 
 
 async def main():
@@ -340,7 +405,7 @@ async def main():
                         help="Skip RAGAS LLM-based metrics (faster, basic metrics only)")
     args = parser.parse_args()
 
-    print("🚀 NEPSE AI RAG — Evaluation Suite")
+    print("[*] NEPSE AI RAG -- Evaluation Suite")
     print(f"   Questions file: {QUESTIONS_FILE}")
 
     # Load questions

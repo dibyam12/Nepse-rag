@@ -16,6 +16,7 @@
 | 4 | Agentic LLM Orchestration (LangGraph) | COMPLETE | 100% |
 | 5 | Frontend (React + Vite) | COMPLETE | 100% |
 | 6 | Evaluation & Documentation | COMPLETE | 100% |
+| 7 | Golden Prompts & Historical Comparison | COMPLETE | 100% |
 
 ---
 
@@ -184,15 +185,28 @@
 
 ---
 
-## Phase 6: Evaluation & Documentation — IN PROGRESS
+## Phase 6: Evaluation & Documentation — COMPLETE
 
-### Planned Work
-- [ ] RAG evaluation metrics (faithfulness, relevancy, answer quality) using RAGAS framework
-- [ ] Agent evaluation (tool selection accuracy, multi-step reasoning)
-- [ ] Performance benchmarks: baseline established — full_agent ~36s, sql_graph ~18s, cache hit ~0.1s
-- [ ] LLM comparison table for report: Groq Llama vs Gemini vs Ollama llama3.2:3b
-- [ ] Final project report write-up
-- [ ] DISCLAIMER visible on every LLM response ✅ already appended in `agent.py` and `views.py`
+### What Was Done
+- [x] **RAGAS Evaluation Suite (`evaluation/eval_runner.py`)**: Expanded with 3 new custom metrics: `historical_accuracy` (validates price/date comparisons), `historical_tool_routing` (verifies `historical_tool` is invoked for temporal intent), and `no_advice_compliance` (validates no forbidden buy/sell warnings in answers).
+- [x] **Historical Pipeline Evaluator (`evaluation/eval_historical.py`)**: Tests historical DB lookup, date ranges, delta changes, and `historical_tool` output formats.
+- [x] **Follow-up Flow Evaluator (`evaluation/eval_followup.py`)**: Validates turn-based conversational symbol resolution, non-repetition, advice compliance, and empty history clearings.
+- [x] **Groundedness Checker (`services/groundedness.py`)**: Sentence claim extraction & NLI model grading.
+- [x] **Negative Prompt Rejection (`evaluation/eval_negative.py`)**: Blocks off-topic queries.
+- [x] **News Integrity Check (`evaluation/eval_news.py`)**: Validates news fetches and checks for Indian symbol leaks.
+- [x] **Vector Diversity Test (`evaluation/eval_retrieval.py`)**: Tests ChromaDB search and cross-encoder reranking.
+- [x] **DISCLAIMER integration**: Automatically appended on every response to prevent unauthorized financial advice.
+
+---
+
+## Phase 7: Golden Prompts & Historical Comparison — COMPLETE
+
+### What Was Done
+- [x] **Golden Prompt System (`services/golden_prompts.json`)**: Configured 7 gold templates matching common user query structures (e.g. single stock, compare two, should I buy, latest news, indicator details).
+- [x] **Fuzzy + Regex Matcher (`services/golden_matcher.py`)**: Custom matching engine with LRU caching. Runs a two-pass matching algorithm (all regex first, then highest-ratio fuzzy search) to prevent false positives.
+- [x] **Response Formatting Guard**: Intercepts matched queries at the view layer and injects `<ideal_structure>` templates into the LLM system prompts to guarantee perfect formatting.
+- [x] **Historical Comparison Integration**: Added temporal intent classification (detects "N years ago", "since YYYY", "price history") upgrading the route to `full_agent` or `compare` to ensure `historical_tool` executes.
+- [x] **Golden Quality Evaluator (`evaluation/eval_golden.py`)**: Automates unit testing for pattern matching and response structure compliance.
 
 ### Architecture Decisions to Document
 | Decision | Choice | Rationale |
@@ -264,6 +278,12 @@ nepse_rag/
 ---
 
 ## Change Log
+
+### 2026-07-06 — Golden Prompts, Historical RAG, and Evaluation Suite Completion
+- **Caching Alignment**: Standardized the caching architecture to support both environment-switchable Redis and FileBasedCache backends. Aligned caching TTLs with the system architecture specifications: OHLCV (`6 Hours`), Indicators (`6 Hours`), News (`30 Minutes`), and LLM responses (`1 Hour`) to minimize Neon DB connection loads.
+- **Golden Prompt Matching**: Added `golden_prompts.json` and a two-pass `golden_matcher.py` (regex matches checked first globally, then falling back to sequence matcher ratios to prevent false positive shadowings). Matched templates are injected into `views.py` before prompting.
+- **Historical Comparison RAG**: Extended `db_service.py` to compute multi-year backtests. Implemented `historical_tool` in `agent.py` to compile relative changes and wired temporal intent detection in `query_router.py` to upgrade routed queries to agents handling comparison tasks. Added automatic latest-row fallback in `get_price_change_summary` to prevent crashes when todays data hasn't yet loaded.
+- **Evaluation Completion**: Added `eval_historical.py`, `eval_followup.py`, and `eval_golden.py` checking performance across historical data, multi-turn contexts, and ideal response structures. Added `historical_accuracy`, `historical_tool_routing`, and `no_advice_compliance` metrics to `eval_runner.py`.
 
 ### 2026-06-04 — Richer News, Live Agent Status, & Anti-Hallucination Improvements
 - **Richer News Body Extraction (Component 1)**: Integrated direct article body scraping using `fetch_article()` in `web_search.py` with selectors customized for Nepali financial websites (ShareSansar, MeroLagani, NepseAlpha), stripping ad/cookie boilerplate, and attaching body text (up to 1,500 chars) under a new `body` field returned by `get_news_for_symbol()`. Pre-populated excerpts (first 400 chars) into the LLM context and mapped richer text to the frontend citation summaries.

@@ -176,10 +176,22 @@ const useChatStore = create((set, get) => ({
 
     // Try SSE streaming first
     try {
+      const symbolsList = get().symbols || [];
+      const hasExplicitSymbol = (q, list) => {
+        if (!list || list.length === 0) return false;
+        const words = q.toUpperCase().replace(/[^A-Z\s]/g, '').split(/\s+/);
+        const known = new Set(list.map(s => (s.symbol || s).toUpperCase()));
+        return words.some(w => known.has(w));
+      };
+
       const symbolToSend = selectedSymbol || get().lastSymbol || "";
+      const hasExplicit = hasExplicitSymbol(question, symbolsList);
+      const isFollowup = !!symbolToSend && !hasExplicit;
+
       const params = new URLSearchParams({
         question,
         symbol: symbolToSend,
+        is_followup: isFollowup ? 'true' : 'false',
         ...(activeConversationId && { conversation_id: activeConversationId }),
       });
 
@@ -224,6 +236,11 @@ const useChatStore = create((set, get) => ({
                     : m
                 ),
               }));
+              break;
+            case 'active_symbols':
+              if (data.data && data.data.length > 0) {
+                set({ lastSymbol: data.data[0] });
+              }
               break;
             case 'signals':
               signals = data.data;

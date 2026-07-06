@@ -114,4 +114,18 @@ We evaluate our system across two primary dimensions:
 **A**: We use an automated **Fallback Chain**. If Groq fails with a `429` (rate limit) or connection timeout, the system immediately marks it as exhausted in cache and attempts the request on Gemini. If Gemini fails, it queries OpenRouter, and if all fails, it uses a local CPU-hosted Ollama model.
 
 #### Q: How did you implement Conversational Memory in the SSE stream?
-**A**: The backend retrieves the last 6 messages of the active `conversation_id` from the SQLite database. It passes them to the LLM as chat history. The system prompt contains rules that instruct the model to read these turns and avoid repeating previously stated metrics, indicators, or news headlines.
+**A**: The backend retrieves the last 6 messages of the active `conversation_id` from the SQLite database. It passes them to the LLM as chat history. The system prompt contains rules that instruct the model to read these turns and avoid repeating previously stated metrics, indicators, or news headlines. Additionally, the frontend carries the `lastSymbol` as a context parameter `is_followup` to avoid repeating raw price charts in follow-up chat turns.
+
+#### Q: Explain the Caching Architecture. What are the TTL parameters?
+**A**: The caching layer uses Django's cache framework configured for switchable File-Based or Redis backends. The caching durations are optimized based on EOD (end-of-day) data profiles:
+* **OHLCV Data** & **Technical Indicators**: Cached for **6 Hours** (TTLs match the system diagram) since Neon DB only records daily closing data. This reduces remote PostgreSQL server connection overheads.
+* **News Results**: Cached for **30 Minutes** to capture intra-day market updates.
+* **LLM Responses**: Cached for **1 Hour** matching MD5 hashes of `question` + `symbol` inputs to prevent duplicate API token consumption on identical queries.
+
+#### Q: What is the Golden Prompt Matching System?
+**A**: It is an optimization in `services/golden_matcher.py` that intercepts common user queries. Using a two-pass matching strategy (checking all explicit regular expression rules globally before falling back to sequence matcher ratios), it prevents false positive shadowing. A match triggers views to inject `<ideal_structure>` formatting guidelines into the LLM system prompts, ensuring clean, report-grade structure.
+
+#### Q: How does the system evaluate relative price comparisons?
+**A**: A temporal intent classifier detects comparative metrics (e.g. "N years ago" or "since YYYY") and routes the query to `ROUTE_FULL_AGENT` or `ROUTE_COMPARE`. The agent triggers `historical_tool` which fetches the exact close price from Neon at the historical date (with fallback to the latest DB records in case of non-trading day/data lag) and computes the exact relative change.
+Our `eval_runner.py` suite includes automated checks (`historical_accuracy`, `historical_tool_routing`, and `no_advice_compliance`) alongside separate scripts (`eval_historical.py`, `eval_followup.py`, and `eval_golden.py`) to test this E2E.
+

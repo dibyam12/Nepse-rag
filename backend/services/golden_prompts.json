@@ -1,0 +1,115 @@
+[
+  {
+    "id": "single_stock_analysis",
+    "match_patterns": [
+      "how is {SYMBOL} performing",
+      "tell me about {SYMBOL}",
+      "{SYMBOL} analysis",
+      "analyze {SYMBOL}",
+      "what about {SYMBOL}",
+      "give me {SYMBOL} overview"
+    ],
+    "response_template": "{SYMBOL} is trading at NPR {close} ({pct_change}) with {volume_desc} volume. {momentum_sentence} {news_sentence} {outlook_sentence}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "volume_desc": "if volume > 100000: 'heavy' elif volume > 50000: 'moderate' else: 'light'",
+      "momentum_sentence": "Derived from RSI + MACD: one sentence about momentum direction using actual indicator values",
+      "news_sentence": "If news exists: one sentence interpreting the news significance. If no news: omit entirely.",
+      "outlook_sentence": "One sentence about what to watch next based on BB position and support/resistance"
+    }
+  },
+  {
+    "id": "compare_two_stocks",
+    "match_patterns": [
+      "compare {SYM1} and {SYM2}",
+      "compare {SYM1} vs {SYM2}",
+      "{SYM1} vs {SYM2}",
+      "{SYM1} versus {SYM2}",
+      "which is better {SYM1} or {SYM2}",
+      "compare {SYM1} {SYM2} fundamentals"
+    ],
+    "response_template": "{SYM1_paragraph}\n\n{SYM2_paragraph}\n\nBased on current indicators: {ranking}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "SYM1_paragraph": "3-4 sentences about SYM1: price, momentum from indicators, volume story, one news insight if available",
+      "SYM2_paragraph": "3-4 sentences about SYM2: same structure as SYM1, but different phrasing to avoid repetition",
+      "ranking": "Explicit ranking citing 2+ specific indicators per stock (e.g., RSI value, MACD direction)"
+    }
+  },
+  {
+    "id": "historical_price",
+    "match_patterns": [
+      "what was {SYMBOL} price {N} years ago",
+      "{SYMBOL} price in {YEAR}",
+      "how much has {SYMBOL} changed",
+      "{SYMBOL} price history",
+      "{SYMBOL} historical price",
+      "how has {SYMBOL} changed over"
+    ],
+    "response_template": "{SYMBOL} was trading at NPR {historical_price} on {historical_date}. Today it trades at NPR {current_price} — a {direction} of {pct_change}% over {time_period}. {cause_sentence}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "cause_sentence": "Explain the price change using: sector trends, bonus share dilution, merger/acquisition events, NEPSE-wide market cycle (bull/bear phase)"
+    }
+  },
+  {
+    "id": "should_i_buy",
+    "match_patterns": [
+      "should i buy {SYMBOL}",
+      "is {SYMBOL} worth buying",
+      "should i invest in {SYMBOL}",
+      "should i buy it",
+      "should i sell it",
+      "is it a good time to buy",
+      "worth investing"
+    ],
+    "response_template": "{indicator_analysis} {setup_assessment}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "indicator_analysis": "State what RSI, MACD, and BB position indicate using actual values — NEVER recommend buying or selling",
+      "setup_assessment": "Describe the technical setup in neutral terms ('mixed signals', 'no clear support floor', 'bullish alignment emerging') without any prescriptive advice"
+    }
+  },
+  {
+    "id": "latest_news",
+    "match_patterns": [
+      "latest news about {SYMBOL}",
+      "news for {SYMBOL}",
+      "what's happening with {SYMBOL}",
+      "any updates on {SYMBOL}",
+      "recent news {SYMBOL}",
+      "what is the news on {SYMBOL}"
+    ],
+    "response_template": "{news_analysis}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "news_analysis": "Interpret each news item's market impact in analyst prose — don't just list headlines. Explain what each development means for the stock's near-term outlook."
+    }
+  },
+  {
+    "id": "what_is_indicator",
+    "match_patterns": [
+      "what is RSI",
+      "what is MACD",
+      "explain RSI",
+      "explain MACD",
+      "what are bollinger bands",
+      "explain {INDICATOR}",
+      "how does RSI work",
+      "how does MACD work"
+    ],
+    "response_template": "Uses vector_tool only — explain the indicator from domain knowledge docs using plain language. Include: what it measures, typical interpretation thresholds, and one example of how it applies to NEPSE trading context.",
+    "is_educational": true
+  },
+  {
+    "id": "sector_query",
+    "match_patterns": [
+      "best stocks in {SECTOR}",
+      "top commercial banks",
+      "banking sector stocks",
+      "hydropower stocks",
+      "insurance stocks",
+      "which sector is performing best"
+    ],
+    "response_template": "{sector_overview} {top_performers}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "sector_overview": "One sentence on the sector's current macro environment (interest rate environment, NRB policy impact, sector-specific drivers)",
+      "top_performers": "Name 2-3 stocks from the sector with their key indicator reading — do NOT rank or recommend"
+    }
+  }
+]

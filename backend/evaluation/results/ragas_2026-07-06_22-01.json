@@ -1,0 +1,126 @@
+{
+  "timestamp": "2026-07-06_22-01",
+  "total_questions": 5,
+  "basic_metrics": {
+    "route_accuracy": 0.8,
+    "tool_accuracy": 0.8,
+    "avg_latency_ms": 45843,
+    "negative_rejection_rate": null,
+    "anti_hallucination_rate": null,
+    "historical_accuracy": 1.0,
+    "historical_tool_routing": 0.8,
+    "no_advice_compliance": null,
+    "total_questions": 5
+  },
+  "ragas_scores": {
+    "skipped": true
+  },
+  "per_question": [
+    {
+      "question": "What was NABIL's price 3 years ago?",
+      "category": "historical",
+      "answer": "Three years ago, on July 6th, 2023, NABIL's closing price stood at NPR 582.10. This represents a considerable decrease of NPR 43.30 (-7.44%) from its current close of NPR 538.80. Given the bank's recent announcements, it's worth noting that NABIL declared a 12.5% cash dividend for FY2081/82, resulting in a yield of 2.36% at its current LTP of NPR 530. However, the bank's distributable profit has been a key focus area, with a high amount of profit available to distribute as dividends after regula",
+      "route_expected": "full_agent",
+      "route_actual": "full_agent",
+      "tools_expected": [
+        "sql_tool",
+        "graph_tool",
+        "historical_tool"
+      ],
+      "tools_actual": [
+        "sql_tool",
+        "graph_tool",
+        "news_tool",
+        "historical_tool",
+        "vector_tool"
+      ],
+      "latency_ms": 150574,
+      "negative": false,
+      "error": null
+    },
+    {
+      "question": "How much has NICA changed in the last 5 years?",
+      "category": "historical",
+      "answer": "Over the past five years, NIC Asia Bank has undergone a significant decline, plummeting by 61.76% from NPR 916.00 in 2021 to NPR 350.30 today. While the bank has shown some signs of stability in recent years, the RSI is currently neutral at 46.2, indicating that the price action is neither overly bullish nor bearish. However, the MACD has tipped negative, suggesting that momentum is leaking out. The price is also hugging the lower Bollinger Band without bouncing, which is a bearish sign. Conside",
+      "route_expected": "full_agent",
+      "route_actual": "full_agent",
+      "tools_expected": [
+        "sql_tool",
+        "graph_tool",
+        "historical_tool"
+      ],
+      "tools_actual": [
+        "sql_tool",
+        "graph_tool",
+        "news_tool",
+        "historical_tool",
+        "vector_tool"
+      ],
+      "latency_ms": 23721,
+      "negative": false,
+      "error": null
+    },
+    {
+      "question": "Compare NABIL price in 2020 vs today",
+      "category": "historical",
+      "answer": "NABIL's share price has witnessed a significant decline over the past six years, falling by nearly 30% from NPR 770 in July 2020 to NPR 539 in June 2026. This downtrend is reflective of the bank's struggles to maintain profitability and stay competitive in the increasingly saturated commercial banking sector. The recent provisional financial statement for the third quarter of 2081/82 did provide some insight into the bank's performance, but the current technical setup suggests that NABIL is drif",
+      "route_expected": "compare",
+      "route_actual": "compare",
+      "tools_expected": [
+        "sql_tool",
+        "graph_tool",
+        "historical_tool"
+      ],
+      "tools_actual": [
+        "sql_tool",
+        "graph_tool",
+        "news_tool",
+        "historical_tool"
+      ],
+      "latency_ms": 20002,
+      "negative": false,
+      "error": null
+    },
+    {
+      "question": "Show me SBL price history for the last year",
+      "category": "historical",
+      "answer": "Based on the data available, SBL's price history for the last year is not explicitly provided; however, a five-year comparison shows a notable decline. Siddhartha Bank's share price has decreased by 17.23% over the past five years, falling from NPR 488.00 on July 7, 2021, to NPR 403.90 as of June 4, 2026. While this long-term trend is bearish, the more recent, albeit 32-day-old, technical indicators suggest some short-term upward momentum, with RSI at 61.6 indicating neutral-to-bullish sentiment",
+      "route_expected": "full_agent",
+      "route_actual": "full_agent",
+      "tools_expected": [
+        "sql_tool",
+        "graph_tool",
+        "historical_tool"
+      ],
+      "tools_actual": [
+        "sql_tool",
+        "graph_tool",
+        "news_tool",
+        "historical_tool",
+        "vector_tool"
+      ],
+      "latency_ms": 21627,
+      "negative": false,
+      "error": null
+    },
+    {
+      "question": "What was UPPER price in 2018?",
+      "category": "historical",
+      "answer": "I don't have historical price data for UPPER specifically for 2018 in my current dataset. My records only show its closing price as of 2026-06-04 at 203.00, with indicators suggesting it's currently under some bearish pressure as MACD is negative at -1.36 and the price is hugging the lower Bollinger Band, though RSI is neutral at 44.1.\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+      "route_expected": "full_agent",
+      "route_actual": "sql_graph",
+      "tools_expected": [
+        "sql_tool",
+        "graph_tool",
+        "historical_tool"
+      ],
+      "tools_actual": [
+        "sql_tool",
+        "graph_tool"
+      ],
+      "latency_ms": 13292,
+      "negative": false,
+      "error": null
+    }
+  ]
+}
