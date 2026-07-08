@@ -167,6 +167,7 @@ class RouteDecision:
     price_above: int = None
     sector: str = None
     temporal_params: dict = field(default_factory=dict)
+    rank_by_signals: bool = False
 
 
 _KNOWN_SYMBOLS = None
@@ -307,24 +308,46 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
         r'\bfilter\b.*\b(price|npr|rupee)\b',
         r'\baffordable\b',
         r'\bcheap(er)?\b',
+        r'\blist\b.*\bstock',
+        r'\bstocks?\b.*\b(between|from)\b.*\d+',
+        r'\bbest\b.*\b(buy|stock|invest)',
+        r'\bprofitable\b',
+        r'\bgood\s+to\s+buy\b',
+        r'\btop\b.*\b(stock|share|pick)',
+        r'\bstock.*\b(pick|recommend)',
+    ]
+
+    # Ranking intent — user wants buy/sell/profitable ordering
+    RANKING_KEYWORDS = [
+        r'\bbest\b', r'\bprofitable\b', r'\branking\b', r'\branked\b',
+        r'\border\b', r'\bgood\s+to\s+buy\b', r'\bbuy\b',
+        r'\brecommend\b', r'\btop\b', r'\bpick\b',
+        r'\bworth\b', r'\binvest\b',
     ]
 
     if any(re.search(p, question, re.IGNORECASE) for p in SCREENER_PATTERNS):
         price_below = None
         price_above = None
-        
+
         m = re.search(r'\bbelow\s+(\d+)\b', question, re.IGNORECASE)
         if m:
             price_below = int(m.group(1))
-        
+
         m = re.search(r'\bunder\s+(\d+)\b', question, re.IGNORECASE)
         if m:
             price_below = int(m.group(1))
-        
+
         m = re.search(r'\babove\s+(\d+)\b', question, re.IGNORECASE)
         if m:
             price_above = int(m.group(1))
-        
+
+        # "between X and Y" pattern
+        m = re.search(r'\bbetween\s+(\d+)\s+and\s+(\d+)\b', question, re.IGNORECASE)
+        if m:
+            val1, val2 = int(m.group(1)), int(m.group(2))
+            price_above = min(val1, val2)
+            price_below = max(val1, val2)
+
         # Extract sector if mentioned
         sector = None
         sector_keywords = {
@@ -340,10 +363,15 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
             if kw in question.lower():
                 sector = sector_name
                 break
-        
+
+        # Detect ranking intent
+        rank_by_signals = any(
+            re.search(p, question, re.IGNORECASE) for p in RANKING_KEYWORDS
+        )
+
         logger.info(
-            "Query routed to screener: '%s' (sector=%s, price_below=%s, price_above=%s)",
-            question[:60], sector, price_below, price_above,
+            "Query routed to screener: '%s' (sector=%s, price_below=%s, price_above=%s, rank=%s)",
+            question[:60], sector, price_below, price_above, rank_by_signals,
             extra={"event": "query_route", "route": "screener", "symbols": []},
         )
         return RouteDecision(
@@ -352,7 +380,8 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
             tools_needed=['sql_tool'],
             price_below=price_below,
             price_above=price_above,
-            sector=sector
+            sector=sector,
+            rank_by_signals=rank_by_signals,
         )
 
     q_lower = question.lower()

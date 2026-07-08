@@ -1,205 +1,1002 @@
-Technical Indicator Explanations
-=================================
+Technical Indicator Explanations for NEPSE Stock Market
+=========================================================
 
-This file explains the key technical indicators used in the system for NEPSE stocks.
-Each section includes: core idea, default/typical settings, how traders interpret it,
-and NEPSE-specific edge cases (low liquidity, circuit limits, gap moves, etc.).
+This document is a comprehensive reference for all major technical indicators used in
+stock market analysis, specifically tailored to the Nepal Stock Exchange (NEPSE).
+Each section includes: definition, formula, typical settings, interpretation guide,
+practical usage examples, and NEPSE-specific edge cases.
+
+Technical indicators are mathematical calculations based on price, volume, or open interest
+data. They help traders and investors identify trends, momentum, volatility, and potential
+buy/sell signals. They are classified into the following categories:
+
+Categories of Technical Indicators:
+  1. Trend Indicators — Identify the direction and strength of a trend (EMA, SMA, ADX, Ichimoku)
+  2. Momentum Indicators — Measure the speed of price changes (RSI, MACD, Stochastic, CCI, ROC, Williams %R)
+  3. Volatility Indicators — Measure the degree of price variation (Bollinger Bands, ATR, BBW, Keltner Channels)
+  4. Volume Indicators — Analyze trading volume to confirm trends (OBV, VWAP, MFI, A/D Line, CMF)
+  5. Market Sensitivity — Measure a stock's relationship to the broader market (Beta)
+  6. Support & Resistance — Identify key price levels (Pivot Points, Fibonacci Retracement)
+
+================================================================================
 
 1. RSI (Relative Strength Index)
---------------------------------
-RSI is a momentum oscillator that measures the speed and magnitude of recent price changes.
+---------------------------------
+Category: Momentum Indicator
+Developed by: J. Welles Wilder Jr. (1978)
 
-- Formula (conceptual): 
-  RSI = 100 - [100 / (1 + RS)], where RS = Average Gain / Average Loss over N periods.
-- Typical Settings:
+Definition:
+RSI is a momentum oscillator that measures the speed and magnitude of recent price changes
+to evaluate overbought or oversold conditions. It oscillates between 0 and 100.
+
+Formula:
+  RSI = 100 - [100 / (1 + RS)]
+  RS (Relative Strength) = Average Gain over N periods / Average Loss over N periods
+
+  Step-by-step:
+  1. Calculate daily price changes (Close today - Close yesterday)
+  2. Separate gains (positive changes) and losses (absolute value of negative changes)
+  3. Calculate the average gain and average loss over N periods (typically 14)
+  4. RS = Average Gain / Average Loss
+  5. RSI = 100 - (100 / (1 + RS))
+
+  For subsequent periods, use a smoothed average:
+  Average Gain = [(Previous Average Gain × 13) + Current Gain] / 14
+  Average Loss = [(Previous Average Loss × 13) + Current Loss] / 14
+
+Typical Settings:
   - Period: 14 days (standard on NEPSE daily charts)
   - Range: 0 to 100
-- Interpretation:
-  - Overbought zone: RSI > 70 (price may be stretched to the upside, potential reversal or consolidation)
-  - Oversold zone: RSI < 30 (price may be stretched to the downside, potential bounce or reversal)
-  - Bullish divergence: Price makes a lower low but RSI makes a higher low (downtrend losing strength)
-  - Bearish divergence: Price makes a higher high but RSI makes a lower high (uptrend losing strength)
-- NEPSE Edge Cases:
+  - Some traders also use 9-period (more sensitive) or 21-period (smoother)
+
+Interpretation:
+  - Overbought zone: RSI > 70 — Price may be stretched upward; potential reversal or consolidation.
+  - Oversold zone: RSI < 30 — Price may be stretched downward; potential bounce or reversal.
+  - Neutral zone: RSI between 30 and 70 — No extreme signal.
+  - RSI = 50: Centerline; RSI above 50 generally means upward momentum, below 50 means downward.
+  - Bullish Divergence: Price makes a lower low but RSI makes a higher low — downtrend losing strength.
+  - Bearish Divergence: Price makes a higher high but RSI makes a lower high — uptrend losing strength.
+
+How Traders Use RSI:
+  - Entry signal: Buy when RSI crosses above 30 (exiting oversold). Sell when RSI crosses below 70 (exiting overbought).
+  - Trend confirmation: In an uptrend, RSI tends to stay between 40 and 90. In a downtrend, 10 to 60.
+  - Divergence trading: Look for RSI divergences at key support/resistance levels.
+
+Example:
+  If NABIL has RSI = 28 after a 10-day decline, it indicates the stock may be oversold
+  and due for a short-term bounce. However, confirm with volume and support levels before buying.
+
+NEPSE Edge Cases:
   - In strong bull runs (e.g., hydropower or microfinance rallies), RSI can stay above 70 for weeks;
     treating every overbought reading as a sell signal can cause premature exits.
-  - Many illiquid NEPSE stocks have flat days or sporadic large moves, which can create noisy RSI values
-    and false signals.
-  - Circuit limits (e.g., ±15% daily band) can push RSI to extremes quickly; a single limit-up or limit-down
+  - Many illiquid NEPSE stocks have flat days or sporadic large moves, which can create noisy RSI values.
+  - Circuit limits (±10% daily band) can push RSI to extremes quickly; a single limit-up or limit-down
     day can distort the oscillator for several sessions.
 
-2. MACD (Moving Average Convergence Divergence)
------------------------------------------------
-MACD is a trend-following momentum indicator that shows the relationship between two EMAs.
+================================================================================
 
-- Core Components:
-  - MACD Line = EMA(12) - EMA(26)
-  - Signal Line = 9-period EMA of the MACD Line
-  - Histogram = MACD Line - Signal Line (visualizes distance/strength of momentum)
-- Interpretation:
-  - Bullish crossover: MACD Line crosses above Signal Line → momentum turning up.
-  - Bearish crossover: MACD Line crosses below Signal Line → momentum turning down.
-  - Zero-line cross: MACD moving from negative to positive (or vice versa) suggests trend change.
-- NEPSE Edge Cases:
-  - Because many NEPSE stocks trend slowly and then jump sharply, MACD can lag during sudden
-    breakouts or breakdowns; by the time a crossover appears, the move may already be extended.
-  - Sideways or low-volume phases (common in thinly traded scrips) generate many small crossovers,
-    leading to whipsaws and false signals.
-  - Circuit-limit days can create large gaps that make MACD histogram spike for a few candles
-    without a sustainable trend behind it.
+2. MACD (Moving Average Convergence Divergence)
+-------------------------------------------------
+Category: Momentum / Trend Indicator
+Developed by: Gerald Appel (1970s)
+
+Definition:
+MACD is a trend-following momentum indicator that shows the relationship between two
+Exponential Moving Averages (EMAs) of a stock's price. It helps identify changes in the
+strength, direction, momentum, and duration of a trend.
+
+Formula:
+  MACD Line = EMA(12) - EMA(26)
+  Signal Line = EMA(9) of the MACD Line
+  MACD Histogram = MACD Line - Signal Line
+
+  Where:
+  - EMA(12) = 12-period Exponential Moving Average of closing prices
+  - EMA(26) = 26-period Exponential Moving Average of closing prices
+  - The Signal Line smooths the MACD Line to generate clearer trading signals
+
+Typical Settings:
+  - Fast EMA: 12 periods
+  - Slow EMA: 26 periods
+  - Signal Line: 9-period EMA of MACD Line
+  - Some traders use (8, 17, 9) for more sensitivity or (5, 35, 5) for longer-term trends
+
+Interpretation:
+  - Bullish Crossover: MACD Line crosses above Signal Line → momentum turning up (buy signal).
+  - Bearish Crossover: MACD Line crosses below Signal Line → momentum turning down (sell signal).
+  - Zero-Line Cross: MACD moving from negative to positive → trend shifting to bullish (and vice versa).
+  - Histogram increasing: Momentum strengthening in the current direction.
+  - Histogram decreasing: Momentum weakening; possible trend reversal ahead.
+  - MACD Divergence: Similar to RSI — price and MACD moving in opposite directions signals potential reversal.
+
+How Traders Use MACD:
+  - Signal-line crossover: Most common signal. Buy on bullish crossover, sell on bearish crossover.
+  - Zero-line crossover: More conservative; confirms trend direction change.
+  - Histogram analysis: Watch for histogram shrinking before a crossover to get early warning.
+  - Combine with RSI: MACD bullish crossover + RSI exiting oversold = stronger buy signal.
+
+Example:
+  If NICA's MACD Line is at +3.2 and the Signal Line is at +1.8, the MACD Histogram is +1.4
+  (bullish). If the histogram starts shrinking (e.g., +1.0, +0.5), momentum is weakening
+  even though MACD is still positive.
+
+NEPSE Edge Cases:
+  - Many NEPSE stocks trend slowly then jump sharply; MACD can lag during sudden breakouts.
+  - Sideways or low-volume phases generate many small crossovers, leading to whipsaws.
+  - Circuit-limit days can create large gaps that make MACD histogram spike temporarily.
+
+================================================================================
 
 3. EMA (Exponential Moving Average)
------------------------------------
-EMA tracks the average price but gives more weight to recent data, making it more responsive than SMA.
+-------------------------------------
+Category: Trend Indicator
 
-- Conceptual Formula:
-  - EMA_today = α * Price_today + (1 - α) * EMA_yesterday,
-    where α = 2 / (N + 1) and N is the period.
-- Common NEPSE Settings:
-  - EMA-20: Short-term trend (about one trading month).
-  - EMA-50: Medium-term trend.
-  - EMA-200: Long-term trend/primary trend filter.
-- Interpretation:
-  - Price above EMA-20 and EMA-50: bullish bias; dips towards EMAs may be buying zones.
-  - Price below EMA-20 and EMA-50: bearish bias; rallies to EMAs may be selling zones.
-  - “Golden Cross”: Short EMA (e.g., 20) crosses above longer EMA (e.g., 50) → bullish signal.
-  - “Death Cross”: Short EMA crosses below longer EMA → bearish signal.
-- NEPSE Edge Cases:
-  - Illiquid stocks with frequent gaps and long upper/lower wicks can make EMAs less smooth and
-    more prone to sudden flips.
-  - Corporate actions like bonus shares, right issues, and stock splits can distort past prices if
-    not properly adjusted, causing misleading EMA signals.
-  - On very slow-moving scrips, EMAs may stay flat for long periods and add little insight.
+Definition:
+EMA is a type of moving average that gives more weight to recent prices, making it more
+responsive to new information than the Simple Moving Average (SMA). It smooths price data
+to help identify trend direction and potential support/resistance levels.
 
-4. Bollinger Bands
-------------------
-Bollinger Bands are volatility bands placed above and below a moving average.
+Formula:
+  EMA_today = (Price_today × Multiplier) + (EMA_yesterday × (1 - Multiplier))
+  Multiplier (α) = 2 / (N + 1)
 
-- Components:
-  - Middle Band: 20-day Simple Moving Average (SMA).
-  - Upper Band: Middle Band + (2 × standard deviation of price over 20 days).
-  - Lower Band: Middle Band - (2 × standard deviation of price over 20 days).
-- Interpretation:
-  - Price near or above Upper Band: market may be overextended; risk of pullback.
-  - Price near or below Lower Band: market may be oversold; risk of bounce.
-  - Band squeeze (bands contract): period of low volatility, often preceding a sharp move.
-  - Band expansion: high volatility, often after a breakout or breakdown.
-- NEPSE Edge Cases:
-  - Due to daily price limits, many NEPSE stocks show prolonged narrow ranges followed by sudden
-    limit-up/limit-down moves; bands may stay squeezed for a long time and then expand abruptly.
-  - Thinly traded stocks often show price “jumping” between bands without real liquidity; touching
-    an upper band in such stocks does not always imply institutional buying.
-  - During news-driven spikes (e.g., bonus announcements), price can walk the upper band for many
-    days, so selling solely because price hits the band can be premature.
+  Where N is the number of periods.
+  Example for EMA-20: α = 2 / (20 + 1) = 0.0952
 
-5. Bollinger Band Width (BBW)
------------------------------
-Bollinger Band Width (BBW) quantifies the distance between the upper and lower Bollinger Bands
-relative to the middle band.
+Comparison with SMA:
+  SMA = Sum of N closing prices / N
+  - SMA gives equal weight to all prices; EMA gives more weight to recent prices.
+  - EMA reacts faster to price changes; SMA is smoother but slower.
 
-- Concept:
-  - BBW = (Upper Band – Lower Band) / Middle Band
-- Interpretation:
-  - Low BBW values: low volatility; potential consolidation and upcoming breakout.
-  - High BBW values: high volatility; often after strong moves or during news events.
-- NEPSE Edge Cases:
-  - In NEPSE, BBW can remain low for extended periods when a stock is stuck in a narrow range
-    with low volume; breakouts from such ranges can be sharp but not always sustainable.
-  - Circuit-limit moves can cause BBW to spike for 1–2 candles without establishing a durable trend.
-  - On illiquid stocks, a few random trades can artificially widen bands and distort BBW readings.
+Common Periods on NEPSE:
+  - EMA-9 or EMA-10: Very short-term trend (scalping, day trading).
+  - EMA-20: Short-term trend (about one trading month on NEPSE which trades ~22 days/month).
+  - EMA-50: Medium-term trend (about 2.5 months).
+  - EMA-100: Intermediate trend.
+  - EMA-200: Long-term trend / primary trend filter.
 
-6. ATR (Average True Range)
----------------------------
-ATR measures market volatility by capturing the full range of price movement, including gaps.
+Interpretation:
+  - Price above EMA: Bullish bias; the stock is in an uptrend relative to that period.
+  - Price below EMA: Bearish bias; the stock is in a downtrend relative to that period.
+  - EMA acting as support: In uptrends, price often bounces off the EMA (buy-the-dip zone).
+  - EMA acting as resistance: In downtrends, price often reverses at the EMA.
+  - Golden Cross: Short EMA (e.g., 20) crosses above longer EMA (e.g., 50) → bullish trend signal.
+  - Death Cross: Short EMA crosses below longer EMA → bearish trend signal.
 
-- Conceptual Formula:
-  - True Range (TR) = max(High - Low, |High - Previous Close|, |Low - Previous Close|)
-  - ATR = moving average of TR over N periods (commonly 14 days).
-- Interpretation:
-  - Rising ATR: increasing volatility; larger potential daily moves.
-  - Falling ATR: decreasing volatility; smaller daily moves.
-  - Traders often use ATR to set dynamic stop-loss levels (e.g., 1.5 × ATR below entry price for long positions).
-- NEPSE Edge Cases:
-  - Because of upper/lower circuit limits, a single limit-up or limit-down day can massively increase TR
-    and temporarily inflate ATR.
-  - Illiquid scrips with sporadic trades can show artificially high or low ATR that does not reflect
-    true tradable volatility.
-  - In some NEPSE stocks, price barely moves for many days; ATR becomes very small, making ATR-based
-    stops unrealistically tight.
+How Traders Use EMA:
+  - Trend identification: Check if price is above or below key EMAs.
+  - Dynamic support/resistance: Trade bounces off EMA lines.
+  - Crossover systems: Buy on Golden Cross, sell on Death Cross.
+  - Multiple EMAs: Use 20, 50, and 200 EMAs together — when all three are aligned (price > 20 > 50 > 200), it's a strong uptrend.
 
-7. OBV (On-Balance Volume)
----------------------------
-OBV is a volume-based indicator that cumulatively adds or subtracts volume depending on price direction.
+Example:
+  If NABIL is trading at 540 with EMA-20 at 530 and EMA-50 at 510, the stock is above both
+  EMAs, indicating a bullish trend. The EMA-20 at 530 acts as the first support level.
 
-- Conceptual Formula:
-  - If today’s close > yesterday’s close → OBV = previous OBV + today’s volume.
-  - If today’s close < yesterday’s close → OBV = previous OBV - today’s volume.
-  - If today’s close = yesterday’s close → OBV = previous OBV.
-- Interpretation:
-  - Rising OBV: buying pressure; volume confirming an uptrend.
-  - Falling OBV: selling pressure; volume confirming a downtrend.
-  - Price-OBV divergence: if price is flat or falling but OBV rises, it may indicate hidden accumulation.
-- NEPSE Edge Cases:
-  - Many NEPSE stocks have very low daily volume; even a single large trade can cause big OBV jumps,
-    which may not represent sustained accumulation or distribution.
-  - When price does not change due to no trades or freeze at circuit limit, OBV may remain flat despite
-    latent supply or demand.
-  - Right shares, bonus shares, and promoter block trades can produce unusual volume spikes that distort OBV.
+NEPSE Edge Cases:
+  - Illiquid stocks with frequent gaps can make EMAs less smooth and more prone to sudden flips.
+  - Corporate actions (bonus shares, right issues, stock splits) can distort past prices if not adjusted.
+  - Very slow-moving scrips may have flat EMAs that add little insight.
 
-8. VWAP (Volume Weighted Average Price)
----------------------------------------
-VWAP is the average price of a stock traded during the day, weighted by volume.
+================================================================================
 
-- Concept:
-  - VWAP = (Sum of Price × Volume for all trades in a day) / (Total Volume of the day).
-- Uses:
-  - Intraday benchmark: compares current price vs. VWAP to see if buyers are paying above or below
-    the day’s average.
-  - Institutional trading: large investors aim to execute near VWAP to minimize market impact.
-- Interpretation:
-  - Price above VWAP: intraday bullish bias; buyers paying a premium relative to average traded price.
-  - Price below VWAP: intraday bearish bias.
-- NEPSE Edge Cases:
-  - Not all NEPSE data feeds expose tick-level or full intraday data; approximated VWAP based on OHLC
-    can lose accuracy.
-  - In very illiquid stocks with only a few trades, VWAP can be heavily skewed by a single large order.
-  - Circuit-limit days often show very one-sided trading; VWAP may sit close to the limit price and
-    not provide meaningful “fair value” information.
+4. SMA (Simple Moving Average)
+-------------------------------
+Category: Trend Indicator
 
-9. Stochastic Oscillator
+Definition:
+SMA calculates the arithmetic mean of a stock's closing prices over a specified number of periods.
+It is the simplest form of a moving average and provides a smoothed line to identify trends.
+
+Formula:
+  SMA = (P1 + P2 + P3 + ... + PN) / N
+  Where P1 to PN are the closing prices for the past N periods.
+
+Common Periods:
+  - SMA-10: Very short term
+  - SMA-20: Short term (1 month)
+  - SMA-50: Medium term (about 2.5 months)
+  - SMA-200: Long term (about 10 months) — the most widely watched moving average globally
+
+Interpretation:
+  - Same as EMA but slower to react.
+  - SMA-200 is considered the dividing line between bull and bear markets.
+  - Price crossing above SMA-200 from below = major bullish signal.
+
+Difference from EMA:
+  - SMA is smoother and less prone to whipsaws but also slower to signal trend changes.
+  - For NEPSE traders, EMA is generally preferred for short-term trading, SMA for long-term trend analysis.
+
+================================================================================
+
+5. Bollinger Bands (BB)
 ------------------------
-The Stochastic Oscillator compares a stock’s closing price to its price range over a set period.
+Category: Volatility Indicator
+Developed by: John Bollinger (1980s)
 
-- Components:
-  - %K = (Current Close - Lowest Low) / (Highest High - Lowest Low) × 100 over N periods.
-  - %D = moving average of %K (usually 3-period SMA).
-- Typical Settings:
-  - 14, 3, 3 (N = 14 periods, 3-period smoothing, 3-period signal).
-- Interpretation:
-  - Overbought: %K or %D above 80.
-  - Oversold: %K or %D below 20.
-  - Bullish signal: %K crosses above %D in the oversold region.
-  - Bearish signal: %K crosses below %D in the overbought region.
-- NEPSE Edge Cases:
-  - In trending NEPSE stocks, the oscillator can remain overbought or oversold for long periods; counter-
-    trend trades solely based on Stochastic can fail repeatedly.
-  - Illiquid stocks with large gaps between highs and lows can make %K swing wildly even on low volume.
-  - Daily price limits can cause the indicator to pin to extremes for consecutive days.
+Definition:
+Bollinger Bands consist of a middle band (SMA) with an upper and lower band set at a certain
+number of standard deviations from the middle band. They expand and contract based on volatility.
 
-10. Beta (Market Sensitivity)
+Formula:
+  Middle Band = SMA(20)
+  Upper Band = SMA(20) + (2 × Standard Deviation of price over 20 periods)
+  Lower Band = SMA(20) - (2 × Standard Deviation of price over 20 periods)
+
+  Standard Deviation = √[ Σ(Price - SMA)² / N ]
+
+Typical Settings:
+  - Period: 20 days
+  - Standard Deviation Multiplier: 2
+  - Some traders use (10, 1.5) for shorter timeframes or (50, 2.5) for longer-term
+
+Interpretation:
+  - Price near Upper Band: Market may be overextended; risk of pullback (but can also indicate strength).
+  - Price near Lower Band: Market may be oversold; risk of bounce (but can also indicate weakness).
+  - Band Squeeze: Bands contract tightly → period of low volatility → often precedes a sharp breakout.
+  - Band Expansion: Bands widen → high volatility → often after a breakout or during news events.
+  - "Walking the Band": In strong trends, price can ride along the upper or lower band for extended periods.
+  - BB %B: Measures where price is relative to the bands. %B = (Price - Lower) / (Upper - Lower).
+    - %B > 1.0 = above upper band; %B < 0.0 = below lower band; %B = 0.5 = at middle band.
+
+How Traders Use Bollinger Bands:
+  - Mean Reversion: Buy at lower band, sell at upper band (works best in ranging markets).
+  - Breakout Trading: When bands squeeze and then expand, trade in the direction of the breakout.
+  - Trend Confirmation: Price consistently above the middle band = uptrend; below = downtrend.
+
+Example:
+  If NABIL's upper BB is at 540 and price is at 538 (94% BB position), the stock is near the
+  upper band. Combined with an RSI of 63 (not yet overbought), it suggests upward momentum but
+  watch for potential resistance at the upper band.
+
+NEPSE Edge Cases:
+  - Daily circuit limits cause prolonged narrow ranges followed by sudden limit-up/down moves.
+  - Thinly traded stocks may "jump" between bands without real liquidity.
+  - News-driven spikes (bonus announcements) can cause price to walk the upper band for many days.
+
+================================================================================
+
+6. Bollinger Band Width (BBW)
+------------------------------
+Category: Volatility Indicator
+
+Definition:
+BBW quantifies the distance between the upper and lower Bollinger Bands relative to the
+middle band. It is used to identify periods of low and high volatility.
+
+Formula:
+  BBW = (Upper Band - Lower Band) / Middle Band
+
+Interpretation:
+  - Low BBW: Low volatility, consolidation phase. Often a precursor to a significant price move.
+  - High BBW: High volatility, often during or after strong trends or news events.
+  - BBW at historical lows for that stock: "Squeeze" setup — expect a breakout soon.
+
+NEPSE Edge Cases:
+  - BBW can remain low for extended periods in illiquid stocks stuck in narrow ranges.
+  - Circuit-limit moves can cause BBW to spike temporarily without establishing a durable trend.
+
+================================================================================
+
+7. ATR (Average True Range)
 -----------------------------
-Beta measures a stock’s volatility relative to the overall market (e.g., NEPSE Index).
+Category: Volatility Indicator
+Developed by: J. Welles Wilder Jr. (1978)
 
-- Concept:
-  - Beta ≈ Covariance(stock, index) / Variance(index).
-- Interpretation:
-  - Beta > 1: stock is more volatile than the market (tends to move more than the index).
-  - Beta ≈ 1: stock moves roughly in line with the index.
-  - Beta < 1: stock is less volatile than the market.
-  - Beta < 0: stock tends to move inversely to the market.
-- NEPSE Edge Cases:
-  - Many NEPSE stocks have limited historical data or long periods of illiquidity, making Beta estimates
-    unstable or statistically weak.
-  - Sector concentration (e.g., heavy weight of banks, hydropower) can cause multiple stocks to move
-    together, inflating correlation and Beta.
-  - Regulatory changes, new IPOs, and sudden sentiment shifts can quickly change a stock’s Beta over
-    short windows; using a fixed long-term Beta can be misleading.
+Definition:
+ATR measures market volatility by capturing the full range of price movement, including gaps.
+It does NOT indicate trend direction — only the degree of price movement.
+
+Formula:
+  True Range (TR) = Maximum of:
+    1. High - Low (current day's range)
+    2. |High - Previous Close| (gap up measurement)
+    3. |Low - Previous Close| (gap down measurement)
+
+  ATR = Moving average of TR over N periods (typically 14 days)
+  ATR = [(Previous ATR × 13) + Current TR] / 14 (Wilder's smoothing)
+
+Typical Settings:
+  - Period: 14 days (standard)
+  - Some traders use 10 or 20 periods
+
+Interpretation:
+  - Rising ATR: Increasing volatility; larger potential daily price swings.
+  - Falling ATR: Decreasing volatility; smaller daily moves; possible consolidation.
+  - ATR does NOT indicate direction — a stock can have high ATR while moving up, down, or sideways.
+
+How Traders Use ATR:
+  - Stop-loss placement: Set stop-loss at entry price ± (1.5 to 2 × ATR) for dynamic risk management.
+  - Position sizing: Use ATR to normalize position sizes across different stocks.
+  - Breakout confirmation: If a breakout is accompanied by ATR expansion, it's more likely to be genuine.
+  - Chandelier Exit: A trailing stop based on ATR — e.g., exit if price drops 3 × ATR from highest close.
+
+Example:
+  If NABIL has ATR(14) = 15.5, it means the stock typically moves about NPR 15.5 per day.
+  A reasonable stop-loss might be 2 × ATR = NPR 31 below entry price.
+
+NEPSE Edge Cases:
+  - Circuit limits (±10%) can inflate ATR temporarily on limit-up/limit-down days.
+  - Illiquid stocks with sporadic trades can show artificially extreme ATR values.
+  - On stocks that barely trade, ATR can become very small, making ATR-based stops unrealistically tight.
+
+================================================================================
+
+8. OBV (On-Balance Volume)
+----------------------------
+Category: Volume Indicator
+Developed by: Joe Granville (1963)
+
+Definition:
+OBV is a cumulative volume-based indicator that adds volume on up days and subtracts volume
+on down days. It helps identify whether volume is flowing into or out of a stock.
+
+Formula:
+  If Close_today > Close_yesterday → OBV = Previous OBV + Volume_today
+  If Close_today < Close_yesterday → OBV = Previous OBV - Volume_today
+  If Close_today = Close_yesterday → OBV = Previous OBV (unchanged)
+
+Interpretation:
+  - Rising OBV: Buying pressure; volume confirming an uptrend.
+  - Falling OBV: Selling pressure; volume confirming a downtrend.
+  - OBV-Price Divergence:
+    - Price falling but OBV rising → hidden accumulation (smart money buying); potential bullish reversal.
+    - Price rising but OBV falling → hidden distribution (smart money selling); potential bearish reversal.
+  - OBV breakout: OBV breaking above its own resistance can precede a price breakout.
+
+How Traders Use OBV:
+  - Confirm trends: Ensure price trend is supported by volume (OBV should trend in same direction).
+  - Spot divergences: Look for OBV diverging from price for early reversal signals.
+  - Breakout confirmation: If price breaks above resistance AND OBV is at new highs, breakout is more reliable.
+
+Example:
+  If NABIL's price has been flat at 535-540 for a week but OBV is steadily rising, it suggests
+  buyers are accumulating shares quietly. A price breakout above 540 could follow.
+
+NEPSE Edge Cases:
+  - Low daily volume in many NEPSE stocks means a single large trade can cause big OBV jumps.
+  - Right shares, bonus shares, and promoter block trades produce unusual volume spikes that distort OBV.
+  - When a stock is frozen at circuit limit with no trades, OBV stays flat despite latent demand/supply.
+
+================================================================================
+
+9. VWAP (Volume Weighted Average Price)
+-----------------------------------------
+Category: Volume / Price Indicator
+
+Definition:
+VWAP is the average price of a stock during a trading session, weighted by volume.
+It represents the true average price that shares were traded at and is widely used as
+a benchmark by institutional traders.
+
+Formula:
+  VWAP = Σ(Price × Volume) / Σ(Volume)
+
+  For each transaction:
+  - Multiply the price by the number of shares traded
+  - Sum all these values
+  - Divide by total volume for the period
+
+  Approximation using OHLCV data:
+  Typical Price = (High + Low + Close) / 3
+  VWAP ≈ Σ(Typical Price × Volume) / Σ(Volume) [calculated cumulatively throughout the day]
+
+Interpretation:
+  - Price above VWAP: Bullish intraday bias; buyers paying a premium relative to the average.
+  - Price below VWAP: Bearish intraday bias; sellers dominating.
+  - VWAP as support/resistance: Price often bounces off or reverses at the VWAP level.
+
+How Traders Use VWAP:
+  - Institutional execution: Large orders are benchmarked against VWAP to evaluate execution quality.
+  - Intraday trend: Use VWAP as a dynamic support/resistance line.
+  - End-of-day analysis: If a stock closes above VWAP, institutional buyers likely dominated that session.
+
+NEPSE Edge Cases:
+  - Not all NEPSE data feeds expose tick-level data; approximated VWAP from OHLC loses accuracy.
+  - In illiquid stocks with few trades, VWAP can be skewed by a single large order.
+  - Circuit-limit days show one-sided trading; VWAP near the limit price is not meaningful.
+
+================================================================================
+
+10. Stochastic Oscillator
+--------------------------
+Category: Momentum Indicator
+Developed by: George Lane (1950s)
+
+Definition:
+The Stochastic Oscillator compares a stock's closing price to its price range over a specified
+period. It measures momentum by determining where the current close sits within the recent
+high-low range. The idea is that in uptrends, prices tend to close near the high; in downtrends,
+near the low.
+
+Formula:
+  %K = [(Current Close - Lowest Low) / (Highest High - Lowest Low)] × 100
+  %D = 3-period Simple Moving Average of %K
+
+  Where "Lowest Low" and "Highest High" are calculated over N periods.
+
+Typical Settings:
+  - (14, 3, 3): N = 14 periods, %K smoothing = 3, %D = 3-period SMA of %K
+  - Fast Stochastic: Uses raw %K (more sensitive, more noise)
+  - Slow Stochastic: Uses smoothed %K (standard, less noise)
+
+Interpretation:
+  - Overbought: %K or %D above 80 — price near the top of recent range.
+  - Oversold: %K or %D below 20 — price near the bottom of recent range.
+  - Bullish signal: %K crosses above %D in the oversold region (below 20).
+  - Bearish signal: %K crosses below %D in the overbought region (above 80).
+  - Stochastic Divergence: Similar to RSI divergence but using %K line.
+
+How Traders Use It:
+  - Combine with support/resistance: Buy when Stochastic is oversold AND price is at support.
+  - Confirm RSI: Stochastic oversold + RSI oversold = stronger buy signal.
+  - Avoid in strong trends: Stochastic works best in range-bound markets; in trending markets, it can give premature signals.
+
+NEPSE Edge Cases:
+  - In trending NEPSE stocks, the oscillator can remain overbought/oversold for long periods.
+  - Illiquid stocks with large gaps can make %K swing wildly on low volume.
+  - Daily circuit limits can cause the indicator to pin at extremes for consecutive days.
+
+================================================================================
+
+11. ADX (Average Directional Index)
+-------------------------------------
+Category: Trend Strength Indicator
+Developed by: J. Welles Wilder Jr. (1978)
+
+Definition:
+ADX measures the strength of a trend, regardless of its direction. It does not tell you
+whether the trend is up or down — only how strong it is. It is derived from the Directional
+Movement Index (DMI) system.
+
+Formula:
+  +DM (Plus Directional Movement) = Current High - Previous High (if positive and > -DM, else 0)
+  -DM (Minus Directional Movement) = Previous Low - Current Low (if positive and > +DM, else 0)
+
+  +DI = 100 × Smoothed +DM / ATR (14-period)
+  -DI = 100 × Smoothed -DM / ATR (14-period)
+
+  DX = |+DI - (-DI)| / (+DI + (-DI)) × 100
+  ADX = 14-period smoothed average of DX
+
+Typical Settings:
+  - Period: 14 (standard)
+  - Range: 0 to 100
+
+Interpretation:
+  - ADX < 20: Weak or no trend; market is ranging/choppy. Avoid trend-following strategies.
+  - ADX 20-25: Trend may be emerging; prepare for potential breakout.
+  - ADX 25-50: Strong trend in place; trend-following strategies work well.
+  - ADX 50-75: Very strong trend; consider trailing stops to protect profits.
+  - ADX > 75: Extremely strong trend; rare but powerful. Watch for exhaustion.
+  - +DI above -DI: The trend is bullish (upward direction).
+  - -DI above +DI: The trend is bearish (downward direction).
+
+How Traders Use ADX:
+  - Trend filter: Only take trend-following trades when ADX > 25.
+  - Combine with DI crossovers: Buy when +DI crosses above -DI AND ADX > 20.
+  - Avoid mean-reversion trades: When ADX is high, don't try to fade the trend.
+  - ADX turning down from high levels: Trend is losing strength; prepare for potential reversal.
+
+Example:
+  If NABIL has ADX = 35 with +DI = 28 and -DI = 15, it indicates a strong bullish trend.
+  If ADX was 12 last month and is now 35, the trend has significantly strengthened.
+
+NEPSE Edge Cases:
+  - Many NEPSE stocks trade in narrow ranges for long periods, keeping ADX below 20 most of the time.
+  - Sudden news-driven moves can cause ADX to spike quickly but not sustain, leading to false signals.
+  - Low liquidity stocks may show erratic +DI/-DI readings that don't reflect genuine trends.
+
+================================================================================
+
+12. CCI (Commodity Channel Index)
+-----------------------------------
+Category: Momentum Indicator
+Developed by: Donald Lambert (1980)
+
+Definition:
+CCI measures a stock's price deviation from its statistical average. Despite its name, it is
+widely used for stocks, not just commodities. It identifies cyclical trends and overbought/oversold levels.
+
+Formula:
+  Typical Price (TP) = (High + Low + Close) / 3
+  CCI = (TP - SMA(TP, N)) / (0.015 × Mean Deviation)
+
+  Mean Deviation = Average of |TP - SMA(TP, N)| over N periods
+  The 0.015 constant scales CCI so that ~75% of values fall between -100 and +100.
+
+Typical Settings:
+  - Period: 20 (standard)
+  - Range: Unbounded (can go well above +100 or below -100)
+
+Interpretation:
+  - CCI > +100: Stock is in a strong uptrend; potential overbought condition.
+  - CCI < -100: Stock is in a strong downtrend; potential oversold condition.
+  - CCI crossing above +100 from below: Potential buy signal (new uptrend beginning).
+  - CCI crossing below -100 from above: Potential sell signal (new downtrend beginning).
+  - CCI returning to zero: Trend losing momentum; price returning to average.
+
+How Traders Use CCI:
+  - Trend identification: CCI > 0 = bullish bias; CCI < 0 = bearish bias.
+  - Overbought/oversold: Use +100/-100 levels similar to RSI's 70/30 levels.
+  - Divergence: Price making new highs but CCI not confirming = potential reversal.
+
+================================================================================
+
+13. Williams %R (Williams Percent Range)
+------------------------------------------
+Category: Momentum Indicator
+Developed by: Larry Williams
+
+Definition:
+Williams %R is similar to the Stochastic Oscillator but inverted. It measures where the
+current close is relative to the highest high over a lookback period. It oscillates between 0 and -100.
+
+Formula:
+  %R = [(Highest High - Close) / (Highest High - Lowest Low)] × (-100)
+
+  Over N periods (typically 14).
+
+Interpretation:
+  - %R between 0 and -20: Overbought — price near the top of its recent range.
+  - %R between -80 and -100: Oversold — price near the bottom of its recent range.
+  - %R crossing above -80 from below: Potential bullish reversal signal.
+  - %R crossing below -20 from above: Potential bearish reversal signal.
+
+How Traders Use Williams %R:
+  - Very similar to Stochastic Oscillator usage but with inverted scale.
+  - Best used in conjunction with trend indicators (EMA, ADX) to filter signals.
+  - In trending markets, %R can stay overbought or oversold for extended periods.
+
+================================================================================
+
+14. ROC (Rate of Change)
+--------------------------
+Category: Momentum Indicator
+
+Definition:
+ROC measures the percentage change in price between the current price and the price N periods ago.
+It is one of the simplest momentum indicators.
+
+Formula:
+  ROC = [(Close_today - Close_N_periods_ago) / Close_N_periods_ago] × 100
+
+Typical Settings:
+  - Period: 12 or 14 days for short-term; 25 for medium-term; 200 for long-term
+
+Interpretation:
+  - ROC > 0: Price is higher than N periods ago; positive momentum.
+  - ROC < 0: Price is lower than N periods ago; negative momentum.
+  - ROC increasing: Momentum accelerating.
+  - ROC decreasing (even if still positive): Momentum decelerating; potential trend weakening.
+  - ROC divergence: Price making new highs but ROC declining = bearish divergence.
+
+How Traders Use ROC:
+  - Momentum screening: Filter stocks with highest positive ROC for momentum investing.
+  - Overbought/oversold: Extreme ROC values relative to historical norms may signal reversals.
+  - Trend confirmation: Positive ROC confirms uptrend; negative confirms downtrend.
+
+================================================================================
+
+15. MFI (Money Flow Index)
+----------------------------
+Category: Volume / Momentum Indicator
+
+Definition:
+MFI is a volume-weighted version of RSI. It incorporates both price and volume to measure
+buying and selling pressure. Often called the "volume-weighted RSI."
+
+Formula:
+  Typical Price (TP) = (High + Low + Close) / 3
+  Raw Money Flow = TP × Volume
+  Positive Money Flow = Sum of Raw Money Flow on days where TP > Previous TP (over N periods)
+  Negative Money Flow = Sum of Raw Money Flow on days where TP < Previous TP (over N periods)
+  Money Flow Ratio = Positive Money Flow / Negative Money Flow
+  MFI = 100 - [100 / (1 + Money Flow Ratio)]
+
+Typical Settings:
+  - Period: 14 days
+  - Range: 0 to 100
+
+Interpretation:
+  - MFI > 80: Overbought — strong buying pressure may be exhausting.
+  - MFI < 20: Oversold — strong selling pressure may be exhausting.
+  - MFI divergence with price: Similar to RSI divergence but volume-weighted, often more reliable.
+  - MFI is generally considered more reliable than RSI alone because it accounts for volume.
+
+NEPSE Edge Cases:
+  - Low-volume NEPSE stocks can have unreliable MFI readings because a few trades dominate.
+  - On days with very low volume, MFI can swing wildly and produce false signals.
+
+================================================================================
+
+16. Accumulation/Distribution Line (A/D Line)
+-----------------------------------------------
+Category: Volume Indicator
+Developed by: Marc Chaikin
+
+Definition:
+The A/D Line measures the cumulative flow of money into and out of a stock using the relationship
+between the close and the high-low range, weighted by volume. It helps determine whether a
+stock is being accumulated (bought) or distributed (sold).
+
+Formula:
+  Money Flow Multiplier (MFM) = [(Close - Low) - (High - Close)] / (High - Low)
+  Money Flow Volume = MFM × Volume
+  A/D Line = Previous A/D + Money Flow Volume
+
+  When Close = High: MFM = +1 (all volume is buying pressure)
+  When Close = Low: MFM = -1 (all volume is selling pressure)
+  When Close = Midpoint: MFM = 0 (balanced)
+
+Interpretation:
+  - Rising A/D Line: Accumulation — money flowing into the stock; bullish.
+  - Falling A/D Line: Distribution — money flowing out of the stock; bearish.
+  - A/D Line diverging from price:
+    - Price rising but A/D falling → distribution; potential top forming.
+    - Price falling but A/D rising → accumulation; potential bottom forming.
+
+================================================================================
+
+17. CMF (Chaikin Money Flow)
+------------------------------
+Category: Volume Indicator
+Developed by: Marc Chaikin
+
+Definition:
+CMF measures the amount of Money Flow Volume over a specific period. It is derived from
+the A/D Line concept but expressed as a bounded oscillator.
+
+Formula:
+  CMF = Sum of Money Flow Volume over N periods / Sum of Volume over N periods
+
+  Where Money Flow Volume = MFM × Volume (same MFM as A/D Line)
+
+Typical Settings:
+  - Period: 20 or 21 days
+  - Range: -1 to +1
+
+Interpretation:
+  - CMF > 0: Buying pressure dominates; bullish.
+  - CMF < 0: Selling pressure dominates; bearish.
+  - CMF rising while price rises: Strong uptrend confirmed by volume.
+  - CMF falling while price rises: Potential weakness; distribution may be underway.
+
+================================================================================
+
+18. Ichimoku Cloud (Ichimoku Kinko Hyo)
+-----------------------------------------
+Category: Trend / Support-Resistance Indicator
+Developed by: Goichi Hosoda (1930s, published 1969)
+
+Definition:
+Ichimoku Cloud is a comprehensive indicator that defines support/resistance, identifies trend
+direction, gauges momentum, and provides trading signals — all in one view. "Ichimoku Kinko Hyo"
+translates to "one glance equilibrium chart."
+
+Components and Formulas:
+  Tenkan-sen (Conversion Line) = (Highest High + Lowest Low) / 2 over 9 periods
+  Kijun-sen (Base Line) = (Highest High + Lowest Low) / 2 over 26 periods
+  Senkou Span A (Leading Span A) = (Tenkan-sen + Kijun-sen) / 2, plotted 26 periods ahead
+  Senkou Span B (Leading Span B) = (Highest High + Lowest Low) / 2 over 52 periods, plotted 26 periods ahead
+  Chikou Span (Lagging Span) = Current Close, plotted 26 periods behind
+
+  The "Cloud" (Kumo) is the area between Senkou Span A and Senkou Span B.
+
+Interpretation:
+  - Price above the Cloud: Bullish trend. The cloud acts as support.
+  - Price below the Cloud: Bearish trend. The cloud acts as resistance.
+  - Price inside the Cloud: Trend is indeterminate; market is consolidating.
+  - Cloud color: When Senkou Span A > B, cloud is bullish (often green). When B > A, bearish (often red).
+  - Cloud thickness: Thicker cloud = stronger support/resistance.
+  - Tenkan-sen / Kijun-sen Cross (TK Cross):
+    - Tenkan crosses above Kijun = bullish signal (above cloud = strong, inside cloud = neutral, below = weak).
+    - Tenkan crosses below Kijun = bearish signal.
+  - Chikou Span: If above price from 26 periods ago = bullish; below = bearish.
+
+How Traders Use Ichimoku:
+  - Full system: All five lines must align for a strong signal.
+  - Quick trend check: Is price above or below the cloud?
+  - Cloud as support/resistance: Enter on bounces off the cloud edge.
+  - Future cloud: The cloud plotted 26 periods ahead gives a forward-looking support/resistance view.
+
+NEPSE Edge Cases:
+  - Ichimoku was designed for Japanese stock markets with 6-day trading weeks; the default settings
+    (9, 26, 52) may need adjustment for NEPSE's 5-day week (some use 7, 22, 44 instead).
+  - Illiquid NEPSE stocks often have thin or nonexistent clouds, making signals less reliable.
+  - The 26-period forward projection of the cloud can be misleading for stocks with sudden fundamental changes.
+
+================================================================================
+
+19. Pivot Points
+-----------------
+Category: Support & Resistance Indicator
+
+Definition:
+Pivot Points are calculated price levels used to identify potential support and resistance
+zones for the next trading session. They are derived from the previous session's high, low,
+and close prices.
+
+Formula (Standard Pivot Points):
+  Pivot Point (PP) = (High + Low + Close) / 3
+  First Resistance (R1) = (2 × PP) - Low
+  First Support (S1) = (2 × PP) - High
+  Second Resistance (R2) = PP + (High - Low)
+  Second Support (S2) = PP - (High - Low)
+  Third Resistance (R3) = High + 2 × (PP - Low)
+  Third Support (S3) = Low - 2 × (High - PP)
+
+Other Methods:
+  - Fibonacci Pivot Points: Use Fibonacci ratios (38.2%, 61.8%) of the High-Low range.
+  - Woodie's Pivot Points: Give more weight to the closing price.
+  - Camarilla Pivot Points: Use a narrower range, providing more levels closer to the current price.
+
+Interpretation:
+  - Price above PP: Bullish bias for the session.
+  - Price below PP: Bearish bias for the session.
+  - R1, R2, R3: Expected resistance levels where selling pressure may increase.
+  - S1, S2, S3: Expected support levels where buying pressure may increase.
+
+How Traders Use Pivot Points:
+  - Intraday trading: Use as entry/exit levels for day trades.
+  - Set targets: Take profit at the next resistance level; set stop-loss below the nearest support.
+  - Confluence: Pivot levels that align with other indicators (EMA, Fibonacci) are stronger.
+
+================================================================================
+
+20. Fibonacci Retracement
+---------------------------
+Category: Support & Resistance Indicator
+
+Definition:
+Fibonacci Retracement levels are horizontal lines that indicate where support and resistance
+are likely to occur. They are based on the Fibonacci sequence ratios and are used to identify
+potential reversal levels during a pullback within a trend.
+
+Key Fibonacci Levels:
+  - 23.6% retracement
+  - 38.2% retracement
+  - 50.0% retracement (not a true Fibonacci number but widely used)
+  - 61.8% retracement (the "golden ratio")
+  - 78.6% retracement (square root of 61.8%)
+
+Formula:
+  For an uptrend (measuring retracement from A=low to B=high):
+  Retracement Level = B - [(B - A) × Fibonacci Ratio]
+
+  Example: If a stock moves from NPR 400 (A) to NPR 500 (B):
+  - 23.6% level = 500 - (100 × 0.236) = NPR 476.4
+  - 38.2% level = 500 - (100 × 0.382) = NPR 461.8
+  - 50.0% level = 500 - (100 × 0.500) = NPR 450.0
+  - 61.8% level = 500 - (100 × 0.618) = NPR 438.2
+
+Interpretation:
+  - 38.2% retracement: Shallow pullback; strong trend likely to continue.
+  - 50.0% retracement: Moderate pullback; common reversal zone.
+  - 61.8% retracement: Deep pullback; if this level holds, trend may resume; if broken, trend may have reversed.
+
+How Traders Use Fibonacci Retracement:
+  - Identify buy zones: After a rally, wait for a pullback to a Fibonacci level before entering.
+  - Set stop-losses: Place stop-loss just below the next Fibonacci level.
+  - Combine with other indicators: A Fibonacci level that coincides with an EMA or pivot point creates
+    a "confluence zone" — a stronger support/resistance level.
+
+NEPSE Edge Cases:
+  - Works best for stocks with clear trend moves (like commercial banks during rally phases).
+  - Less reliable for thinly traded stocks where price movements are driven by single large orders.
+  - On NEPSE, the 50% and 61.8% levels tend to be the most respected retracement zones.
+
+================================================================================
+
+21. Keltner Channels
+---------------------
+Category: Volatility Indicator
+Developed by: Chester Keltner (1960s), modernized by Linda Raschke
+
+Definition:
+Keltner Channels are volatility-based bands set above and below an EMA. They are similar to
+Bollinger Bands but use ATR instead of standard deviation for band width.
+
+Formula:
+  Middle Line = EMA(20)
+  Upper Channel = EMA(20) + (2 × ATR(10))
+  Lower Channel = EMA(20) - (2 × ATR(10))
+
+Interpretation:
+  - Price above upper channel: Strong uptrend; overbought but may continue trending.
+  - Price below lower channel: Strong downtrend; oversold but may continue trending.
+  - Price within channels: Normal trading range.
+  - Channel breakout: Price closing outside the channels signals a potential trend move.
+
+Difference from Bollinger Bands:
+  - Bollinger Bands use standard deviation (price-based); Keltner uses ATR (volatility-based).
+  - Keltner Channels are smoother and less reactive to single-day spikes.
+  - TTM Squeeze: When Bollinger Bands contract INSIDE Keltner Channels, it signals extreme low volatility
+    and an impending large move.
+
+================================================================================
+
+22. Parabolic SAR (Stop and Reverse)
+--------------------------------------
+Category: Trend / Trailing Stop Indicator
+Developed by: J. Welles Wilder Jr. (1978)
+
+Definition:
+Parabolic SAR provides potential entry and exit points by placing dots above or below the price.
+When dots are below the price, it suggests an uptrend; when above, a downtrend. "SAR" stands
+for "Stop and Reverse."
+
+Formula:
+  SAR_next = SAR_current + AF × (EP - SAR_current)
+
+  Where:
+  - AF (Acceleration Factor) starts at 0.02 and increases by 0.02 each time a new EP is made, up to 0.20.
+  - EP (Extreme Point) is the highest high in an uptrend or lowest low in a downtrend.
+
+Interpretation:
+  - Dots below price: Uptrend in effect; use SAR as a trailing stop.
+  - Dots above price: Downtrend in effect; use SAR as a trailing stop.
+  - Dots flipping from below to above price: Sell signal (trend reversal to downtrend).
+  - Dots flipping from above to below price: Buy signal (trend reversal to uptrend).
+
+How Traders Use Parabolic SAR:
+  - Trailing stop-loss: Use the SAR dot as a dynamic stop-loss level.
+  - Trend identification: Quick visual indicator of current trend direction.
+  - Combined with ADX: Use Parabolic SAR only when ADX > 25 (strong trend) to avoid whipsaws in ranging markets.
+
+NEPSE Edge Cases:
+  - In choppy, range-bound NEPSE stocks, Parabolic SAR generates many false reversals.
+  - Best used on trending stocks (commercial banks during rally phases, hydropower during sector rotation).
+  - The acceleration factor can cause SAR to catch up to price too quickly in volatile NEPSE stocks.
+
+================================================================================
+
+23. Beta (Market Sensitivity)
+-------------------------------
+Category: Market Sensitivity Indicator
+
+Definition:
+Beta measures a stock's volatility relative to the overall market (NEPSE Index). It indicates
+how much a stock's price tends to move when the market moves.
+
+Formula:
+  Beta = Covariance(Stock Returns, Market Returns) / Variance(Market Returns)
+
+  In simpler terms: Beta is the slope of the regression line when plotting stock returns (y-axis)
+  against market returns (x-axis).
+
+Typical Values:
+  - Beta > 1: Stock is more volatile than the market. If NEPSE rises 1%, the stock tends to rise more than 1%.
+  - Beta ≈ 1: Stock moves roughly in line with the market.
+  - Beta < 1: Stock is less volatile than the market (defensive stock).
+  - Beta < 0: Stock tends to move inversely to the market (extremely rare on NEPSE).
+
+How Traders Use Beta:
+  - Portfolio construction: Mix high-beta and low-beta stocks for desired risk level.
+  - Market timing: In bull markets, prefer high-beta stocks for amplified gains.
+    In bear markets, prefer low-beta stocks for capital preservation.
+  - Sector analysis: On NEPSE, commercial banks typically have Beta close to 1;
+    hydropower stocks and microfinance can have Beta > 1.5.
+
+Example:
+  If NABIL has Beta = 0.85, it means when NEPSE Index rises 1%, NABIL typically rises about 0.85%.
+  If UPPER (a hydropower stock) has Beta = 1.6, it would typically move 1.6% for every 1% move in NEPSE.
+
+NEPSE Edge Cases:
+  - Many stocks have limited history or long periods of illiquidity, making Beta unstable.
+  - Sector concentration in NEPSE (heavy bank weight) can inflate correlations and Beta values.
+  - Regulatory changes and sudden sentiment shifts can quickly change a stock's Beta.
+
+================================================================================
+
+24. Percentage Price Oscillator (PPO)
+---------------------------------------
+Category: Momentum Indicator
+
+Definition:
+PPO shows the percentage difference between two EMAs. It is similar to MACD but expressed in
+percentage terms, making it easier to compare across different stocks.
+
+Formula:
+  PPO = [(EMA(12) - EMA(26)) / EMA(26)] × 100
+  Signal Line = 9-period EMA of PPO
+  PPO Histogram = PPO - Signal Line
+
+Interpretation:
+  - Same signals as MACD but normalized as percentages.
+  - PPO > 0: Short-term EMA above long-term EMA; bullish.
+  - PPO < 0: Short-term EMA below long-term EMA; bearish.
+  - Advantage over MACD: Since PPO is in percentage terms, you can compare PPO values across
+    different stocks regardless of their price levels.
+
+================================================================================
+
+25. Volume Profile / Volume Analysis
+--------------------------------------
+Category: Volume Indicator
+
+Definition:
+Volume analysis examines trading volume patterns to confirm trends, identify reversals,
+and gauge the strength of price moves. While not a single formula, understanding volume
+context is essential for NEPSE traders.
+
+Key Volume Concepts:
+  - Volume Confirmation: Price movements on high volume are more significant than on low volume.
+  - Volume Climax: Extremely high volume after a prolonged move can signal exhaustion (trend reversal).
+  - Low Volume Pullbacks: Pullbacks on declining volume suggest the trend is intact (healthy correction).
+  - High Volume Breakouts: Breakouts above resistance on high volume are more likely to sustain.
+  - Average Volume: Compare current volume to the 20-day or 50-day average volume.
+
+NEPSE-Specific Volume Interpretation:
+  - Many NEPSE stocks have very low average daily volume (< 5,000 shares). What constitutes "high volume"
+    varies dramatically between stocks.
+  - Promoter share transactions and block deals can create one-day volume spikes that don't reflect
+    genuine retail/institutional interest.
+  - On right share listing days and bonus adjustment days, volume can spike artificially.
+  - The NEPSE trading session (11 AM to 3 PM NST) is short; volume patterns should be interpreted
+    within this compressed timeframe.
+
+================================================================================
+
+Summary Table of Indicators
+-----------------------------
+
+| # | Indicator     | Category     | Best Used For              | Key Levels           | Works Best In      |
+|---|---------------|-------------|----------------------------|----------------------|--------------------|
+| 1 | RSI           | Momentum    | Overbought/Oversold        | 30/70                | Range-bound markets |
+| 2 | MACD          | Momentum    | Trend direction & momentum | Zero line, crossovers| Trending markets    |
+| 3 | EMA           | Trend       | Trend identification       | 20/50/200 periods    | All market types    |
+| 4 | SMA           | Trend       | Long-term trend            | 50/200 periods       | Long-term analysis  |
+| 5 | Bollinger     | Volatility  | Volatility & breakouts     | Upper/Lower bands    | All market types    |
+| 6 | BBW           | Volatility  | Squeeze detection          | Historical lows      | Pre-breakout phases |
+| 7 | ATR           | Volatility  | Stop-loss sizing           | N/A (relative)       | All market types    |
+| 8 | OBV           | Volume      | Accumulation/Distribution  | Trend direction      | Trending markets    |
+| 9 | VWAP          | Volume      | Intraday fair value        | Above/Below          | Intraday trading    |
+|10 | Stochastic    | Momentum    | Overbought/Oversold        | 20/80                | Range-bound markets |
+|11 | ADX           | Trend       | Trend strength             | 20/25/50             | Trend confirmation  |
+|12 | CCI           | Momentum    | Cyclical trends            | +100/-100            | All market types    |
+|13 | Williams %R   | Momentum    | Overbought/Oversold        | -20/-80              | Range-bound markets |
+|14 | ROC           | Momentum    | Momentum screening         | Zero line            | Screening           |
+|15 | MFI           | Volume      | Volume-weighted RSI        | 20/80                | All market types    |
+|16 | A/D Line      | Volume      | Accumulation/Distribution  | Trend direction      | Trending markets    |
+|17 | CMF           | Volume      | Money flow direction       | Zero line            | All market types    |
+|18 | Ichimoku      | Trend       | Complete trend system       | Cloud, TK Cross      | Trending markets    |
+|19 | Pivot Points  | S/R         | Intraday levels            | PP, S1-S3, R1-R3     | Intraday trading    |
+|20 | Fibonacci     | S/R         | Pullback levels            | 38.2/50/61.8%        | Trending markets    |
+|21 | Keltner       | Volatility  | Trend channels             | Upper/Lower channels | Trending markets    |
+|22 | Parabolic SAR | Trend       | Trailing stops             | Dots above/below     | Trending markets    |
+|23 | Beta          | Sensitivity | Portfolio risk             | 1.0 benchmark        | Portfolio analysis  |
+|24 | PPO           | Momentum    | Cross-stock comparison     | Zero line, crossovers| Comparative analysis|
+|25 | Volume        | Volume      | Trend confirmation         | Average volume       | All market types    |
+
+================================================================================
+
+Combining Indicators — Best Practices for NEPSE
+-------------------------------------------------
+
+No single indicator is sufficient for making trading decisions. Here are proven combinations:
+
+1. Trend + Momentum:
+   - EMA-20/50 for trend direction + RSI for entry timing.
+   - ADX for trend strength + MACD for momentum direction.
+
+2. Volatility + Momentum:
+   - Bollinger Band Squeeze + RSI oversold/overbought for breakout entries.
+   - ATR for stop-loss sizing + Stochastic for entry timing.
+
+3. Volume + Price:
+   - OBV divergence + price breakout for confirmation.
+   - VWAP + volume spike for intraday institutional activity detection.
+
+4. Complete System:
+   - Use ADX to determine if market is trending (> 25) or ranging (< 20).
+   - In trending markets: EMA crossovers + MACD + OBV confirmation.
+   - In ranging markets: RSI/Stochastic overbought/oversold + Bollinger Band bounces.
+
+Golden Rules for NEPSE Technical Analysis:
+  - Always confirm signals with volume — low-volume signals on NEPSE are unreliable.
+  - Account for circuit limits — indicators can be distorted by ±10% daily price bands.
+  - Be cautious with illiquid stocks — most indicators assume reasonable liquidity.
+  - Corporate actions (bonus, rights, splits) can distort historical data and indicator values.
+  - NEPSE trades only ~220 days per year; adjust period settings accordingly.
+  - Use multiple timeframes — daily for trend, weekly for confirmation, monthly for big picture.

@@ -64,10 +64,11 @@ function extractThinking(content) {
   return { thinkingText, cleanText };
 }
 
-export default function MessageBubble({ message }) {
+export default function MessageBubble({ message, userQuestion }) {
   const isUser = message.role === 'user';
 
   const [showStreamingContent, setShowStreamingContent] = useState(!message.isStreaming);
+  const [showCurrentData, setShowCurrentData] = useState(false);
 
   useEffect(() => {
     if (!message.isStreaming) {
@@ -100,15 +101,29 @@ export default function MessageBubble({ message }) {
   const primarySignals = signalsList[0] || null;
 
   const symbol = extractSymbol(primarySignals, content);
-  
+
   const { thinkingText, cleanText } = extractThinking(content);
   const displayContent = cleanContent(cleanText);
-  
+
   const hasThinking = content && content.includes('<thinking>');
   const isThinking = isStreaming && (
     !content ||
     (hasThinking && !content.includes('</thinking>'))
   );
+
+  // ── Answer-focus heuristic ─────────────────────────────────────
+  // When the user is asking a follow-up / historical / educational question,
+  // the LLM answer is the primary content. The PriceCard (current market data)
+  // becomes secondary context and is shown collapsed below the answer.
+  const ANSWER_FOCUS_ROUTES = ['vector_only', 'chat'];
+  const ANSWER_FOCUS_PATTERNS = /\b(year|ago|histor|was|used\s+to|changed|compare|difference|when|why|explain|what\s+is|how|before|previous|last\s+year|2\d{3})\b/i;
+
+  const isAnswerFocused = !isStreaming && displayContent && (
+    ANSWER_FOCUS_ROUTES.includes(routeUsed) ||
+    (userQuestion && ANSWER_FOCUS_PATTERNS.test(userQuestion))
+  );
+
+  const hasPriceCards = signalsList.some(sig => sig?.close != null);
 
   return (
     <div className="message-assistant">
@@ -167,31 +182,79 @@ export default function MessageBubble({ message }) {
               />
             )}
 
-            {/* Price card(s) — one per symbol */}
-            {signalsList.map((sig, idx) =>
-              sig?.close != null ? (
-                <PriceCard
-                  key={sig.symbol || idx}
-                  symbol={sig.symbol || symbol}
-                  signals={sig}
-                />
-              ) : null
-            )}
+            {isAnswerFocused ? (
+              /* ── ANSWER-FOCUS MODE: LLM answer first, PriceCard secondary ── */
+              <>
+                {/* Highlighted primary answer */}
+                {displayContent && (
+                  <div
+                    className="prose answer-highlight"
+                    dangerouslySetInnerHTML={{ __html: mdToHtml(displayContent) }}
+                  />
+                )}
 
-            {/* Main LLM text */}
-            {displayContent && (
-              <div
-                className="prose"
-                dangerouslySetInnerHTML={{ __html: mdToHtml(displayContent) }}
-              />
-            )}
+                {/* Current market data — collapsed by default */}
+                {hasPriceCards && (
+                  <div className="current-data-section">
+                    <button
+                      className="current-data-toggle"
+                      onClick={() => setShowCurrentData(v => !v)}
+                      aria-expanded={showCurrentData}
+                    >
+                      <span className="toggle-icon">{showCurrentData ? '▾' : '▸'}</span>
+                      Current Market Data
+                    </button>
+                    {showCurrentData && (
+                      <div className="current-data-body">
+                        {signalsList.map((sig, idx) =>
+                          sig?.close != null ? (
+                            <PriceCard
+                              key={sig.symbol || idx}
+                              symbol={sig.symbol || symbol}
+                              signals={sig}
+                            />
+                          ) : null
+                        )}
+                        {signalsList.map((sig, idx) => (
+                          sig && Object.keys(sig).length > 1 ? (
+                            <SignalsTable key={sig.symbol || idx} signals={sig} />
+                          ) : null
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              /* ── DEFAULT MODE: PriceCard first, then LLM answer ── */
+              <>
+                {/* Price card(s) — one per symbol */}
+                {signalsList.map((sig, idx) =>
+                  sig?.close != null ? (
+                    <PriceCard
+                      key={sig.symbol || idx}
+                      symbol={sig.symbol || symbol}
+                      signals={sig}
+                    />
+                  ) : null
+                )}
 
-            {/* Technical indicators (show for all symbols in the list) */}
-            {signalsList.map((sig, idx) => (
-              sig && Object.keys(sig).length > 1 ? (
-                <SignalsTable key={sig.symbol || idx} signals={sig} />
-              ) : null
-            ))}
+                {/* Main LLM text */}
+                {displayContent && (
+                  <div
+                    className="prose"
+                    dangerouslySetInnerHTML={{ __html: mdToHtml(displayContent) }}
+                  />
+                )}
+
+                {/* Technical indicators (show for all symbols in the list) */}
+                {signalsList.map((sig, idx) => (
+                  sig && Object.keys(sig).length > 1 ? (
+                    <SignalsTable key={sig.symbol || idx} signals={sig} />
+                  ) : null
+                ))}
+              </>
+            )}
 
             {/* News */}
             <NewsSection citations={citations} symbol={symbol} content={content} />
@@ -212,17 +275,67 @@ export default function MessageBubble({ message }) {
   );
 }
 
+
 // ── Markdown → HTML ──────────────────────────────────────────────────────
 function mdToHtml(text) {
-  return text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/^#{1,3}\s+(.+)$/gm, '<h3>$1</h3>')
-    .replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+  if (!text) return '';
+
+  // Escape HTML special chars first
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Inline: bold, italic, code
+  html = html
+    .replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/gs,     '<em>$1</em>')
+    .replace(/`([^`]+)`/g,      '<code>$1</code>');
+
+  // Headings (h1–h4)
+  html = html
+    .replace(/^####\s+(.+)$/gm, '<h4>$1</h4>')
+    .replace(/^###\s+(.+)$/gm,  '<h3>$1</h3>')
+    .replace(/^##\s+(.+)$/gm,   '<h3>$1</h3>')
+    .replace(/^#\s+(.+)$/gm,    '<h3>$1</h3>');
+
+  // Horizontal rule
+  html = html.replace(/^[-*]{3,}$/gm, '<hr/>');
+
+  // Ordered list items: "1. text" → <li>text</li> wrapped in <ol>
+  html = html.replace(/((?:^\d+\.\s+.+$\n?)+)/gm, (block) => {
+    const items = block
+      .trim()
+      .split('\n')
+      .map(line => line.replace(/^\d+\.\s+/, '').trim())
+      .filter(Boolean)
+      .map(line => `<li>${line}</li>`)
+      .join('');
+    return `<ol>${items}</ol>`;
+  });
+
+  // Unordered list items: "- text" or "* text" → <li> wrapped in <ul>
+  html = html.replace(/((?:^[-*]\s+.+$\n?)+)/gm, (block) => {
+    const items = block
+      .trim()
+      .split('\n')
+      .map(line => line.replace(/^[-*]\s+/, '').trim())
+      .filter(Boolean)
+      .map(line => `<li>${line}</li>`)
+      .join('');
+    return `<ul>${items}</ul>`;
+  });
+
+  // Paragraphs: double newlines
+  html = html
     .replace(/\n\n+/g, '</p><p>')
-    .replace(/\n/g, '<br/>')
-    .replace(/^(.+)$/, '<p>$1</p>');
+    .replace(/\n/g,    '<br/>');
+
+  // Wrap in <p> if not already wrapped in a block element
+  if (!/^<(h[1-4]|ul|ol|hr|p)/.test(html.trim())) {
+    html = `<p>${html}</p>`;
+  }
+
+  return html;
 }
+

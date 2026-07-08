@@ -61,6 +61,7 @@ class AgentState(TypedDict):
     price_above: int
     sector: str
     temporal_params: dict   # NEW
+    rank_by_signals: bool
 
 
 
@@ -422,34 +423,44 @@ async def graph_tool(question: str, symbol: str) -> tuple[str, list[dict]]:
         return "", []
 
 
-async def vector_tool(question: str) -> tuple[str, list[dict]]:
-    """Retrieves relevant passages from domain knowledge docs."""
+async def vector_tool(question: str, extended: bool = False) -> tuple[str, list[dict]]:
+    """Retrieves relevant passages from domain knowledge docs.
+    
+    Args:
+        question: User's query.
+        extended: If True, retrieves more chunks with larger text for
+                  educational/definitional queries (vector_only route).
+    """
     if not question:
         return "", []
 
     try:
         from services.vector_rag import query_vector_rag
-        results = await asyncio.to_thread(query_vector_rag, question, 3)
+        # For educational queries, over-retrieve to cover more content
+        retrieve_k = 6 if extended else 3
+        results = await asyncio.to_thread(query_vector_rag, question, retrieve_k)
 
         if not results:
             return "", []
 
         lines     = []
         citations = []
+        max_chunks = 5 if extended else 3
+        max_text_len = 1000 if extended else 400
 
-        for chunk in results[:3]:
+        for chunk in results[:max_chunks]:
             source = chunk.get('source_file', 'unknown')
             text   = chunk.get('text', '')
-            if len(text) > 400:
-                text = text[:400] + "..."
+            if len(text) > max_text_len:
+                text = text[:max_text_len] + "..."
             lines.append(f"From {source}:\n{text}")
             citations.append({"type": "vector", "source_file": source})
 
         text = "\n---\n".join(lines)
 
         logger.info(
-            "vector_tool: %d chunks for '%s'",
-            len(results), question[:50],
+            "vector_tool: %d chunks for '%s' (extended=%s)",
+            len(results), question[:50], extended,
             extra={"event": "vector_tool", "chunks": len(results)},
         )
         return text, citations
@@ -684,6 +695,7 @@ async def route_node(state: AgentState) -> dict:
         "price_above": decision.price_above,
         "sector": decision.sector,
         "temporal_params": getattr(decision, "temporal_params", {}),
+        "rank_by_signals": getattr(decision, "rank_by_signals", False),
     }
     if symbols:
         result["symbol"] = symbols[0]
@@ -698,7 +710,8 @@ async def sql_node(state: AgentState) -> dict:
             sector=state.get("sector"),
             max_price=state.get("price_below"),
             min_price=state.get("price_above"),
-            limit=8
+            limit=15,
+            rank_by_signals=state.get("rank_by_signals", False),
         )
         return {
             "sql_output": stocks,
@@ -758,7 +771,9 @@ async def graph_node(state: AgentState) -> dict:
 
 
 async def vector_node(state: AgentState) -> dict:
-    text, citations = await vector_tool(state["question"])
+    # Use extended mode for vector_only route (educational queries)
+    is_extended = state.get("route") == "vector_only"
+    text, citations = await vector_tool(state["question"], extended=is_extended)
     return {
         "vector_output": text,
         "citations":     state.get("citations", []) + citations,
@@ -1075,7 +1090,7 @@ async def run_agent_streaming(
         "latency_ms": 0, "signals": {},
         "tokens_used": 0,
         "price_below": None, "price_above": None, "sector": "",
-        "temporal_params": {},
+        "temporal_params": {}, "rank_by_signals": False,
     }
 
     final_output: dict = {}
@@ -1149,8 +1164,9 @@ async def run_agent(question: str, symbol: str = "") -> dict:
         "citations": [], "tools_called": [],
         "final_answer": "", "llm_provider": "",
         "latency_ms": 0, "signals": {},
+        "tokens_used": 0,
         "price_below": None, "price_above": None, "sector": "",
-        "temporal_params": {},
+        "temporal_params": {}, "rank_by_signals": False,
     }
 
     try:

@@ -307,10 +307,15 @@ async def verify_symbol_in_neon(symbol: str) -> bool:
     return exists
 
 
-def get_stocks_by_price_filter(sector=None, max_price=None, min_price=None, limit=8):
+def get_stocks_by_price_filter(sector=None, max_price=None, min_price=None, limit=15,
+                                rank_by_signals=False):
     """
     Returns a list of stocks filtered by sector and/or price range.
     Uses the most recent available trading date.
+
+    When rank_by_signals=True, computes RSI/MACD/EMA-20 for each stock
+    and assigns a composite score with Buy/Sell/Neutral labels, following
+    standard NEPSE market practices.
     """
     # 1. Fetch latest prices for all stocks from Neon DB
     query = """
@@ -328,7 +333,7 @@ def get_stocks_by_price_filter(sector=None, max_price=None, min_price=None, limi
     # 2. Query local SQLite for active stock metadata
     from apps.nepse_data.models import Stock
     django_stocks = Stock.objects.filter(is_active=True).select_related('sector')
-    
+
     # Clean up and apply sector filters
     if sector:
         if sector == 'Life Insurance':
@@ -348,11 +353,11 @@ def get_stocks_by_price_filter(sector=None, max_price=None, min_price=None, limi
         symbol = row['symbol'].upper()
         if symbol not in stock_map:
             continue
-        
+
         stock = stock_map[symbol]
         close = float(row['close']) if row['close'] is not None else 0.0
         volume = int(row['volume']) if row['volume'] is not None else 0
-        
+
         if max_price is not None and close >= max_price:
             continue
         if min_price is not None and close <= min_price:
@@ -367,24 +372,177 @@ def get_stocks_by_price_filter(sector=None, max_price=None, min_price=None, limi
             'date': str(row['date'])
         })
 
-    # 4. Sort by volume descending and apply limit
-    filtered_results.sort(key=lambda x: x['volume'], reverse=True)
-    results_to_return = filtered_results[:limit]
+    if not filtered_results:
+        return "No stocks found matching the given criteria."
 
-    if not results_to_return:
+    # 4. If ranking by signals, compute indicators for each stock
+    if rank_by_signals:
+        filtered_results = _enrich_with_signals(filtered_results, limit)
+    else:
+        # Default: sort by volume descending
+        filtered_results.sort(key=lambda x: x['volume'], reverse=True)
+        filtered_results = filtered_results[:limit]
+
+    if not filtered_results:
         return "No stocks found matching the given criteria."
 
     # 5. Format output lines
     result_lines = []
-    for r in results_to_return:
-        result_lines.append(
-            f"{r['symbol']} — {r['company_name']} | "
+    for i, r in enumerate(filtered_results, 1):
+        line = (
+            f"{i}. {r['symbol']} — {r['company_name']} | "
             f"Sector: {r['sector']} | "
-            f"Close: NPR {r['close']} | "
-            f"Volume: {r['volume']:,} | "
-            f"Date: {r['date']}"
+            f"Close: NPR {r['close']:.2f} | "
+            f"Volume: {r['volume']:,}"
         )
-    return "\n".join(result_lines)
+        if 'signal_label' in r:
+            line += f" | Signal: {r['signal_label']}"
+        if 'rsi' in r and r['rsi'] is not None:
+            line += f" | RSI: {r['rsi']:.1f}"
+        if 'macd' in r and r['macd'] is not None:
+            line += f" | MACD: {r['macd']:+.2f}"
+        line += f" | Date: {r['date']}"
+        result_lines.append(line)
+
+    header = f"Found {len(filtered_results)} stocks"
+    if max_price is not None and min_price is not None:
+        header += f" (price above NPR {min_price} and below NPR {max_price})"
+    elif max_price is not None:
+        header += f" (price below NPR {max_price})"
+    elif min_price is not None:
+        header += f" (price above NPR {min_price})"
+    if rank_by_signals:
+        header += ", ranked by technical signal strength"
+    header += ":"
+
+    return header + "\n" + "\n".join(result_lines)
+
+
+def _enrich_with_signals(stocks: list[dict], limit: int = 15) -> list[dict]:
+    """
+    Fetches RSI, MACD, EMA-20 for each filtered stock from Neon DB
+    and computes a composite signal score for ranking.
+
+    Scoring (NEPSE standard practices):
+      RSI Score (40% weight):
+        - RSI < 30 (oversold): 1.0  — strong buy zone
+        - RSI 30-40:           0.8  — buy zone
+        - RSI 40-60:           0.5  — neutral
+        - RSI 60-70:           0.3  — caution zone
+        - RSI > 70 (overbought): 0.1 — potential sell zone
+
+      MACD Score (30% weight):
+        - MACD > 0 and rising:  1.0  — bullish momentum
+        - MACD > 0:             0.7  — positive trend
+        - MACD < 0 but rising:  0.4  — recovering
+        - MACD < 0:             0.1  — bearish
+
+      EMA Score (30% weight):
+        - Price > EMA-20 by > 3%: 0.8 — strong uptrend
+        - Price > EMA-20:         0.6 — uptrend
+        - Price ≈ EMA-20 (±1%):   0.5 — neutral
+        - Price < EMA-20:         0.3 — downtrend
+        - Price < EMA-20 by > 5%: 0.2 — deep discount (potential reversal)
+
+    Labels:
+      - Score >= 0.65: 🟢 Buy
+      - Score 0.40-0.64: 🟡 Neutral/Hold
+      - Score < 0.40: 🔴 Sell/Avoid
+    """
+    # Batch-fetch indicators for all symbols
+    symbols = [s['symbol'] for s in stocks]
+
+    # Limit the symbols we compute indicators for (top by volume first)
+    stocks.sort(key=lambda x: x['volume'], reverse=True)
+    candidates = stocks[:min(len(stocks), limit * 2)]  # fetch more than limit for better ranking
+
+    for stock_entry in candidates:
+        sym = stock_entry['symbol']
+        try:
+            ind_rows = execute_neon_query(
+                "SELECT symbol, date, open, high, low, close, volume "
+                "FROM stocks_stockdata "
+                "WHERE symbol = %s ORDER BY date DESC LIMIT 50",
+                (sym,)
+            )
+            if len(ind_rows) < 20:
+                stock_entry['signal_score'] = 0.5
+                stock_entry['signal_label'] = '🟡 Neutral (insufficient data)'
+                continue
+
+            df = prepare_ohlcv_dataframe(ind_rows)
+            if df.empty:
+                stock_entry['signal_score'] = 0.5
+                stock_entry['signal_label'] = '🟡 Neutral (insufficient data)'
+                continue
+
+            indicators = compute_all_indicators(df)
+
+            rsi = indicators.get('rsi')
+            macd = indicators.get('macd')
+            ema_20 = indicators.get('ema_20')
+            close = stock_entry['close']
+
+            stock_entry['rsi'] = rsi
+            stock_entry['macd'] = macd
+            stock_entry['ema_20'] = ema_20
+
+            # RSI Score (40%)
+            if rsi is None:
+                rsi_score = 0.5
+            elif rsi < 30:
+                rsi_score = 1.0
+            elif rsi < 40:
+                rsi_score = 0.8
+            elif rsi < 60:
+                rsi_score = 0.5
+            elif rsi < 70:
+                rsi_score = 0.3
+            else:
+                rsi_score = 0.1
+
+            # MACD Score (30%)
+            if macd is None:
+                macd_score = 0.5
+            elif macd > 0:
+                macd_score = 0.7
+            else:
+                macd_score = 0.2
+
+            # EMA Score (30%)
+            if ema_20 is None or ema_20 == 0:
+                ema_score = 0.5
+            else:
+                pct_from_ema = ((close - ema_20) / ema_20) * 100
+                if pct_from_ema > 3:
+                    ema_score = 0.8
+                elif pct_from_ema > 0:
+                    ema_score = 0.6
+                elif pct_from_ema > -1:
+                    ema_score = 0.5
+                elif pct_from_ema > -5:
+                    ema_score = 0.3
+                else:
+                    ema_score = 0.2
+
+            composite = (rsi_score * 0.4) + (macd_score * 0.3) + (ema_score * 0.3)
+            stock_entry['signal_score'] = round(composite, 3)
+
+            if composite >= 0.65:
+                stock_entry['signal_label'] = '🟢 Buy'
+            elif composite >= 0.40:
+                stock_entry['signal_label'] = '🟡 Neutral'
+            else:
+                stock_entry['signal_label'] = '🔴 Sell/Avoid'
+
+        except Exception as e:
+            logger.warning("_enrich_with_signals(%s) failed: %s", sym, e)
+            stock_entry['signal_score'] = 0.5
+            stock_entry['signal_label'] = '🟡 Neutral (error)'
+
+    # Sort by signal_score descending (best buy opportunities first)
+    candidates.sort(key=lambda x: x.get('signal_score', 0.5), reverse=True)
+    return candidates[:limit]
 
 
 # ── Historical Price Queries (from Neon DB) ───────────────────

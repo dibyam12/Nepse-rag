@@ -250,6 +250,79 @@
   font-size: 0.88rem;
   line-height: 1.6;
 }
+.prose ol {
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+.prose ol li {
+  margin-bottom: 0.4rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+/* ── Answer-focus highlight (used when LLM answer is primary content) ── */
+.answer-highlight {
+  border-left: 3px solid var(--chat-accent, #14b8a6);
+  padding-left: 1rem;
+  margin-bottom: 0.75rem;
+  background: linear-gradient(
+    to right,
+    rgba(20, 184, 166, 0.04),
+    transparent 60%
+  );
+  border-radius: 0 var(--chat-radius-sm) var(--chat-radius-sm) 0;
+}
+.answer-highlight p {
+  font-size: 0.9rem;
+  line-height: 1.75;
+  color: var(--chat-text);
+}
+.answer-highlight strong {
+  color: var(--chat-accent, #14b8a6);
+  font-weight: 700;
+}
+
+/* ── Current-data collapsible section ──────────────────────────────── */
+.current-data-section {
+  margin-top: 0.75rem;
+  border: 1px solid var(--chat-border);
+  border-radius: var(--chat-radius-lg);
+  overflow: hidden;
+}
+.current-data-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  background: var(--chat-surface-offset);
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--chat-text-muted);
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.current-data-toggle:hover {
+  background: var(--chat-border);
+  color: var(--chat-text);
+}
+.current-data-toggle .toggle-icon {
+  font-size: 0.75rem;
+  transition: transform 0.2s;
+  color: var(--chat-accent, #14b8a6);
+}
+.current-data-body {
+  padding: 0.25rem 0.5rem 0.5rem;
+  animation: slideDown 0.2s ease;
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 /* ── Price Card ────────────────────────────────────────────────────────── */
 .price-card {

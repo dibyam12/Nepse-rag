@@ -429,19 +429,47 @@ def build_rag_prompt(
             )
             context = golden_block + context
 
+        # Route-aware instructions — each route needs different presentation
+        if route == 'vector_only':
+            instructions = (
+                "INSTRUCTIONS:\n"
+                "- Answer using the context above.\n"
+                "- Use clear, structured formatting: headings, numbered lists, bullet points as appropriate.\n"
+                "- Include formulas, examples, and step-by-step explanations where relevant.\n"
+                "- Be comprehensive — the user is asking to learn, so cover all relevant points from the context.\n"
+                "- If the context doesn't fully cover the topic, say so and suggest checking NEPSE resources.\n"
+                "- Do NOT invent formulas, numbers, or definitions not in the context.\n"
+                "- End with: DISCLAIMER: This is for educational purposes only. Not financial advice.\n"
+            )
+        elif route == 'screener':
+            instructions = (
+                "INSTRUCTIONS:\n"
+                "- Present the stock list clearly and concisely.\n"
+                "- Use the Signal labels (🟢 Buy, 🟡 Neutral, 🔴 Sell/Avoid) and RSI/MACD data from the context.\n"
+                "- Group or rank stocks by their signal if ranking data is present.\n"
+                "- Briefly explain the ranking criteria (RSI, MACD, EMA-20 composite score).\n"
+                "- Keep each stock entry on one line; bold the symbol name.\n"
+                "- If no ranking data is present, summarize by sector and price range.\n"
+                "- End with: DISCLAIMER: This is for educational purposes only. Not financial advice.\n"
+            )
+        else:
+            instructions = (
+                "INSTRUCTIONS:\n"
+                "- Answer using ONLY the context above and conversation_history for follow-ups.\n"
+                "- Write in flowing prose like a senior analyst — NO bullet points, NO headers, NO numbered lists.\n"
+                "- Lead with the single most interesting insight, not a price recap.\n"
+                "- Weave indicators and news into ONE narrative paragraph per stock.\n"
+                "- The UI already shows price cards and news headlines — do NOT repeat raw numbers or list headlines.\n"
+                "- If <news_data> is empty or says NO_NEWS_FOUND: say 'No recent news found for [SYMBOL].' Do NOT invent news.\n"
+                "- If a symbol appears in the question but has no context data, say so directly.\n"
+                "- End with: DISCLAIMER: This is for educational purposes only. Not financial advice.\n"
+            )
+
         return (
             f"{history_block}"
             f"<context>\n{context}\n</context>\n\n"
             f"QUESTION: {question}\n\n"
-            "INSTRUCTIONS:\n"
-            "- Answer using ONLY the context above and conversation_history for follow-ups.\n"
-            "- Write in flowing prose like a senior analyst — NO bullet points, NO headers, NO numbered lists.\n"
-            "- Lead with the single most interesting insight, not a price recap.\n"
-            "- Weave indicators and news into ONE narrative paragraph per stock.\n"
-            "- The UI already shows price cards and news headlines — do NOT repeat raw numbers or list headlines.\n"
-            "- If <news_data> is empty or says NO_NEWS_FOUND: say 'No recent news found for [SYMBOL].' Do NOT invent news.\n"
-            "- If a symbol appears in the question but has no context data, say so directly.\n"
-            "- End with: DISCLAIMER: This is for educational purposes only. Not financial advice.\n"
+            f"{instructions}"
         )
 
     def _estimate_tokens(text: str) -> int:

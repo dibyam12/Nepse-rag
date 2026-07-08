@@ -482,7 +482,8 @@ class StreamQueryView(View):
                 sector=decision.sector,
                 max_price=decision.price_below,
                 min_price=decision.price_above,
-                limit=8,
+                limit=15,
+                rank_by_signals=getattr(decision, 'rank_by_signals', False),
             )
             tool_outputs = [stocks]
             tools_called = ["sql_tool"]
@@ -505,7 +506,7 @@ class StreamQueryView(View):
             full_answer = []
             provider_used = "unknown"
             tokens_used = 0
-            llm_max_tokens = 400
+            llm_max_tokens = 600  # screener lists need more room
             async for token in stream_llm(prompt, max_tokens=llm_max_tokens):
                 if isinstance(token, tuple) and token[0] == "__meta__":
                     provider_used = token[1]

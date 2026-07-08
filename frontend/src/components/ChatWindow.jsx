@@ -92,9 +92,15 @@ export default function ChatWindow() {
         {messages.length === 0 ? (
           <EmptyState />
         ) : (
-          messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
-          ))
+          messages.map((msg, idx) => {
+            // Find the user message immediately before this assistant message
+            const userQuestion = msg.role === 'assistant'
+              ? messages.slice(0, idx).reverse().find(m => m.role === 'user')?.content || ''
+              : '';
+            return (
+              <MessageBubble key={msg.id} message={msg} userQuestion={userQuestion} />
+            );
+          })
         )}
         <div ref={messagesEndRef} />
       </main>
