@@ -375,33 +375,38 @@ class StreamQueryView(View):
                             omit_signals = True
                             omit_citations = True
 
-        # ── 2. Classify query ─────────────────────────────────────────────
-        q_symbols = extract_symbols(question)
-
-        # If no symbols in current question, try to recover from conversation history
-        # This handles follow-ups like "give me news about them" after comparing NICA+NCCB
-        if not q_symbols and history:
-            history_symbols = []
-            seen_syms = set()
-            for msg in reversed(history):
-                if msg.get("role") == "user":
-                    msg_syms = extract_symbols(msg.get("content", ""))
-                    for s in msg_syms:
-                        if s not in seen_syms:
-                            seen_syms.add(s)
-                            history_symbols.append(s)
-                    if history_symbols:
-                        break  # use symbols from most recent user message that had them
-            if history_symbols:
-                q_symbols = history_symbols
-
+        # ── 2. Classify query raw first to check blocking ──────────────────
         from services.query_router import ROUTE_VECTOR_ONLY, ROUTE_SQL_GRAPH, ROUTE_FULL_AGENT, ROUTE_COMPARE
-        if not q_symbols and symbol:
+        
+        raw_decision = classify_query(question)
+        
+        if raw_decision.block_context_symbol:
+            q_symbols = []
+            symbol = None
+            history = []
+        else:
+            q_symbols = extract_symbols(question)
+            # If no symbols in current question, try to recover from conversation history
+            # This handles follow-ups like "give me news about them" after comparing NICA+NCCB
+            if not q_symbols and history:
+                history_symbols = []
+                seen_syms = set()
+                for msg in reversed(history):
+                    if msg.get("role") == "user":
+                        msg_syms = extract_symbols(msg.get("content", ""))
+                        for s in msg_syms:
+                            if s not in seen_syms:
+                                seen_syms.add(s)
+                                history_symbols.append(s)
+                        if history_symbols:
+                            break  # use symbols from most recent user message that had them
+                if history_symbols:
+                    q_symbols = history_symbols
+
+        # Now decide whether to inject symbol/history context
+        if not q_symbols and symbol and not raw_decision.block_context_symbol:
             # Guard: classify the raw question first. If it's chat or pure educational
-            # (no stock keywords), don't inject the context symbol — this prevents
-            # off-topic questions like "height of mount everest" from being treated
-            # as a stock query just because the frontend sent lastSymbol.
-            raw_decision = classify_query(question)
+            # (no stock keywords), don't inject the context symbol
             _STOCK_HINT_WORDS = {
                 'price', 'news', 'buy', 'sell', 'stock', 'share', 'indicator',
                 'rsi', 'macd', 'ema', 'volume', 'sector', 'analysis', 'about it',
@@ -411,7 +416,6 @@ class StreamQueryView(View):
             has_stock_hint = any(w in q_lower for w in _STOCK_HINT_WORDS)
             
             if raw_decision.route in (ROUTE_CHAT,) or (raw_decision.route == ROUTE_VECTOR_ONLY and not has_stock_hint):
-                # Off-topic or purely educational — don't inject stock symbol
                 decision = raw_decision
             else:
                 enriched_question = f"{question} (regarding {symbol})"
@@ -419,7 +423,7 @@ class StreamQueryView(View):
                 if not decision.symbols:
                     decision.symbols = [symbol]
                 question = enriched_question
-        elif q_symbols:
+        elif q_symbols and not raw_decision.block_context_symbol:
             # Inject recovered symbols into the question for proper routing
             sym_str = " ".join(q_symbols)
             enriched_question = f"{question} (regarding {sym_str})"
@@ -428,13 +432,16 @@ class StreamQueryView(View):
                 decision.symbols = q_symbols
             question = enriched_question
         else:
-            decision = classify_query(question)
+            decision = raw_decision
 
         route = decision.route
         all_symbols = list(decision.symbols)
         if all_symbols:
             symbol = all_symbols[0]
             yield f"data: {json.dumps({'type': 'active_symbols', 'data': all_symbols})}\n\n"
+
+        if raw_decision.block_context_symbol:
+            yield f"data: {json.dumps({'type': 'clear_context_symbol'})}\n\n"
 
         # ── Golden prompt detection ───────────────────────────────────────
         golden_match = match_golden(question, all_symbols)
@@ -477,7 +484,7 @@ class StreamQueryView(View):
             from services.query_router import ROUTE_VECTOR_ONLY, ROUTE_SQL_GRAPH, ROUTE_FULL_AGENT, ROUTE_COMPARE
             yield f"data: {json.dumps({'type': 'status', 'message': 'Running stock screener query...'})}\n\n"
             from services.db_service import get_stocks_by_price_filter
-            stocks = await asyncio.to_thread(
+            stocks_str, stocks_list = await asyncio.to_thread(
                 get_stocks_by_price_filter,
                 sector=decision.sector,
                 max_price=decision.price_below,
@@ -485,10 +492,10 @@ class StreamQueryView(View):
                 limit=15,
                 rank_by_signals=getattr(decision, 'rank_by_signals', False),
             )
-            tool_outputs = [stocks]
+            tool_outputs = [stocks_str]
             tools_called = ["sql_tool"]
             all_citations = []
-            signals_payload = {}
+            signals_payload = stocks_list
 
             yield f"data: {json.dumps({'type': 'route', 'data': route})}\n\n"
             yield f"data: {json.dumps({'type': 'tools', 'data': tools_called})}\n\n"
@@ -617,12 +624,45 @@ class StreamQueryView(View):
                 full_answer.append(token)
                 yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
         else:
-            # No context — replay NO_CONTEXT_RESPONSE as tokens
+            # No context — try to detect if this is a non-NEPSE stock query
+            # before falling back to the generic NO_CONTEXT_RESPONSE
+            _non_nepse_response = None
+            try:
+                from services.non_nepse_detector import (
+                    identify_non_nepse_stock,
+                    build_non_nepse_response,
+                    extract_unknown_symbols_from_query,
+                )
+                # Only attempt detection if there were symbol-like words in the query
+                # that weren't recognized as NEPSE tickers
+                unknown_syms = extract_unknown_symbols_from_query(question)
+                if unknown_syms or any(
+                    name in question.lower()
+                    for name in ["tesla", "apple", "amazon", "google", "facebook",
+                                 "meta", "nvidia", "microsoft", "netflix", "uber",
+                                 "reliance", "infosys", "wipro", "bitcoin", "ethereum"]
+                ):
+                    non_nepse_info = await identify_non_nepse_stock(question, unknown_syms)
+                    if non_nepse_info:
+                        _non_nepse_response = build_non_nepse_response(
+                            question, non_nepse_info,
+                            unknown_sym=unknown_syms[0] if unknown_syms else ""
+                        )
+                        logger.info(
+                            "Non-NEPSE stock detected: %s (%s) -> %s",
+                            non_nepse_info.get("ticker"), non_nepse_info.get("exchange"),
+                            non_nepse_info.get("source")
+                        )
+            except Exception as _e:
+                logger.warning("Non-NEPSE detection failed (non-fatal): %s", _e)
+
+            response_text = _non_nepse_response or NO_CONTEXT_RESPONSE
             chunk_size = 10
-            for i in range(0, len(NO_CONTEXT_RESPONSE), chunk_size):
-                chunk = NO_CONTEXT_RESPONSE[i:i+chunk_size]
+            for i in range(0, len(response_text), chunk_size):
+                chunk = response_text[i:i+chunk_size]
                 full_answer.append(chunk)
                 yield f"data: {json.dumps({'type': 'token', 'content': chunk})}\n\n"
+
 
         answer_text = "".join(full_answer)
         if "DISCLAIMER" not in answer_text:

@@ -95,7 +95,7 @@ async def get_latest_indicators(symbol: str) -> dict:
     3. Cache result, return indicators dict.
 
     Returns: {rsi, macd, macd_signal, macd_hist, ema_20, ema_50,
-              bb_upper, bb_middle, bb_lower, atr, obv, vwap, beta,
+              bb_upper, bb_middle, bb_lower, atr, obv, vwap, beta, mfi,
               close, volume, date, pct_change}
     Returns empty dict if symbol has fewer than 20 rows in Neon.
     """
@@ -326,9 +326,9 @@ def get_stocks_by_price_filter(sector=None, max_price=None, min_price=None, limi
     try:
         rows = execute_neon_query(query)
         if not rows:
-            return "No stocks found matching the given criteria."
+            return "No stocks found matching the given criteria.", []
     except Exception as e:
-        return f"Error fetching price data from database: {str(e)}"
+        return f"Error fetching price data from database: {str(e)}", []
 
     # 2. Query local SQLite for active stock metadata
     from apps.nepse_data.models import Stock
@@ -336,14 +336,12 @@ def get_stocks_by_price_filter(sector=None, max_price=None, min_price=None, limi
 
     # Clean up and apply sector filters
     if sector:
-        if sector == 'Life Insurance':
-            django_stocks = django_stocks.filter(sector__name__icontains='Life')
-        elif sector == 'Manufacturing And Processing':
-            django_stocks = django_stocks.filter(sector__name__icontains='Manufacturing')
-        elif sector == 'Finance':
-            django_stocks = django_stocks.filter(sector__name__icontains='Finance')
-        else:
-            django_stocks = django_stocks.filter(sector__name__icontains=sector)
+        from apps.nepse_data.models import Sector
+        if not Sector.objects.filter(name__iexact=sector).exists():
+            return f"No stocks found for sector: {sector}", []
+        django_stocks = django_stocks.filter(sector__name__iexact=sector)
+        if not django_stocks.exists():
+            return f"No stocks found for sector: {sector}", []
 
     stock_map = {s.symbol.upper(): s for s in django_stocks}
 
@@ -373,7 +371,7 @@ def get_stocks_by_price_filter(sector=None, max_price=None, min_price=None, limi
         })
 
     if not filtered_results:
-        return "No stocks found matching the given criteria."
+        return "No stocks found matching the given criteria.", []
 
     # 4. If ranking by signals, compute indicators for each stock
     if rank_by_signals:
@@ -384,7 +382,7 @@ def get_stocks_by_price_filter(sector=None, max_price=None, min_price=None, limi
         filtered_results = filtered_results[:limit]
 
     if not filtered_results:
-        return "No stocks found matching the given criteria."
+        return "No stocks found matching the given criteria.", []
 
     # 5. Format output lines
     result_lines = []
@@ -401,6 +399,8 @@ def get_stocks_by_price_filter(sector=None, max_price=None, min_price=None, limi
             line += f" | RSI: {r['rsi']:.1f}"
         if 'macd' in r and r['macd'] is not None:
             line += f" | MACD: {r['macd']:+.2f}"
+        if 'mfi' in r and r['mfi'] is not None:
+            line += f" | MFI: {r['mfi']:.1f}"
         line += f" | Date: {r['date']}"
         result_lines.append(line)
 
@@ -415,7 +415,7 @@ def get_stocks_by_price_filter(sector=None, max_price=None, min_price=None, limi
         header += ", ranked by technical signal strength"
     header += ":"
 
-    return header + "\n" + "\n".join(result_lines)
+    return header + "\n" + "\n".join(result_lines), filtered_results
 
 
 def _enrich_with_signals(stocks: list[dict], limit: int = 15) -> list[dict]:
@@ -481,11 +481,13 @@ def _enrich_with_signals(stocks: list[dict], limit: int = 15) -> list[dict]:
             rsi = indicators.get('rsi')
             macd = indicators.get('macd')
             ema_20 = indicators.get('ema_20')
+            mfi = indicators.get('mfi')
             close = stock_entry['close']
 
             stock_entry['rsi'] = rsi
             stock_entry['macd'] = macd
             stock_entry['ema_20'] = ema_20
+            stock_entry['mfi'] = mfi
 
             # RSI Score (40%)
             if rsi is None:

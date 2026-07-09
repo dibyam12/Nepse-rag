@@ -20,6 +20,16 @@ export default function SignalsTable({ signals }) {
     cards.push({ name: 'RSI (14)', value: signals.RSI.toFixed(1), statusText, statusCls });
   }
 
+  // MFI
+  if (signals.MFI != null) {
+    let statusText = 'Neutral', statusCls = 'status-neutral';
+    if (signals.MFI >= 80) { statusText = 'Overbought'; statusCls = 'status-overbought'; }
+    else if (signals.MFI > 55) { statusText = 'Bullish'; statusCls = 'status-bullish'; }
+    else if (signals.MFI <= 20) { statusText = 'Oversold'; statusCls = 'status-bearish'; }
+    else if (signals.MFI < 45) { statusText = 'Bearish'; statusCls = 'status-bearish'; }
+    cards.push({ name: 'MFI (14)', value: signals.MFI.toFixed(1), statusText, statusCls });
+  }
+
   // MACD
   if (signals.MACD != null) {
     const bull = signals.MACD > 0;

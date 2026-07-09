@@ -129,3 +129,19 @@ We evaluate our system across two primary dimensions:
 **A**: A temporal intent classifier detects comparative metrics (e.g. "N years ago" or "since YYYY") and routes the query to `ROUTE_FULL_AGENT` or `ROUTE_COMPARE`. The agent triggers `historical_tool` which fetches the exact close price from Neon at the historical date (with fallback to the latest DB records in case of non-trading day/data lag) and computes the exact relative change.
 Our `eval_runner.py` suite includes automated checks (`historical_accuracy`, `historical_tool_routing`, and `no_advice_compliance`) alongside separate scripts (`eval_historical.py`, `eval_followup.py`, and `eval_golden.py`) to test this E2E.
 
+#### Q: How does the composite stock screening and signal ranking work?
+**A**: When the user requests a list of stocks matching a price range (e.g., "below 300") and indicates a ranking preference (e.g., "best buy", "profitable"), the Query Router directs the query to the `screener` route with `rank_by_signals=True`. In `db_service.py`, the system fetches live OHLCV data and calculates a composite signal score:
+1. **RSI (40% weight)**: Oversold (<30) yields 1.0, while overbought (>70) yields 0.1.
+2. **MACD (30% weight)**: Bullish crossovers and positive levels score up to 1.0.
+3. **EMA-20 (30% weight)**: Price position relative to the 20-day exponential moving average measures short-term trend strength.
+Stocks are sorted in descending order of their composite score and labeled with `🟢 Buy` (score >= 0.65), `🟡 Neutral` (score 0.40 - 0.64), or `🔴 Sell/Avoid` (score < 0.40).
+
+#### Q: How do you handle educational questions where strict prose formatting is inappropriate?
+**A**: Standard stock queries force the LLM to output "flowing prose with no bullet points or headers" to sound like a senior analyst. However, for educational queries (e.g., "explain RSI and MACD formulas"), this constraint is counterproductive.
+We resolved this by making the prompting engine route-aware. For `vector_only` queries, the system prompt overrides the prose restriction and guides the LLM to use structured markdown (headers, numbered lists, bullet points, and formulas). Additionally, the system triggers `extended` retrieval, doubling the vector chunk limit to 1000 characters and fetching 6 passages (instead of 3) to provide a rich context base.
+
+#### Q: How does the answer-focused collapsible frontend layout improve user experience?
+**A**: For standard queries, the user wants the latest `PriceCard` and `SignalsTable` front and center. But for follow-ups (e.g., "what was its price a year ago?") or definitions (e.g., "explain RSI"), rendering a huge current price card at the top pushes the actual answers off the screen.
+The frontend (`MessageBubble.jsx`) now uses an answer-focus heuristic. If the query is educational or comparative, the LLM text answer is displayed first with a vertical highlighted accent border. The current `PriceCard` and metrics are moved below into a collapsible "Current Market Data" container.
+
+

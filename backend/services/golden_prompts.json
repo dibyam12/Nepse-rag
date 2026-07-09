@@ -7,7 +7,11 @@
       "{SYMBOL} analysis",
       "analyze {SYMBOL}",
       "what about {SYMBOL}",
-      "give me {SYMBOL} overview"
+      "give me {SYMBOL} overview",
+      "what is happening with {SYMBOL}",
+      "how is {SYMBOL} doing",
+      "update on {SYMBOL}",
+      "{SYMBOL} stock overview"
     ],
     "response_template": "{SYMBOL} is trading at NPR {close} ({pct_change}) with {volume_desc} volume. {momentum_sentence} {news_sentence} {outlook_sentence}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
     "slot_rules": {
@@ -25,7 +29,10 @@
       "{SYM1} vs {SYM2}",
       "{SYM1} versus {SYM2}",
       "which is better {SYM1} or {SYM2}",
-      "compare {SYM1} {SYM2} fundamentals"
+      "compare {SYM1} {SYM2} fundamentals",
+      "difference between {SYM1} and {SYM2}",
+      "{SYM1} or {SYM2} which one",
+      "better investment {SYM1} or {SYM2}"
     ],
     "response_template": "{SYM1_paragraph}\n\n{SYM2_paragraph}\n\nBased on current indicators: {ranking}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
     "slot_rules": {
@@ -42,7 +49,10 @@
       "how much has {SYMBOL} changed",
       "{SYMBOL} price history",
       "{SYMBOL} historical price",
-      "how has {SYMBOL} changed over"
+      "how has {SYMBOL} changed over",
+      "{SYMBOL} price {N} years back",
+      "historical data for {SYMBOL}",
+      "{SYMBOL} long term performance"
     ],
     "response_template": "{SYMBOL} was trading at NPR {historical_price} on {historical_date}. Today it trades at NPR {current_price} — a {direction} of {pct_change}% over {time_period}. {cause_sentence}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
     "slot_rules": {
@@ -58,7 +68,12 @@
       "should i buy it",
       "should i sell it",
       "is it a good time to buy",
-      "worth investing"
+      "worth investing",
+      "is {SYMBOL} a good investment",
+      "should i hold {SYMBOL}",
+      "is {SYMBOL} overvalued",
+      "is {SYMBOL} undervalued",
+      "entry point for {SYMBOL}"
     ],
     "response_template": "{indicator_analysis} {setup_assessment}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
     "slot_rules": {
@@ -74,12 +89,34 @@
       "what's happening with {SYMBOL}",
       "any updates on {SYMBOL}",
       "recent news {SYMBOL}",
-      "what is the news on {SYMBOL}"
+      "what is the news on {SYMBOL}",
+      "{SYMBOL} news today",
+      "any news about {SYMBOL}",
+      "{SYMBOL} recent developments",
+      "{SYMBOL} announcements"
     ],
     "response_template": "{news_analysis}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
     "slot_rules": {
       "news_analysis": "Interpret each news item's market impact in analyst prose — don't just list headlines. Explain what each development means for the stock's near-term outlook."
     }
+  },
+  {
+    "id": "today_date",
+    "match_patterns": [
+      "what is today's date",
+      "what day is today",
+      "what is the date today",
+      "today's date",
+      "what day of the week",
+      "tell me today's date",
+      "current date",
+      "what is the current date"
+    ],
+    "response_template": "Today is {system_date}.",
+    "slot_rules": {
+      "system_date": "Read directly from <system_date> tag — state the full day name and date. Do not add any qualifiers or say the information is unavailable."
+    },
+    "is_educational": true
   },
   {
     "id": "what_is_indicator",
@@ -91,25 +128,264 @@
       "what are bollinger bands",
       "explain {INDICATOR}",
       "how does RSI work",
-      "how does MACD work"
+      "how does MACD work",
+      "what is {INDICATOR}",
+      "define {INDICATOR}",
+      "how to use {INDICATOR}",
+      "what does {INDICATOR} mean"
     ],
     "response_template": "Uses vector_tool only — explain the indicator from domain knowledge docs using plain language. Include: what it measures, typical interpretation thresholds, and one example of how it applies to NEPSE trading context.",
     "is_educational": true
   },
   {
-    "id": "sector_query",
+    "id": "sector_screener",
     "match_patterns": [
-      "best stocks in {SECTOR}",
-      "top commercial banks",
-      "banking sector stocks",
-      "hydropower stocks",
-      "insurance stocks",
-      "which sector is performing best"
+      "list {SECTOR} stocks",
+      "show me {SECTOR} stocks",
+      "which {SECTOR} stocks to buy",
+      "{SECTOR} stocks to invest",
+      "best {SECTOR} stocks",
+      "top {SECTOR} companies",
+      "{SECTOR} sector stocks",
+      "recommend {SECTOR} stocks",
+      "{SECTOR} stocks under {N}",
+      "{SECTOR} stocks above {N}",
+      "watchlist for {SECTOR}",
+      "good {SECTOR} stocks",
+      "{SECTOR} sector watchlist"
     ],
-    "response_template": "{sector_overview} {top_performers}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "response_template": "{sector_overview}\n\n{stocks_table}\n\n{ranking_explanation}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
     "slot_rules": {
-      "sector_overview": "One sentence on the sector's current macro environment (interest rate environment, NRB policy impact, sector-specific drivers)",
-      "top_performers": "Name 2-3 stocks from the sector with their key indicator reading — do NOT rank or recommend"
+      "sector_overview": "One sentence on the sector's current macro environment (NRB policy, interest rates, sector-specific risks)",
+      "stocks_table": "Markdown table: Symbol | Price | Signal | RSI | MACD | MFI — sorted by composite score",
+      "ranking_explanation": "One sentence briefly explaining the ranking criteria (RSI, MACD, MFI, EMA-20 composite score)"
+    }
+  },
+
+  {
+    "id": "stock_price_only",
+    "match_patterns": [
+      "what is the price of {SYMBOL}",
+      "{SYMBOL} price",
+      "{SYMBOL} LTP",
+      "{SYMBOL} current price",
+      "{SYMBOL} today price",
+      "price of {SYMBOL}",
+      "how much is {SYMBOL}",
+      "{SYMBOL} trading at",
+      "latest price of {SYMBOL}",
+      "{SYMBOL} closing price"
+    ],
+    "response_template": "{SYMBOL} last traded at NPR {close} on {date}. {volume_note} {momentum_note}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "volume_note": "One clause about volume relative to normal (heavy/moderate/light)",
+      "momentum_note": "One brief clause about RSI direction only — e.g., 'RSI at 62 suggests building momentum.' Keep under 10 words."
+    }
+  },
+  {
+    "id": "volume_analysis",
+    "match_patterns": [
+      "{SYMBOL} volume today",
+      "is {SYMBOL} volume high",
+      "{SYMBOL} volume analysis",
+      "trading volume of {SYMBOL}",
+      "{SYMBOL} volume unusual",
+      "high volume stocks today",
+      "which stocks have high volume",
+      "{SYMBOL} volume spike",
+      "volume for {SYMBOL}"
+    ],
+    "response_template": "{volume_analysis}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "volume_analysis": "State the absolute volume figure, compare it to the recent average if available, and explain what the volume level implies (accumulation, distribution, or neutral). One paragraph, no headers."
+    }
+  },
+  {
+    "id": "support_resistance",
+    "match_patterns": [
+      "{SYMBOL} support and resistance",
+      "key levels for {SYMBOL}",
+      "{SYMBOL} support level",
+      "{SYMBOL} resistance level",
+      "where is {SYMBOL} support",
+      "technical levels for {SYMBOL}",
+      "{SYMBOL} price levels",
+      "entry level for {SYMBOL}",
+      "{SYMBOL} breakout level"
+    ],
+    "response_template": "{levels_analysis}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "levels_analysis": "Derive support from BB lower band and recent lows; resistance from BB upper band and recent highs. State actual price figures from context. One paragraph — do not use bullet points or headers."
+    }
+  },
+  {
+    "id": "market_overview",
+    "match_patterns": [
+      "how is the market today",
+      "nepse today",
+      "market update",
+      "how is nepse performing",
+      "nepse market update",
+      "overall market",
+      "market sentiment",
+      "nepse index today",
+      "how is the stock market",
+      "market overview",
+      "nepse performance"
+    ],
+    "response_template": "{market_summary}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "market_summary": "Summarize overall NEPSE market conditions using any available index data, sector data, or macro context from the context block. If no real-time NEPSE index data is available, say so clearly and describe the most recent known conditions from context."
+    }
+  },
+  {
+    "id": "sector_comparison",
+    "match_patterns": [
+      "which sector is performing best",
+      "compare banking and hydropower sectors",
+      "best sector in nepse",
+      "which sector to invest in",
+      "sector performance comparison",
+      "hydropower vs banking sector",
+      "insurance vs microfinance",
+      "which sector is best right now",
+      "sector analysis nepse"
+    ],
+    "response_template": "{sector_comparison_prose}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "sector_comparison_prose": "Compare 2-3 relevant sectors using available data from context. Write in flowing analyst prose — no headers or bullet points. Be specific about macro drivers for each sector."
+    }
+  },
+  {
+    "id": "all_time_high_52w",
+    "match_patterns": [
+      "is {SYMBOL} at all time high",
+      "{SYMBOL} 52 week high",
+      "{SYMBOL} 52w high",
+      "{SYMBOL} near all time high",
+      "{SYMBOL} 52 week low",
+      "{SYMBOL} 52w range",
+      "where is {SYMBOL} in its range",
+      "{SYMBOL} near support",
+      "is {SYMBOL} oversold",
+      "is {SYMBOL} overbought"
+    ],
+    "response_template": "{range_analysis}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "range_analysis": "State the 52W high and low from context, calculate where current price sits in that range as a percentage, and interpret what it means for momentum. One paragraph — no headers."
+    }
+  },
+  {
+    "id": "penny_stocks_screener",
+    "match_patterns": [
+      "cheap stocks under {N}",
+      "stocks below {N}",
+      "affordable stocks",
+      "low price stocks",
+      "stocks under {N} rupees",
+      "cheap nepse stocks",
+      "budget stocks nepse",
+      "stocks below {N} npr",
+      "low cost stocks to buy",
+      "stocks priced under {N}"
+    ],
+    "response_template": "{screener_intro}\n\n{stocks_table}\n\n{disclaimer_note}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "screener_intro": "One sentence framing: 'Based on current NEPSE data, here are stocks trading below NPR {N} ranked by technical signals:'",
+      "stocks_table": "Markdown table: Symbol | Price | Signal | RSI | MACD | MFI — all from SQL data block",
+      "disclaimer_note": "One sentence: low price does not equal low risk — mention liquidity and volatility"
+    }
+  },
+  {
+    "id": "blue_chip_query",
+    "match_patterns": [
+      "blue chip nepse stocks",
+      "safest stocks in nepse",
+      "most stable nepse stocks",
+      "large cap nepse stocks",
+      "established nepse companies",
+      "safe investments nepse",
+      "blue chip stocks to buy",
+      "stable nepse stocks",
+      "best quality nepse stocks"
+    ],
+    "response_template": "{blue_chip_analysis}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "blue_chip_analysis": "Discuss 3-5 large, established NEPSE stocks (major commercial banks, NLIC, ADBL etc.) using data from context. Write in analyst prose — explain what makes them relatively stable without recommending them as buys."
+    }
+  },
+  {
+    "id": "ipo_query",
+    "match_patterns": [
+      "any upcoming ipos",
+      "latest ipo news",
+      "ipo schedule nepse",
+      "new ipo nepal",
+      "upcoming ipo nepse",
+      "ipo allotment",
+      "ipo result",
+      "should i apply for ipo",
+      "how to apply ipo nepal"
+    ],
+    "response_template": "{ipo_info}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "ipo_info": "If IPO data is in context, summarize it clearly. If not, say: 'I don't have real-time IPO schedule data — check nepsetrading.com, merolagani.com, or the SEBON website for current IPO listings and allotment results.'"
+    }
+  },
+  {
+    "id": "dividend_query",
+    "match_patterns": [
+      "does {SYMBOL} pay dividend",
+      "{SYMBOL} dividend history",
+      "{SYMBOL} bonus share",
+      "{SYMBOL} dividend yield",
+      "dividend from {SYMBOL}",
+      "{SYMBOL} cash dividend",
+      "{SYMBOL} right share",
+      "which stocks pay dividend",
+      "high dividend nepse stocks",
+      "{SYMBOL} distribution history"
+    ],
+    "response_template": "{dividend_analysis}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "dividend_analysis": "If dividend/bonus data is in context, state it clearly with dates. If not in context, say: 'Specific dividend figures aren't in my current data — check the company's latest AGM announcements on sharesansar.com or merolagani.com.' Never guess dividend figures."
+    }
+  },
+  {
+    "id": "bearish_screener",
+    "match_patterns": [
+      "which stocks are falling",
+      "most bearish stocks",
+      "stocks to avoid",
+      "worst performing stocks",
+      "sell signals nepse",
+      "which stocks to sell",
+      "stocks in downtrend",
+      "stocks with sell signal",
+      "nepse stocks falling"
+    ],
+    "response_template": "{bearish_intro}\n\n{stocks_table}\n\n{caution_note}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "bearish_intro": "One sentence framing the bearish screener: 'Based on current technical signals, these NEPSE stocks show bearish momentum:'",
+      "stocks_table": "Markdown table: Symbol | Price | Signal | RSI | MACD | MFI — showing 🔴 Sell/Avoid signals from screener data",
+      "caution_note": "One sentence: bearish signals do not guarantee further decline — mention support levels and reversal risk"
+    }
+  },
+  {
+    "id": "sector_leaders",
+    "match_patterns": [
+      "top performers in {SECTOR}",
+      "best performing {SECTOR} stocks",
+      "{SECTOR} sector leaders",
+      "strongest {SECTOR} stocks",
+      "which {SECTOR} stocks are doing well",
+      "best {SECTOR} companies",
+      "top {SECTOR} stocks today",
+      "outperforming {SECTOR} stocks"
+    ],
+    "response_template": "{sector_leaders_analysis}\n\nDISCLAIMER: This is for educational purposes only. Not financial advice.",
+    "slot_rules": {
+      "sector_leaders_analysis": "Identify 3-5 strongest performers in the specified sector using RSI + MACD + MFI from context. Write in analyst prose — name each stock, state the specific indicator values, and explain what the momentum means. No bullet points or headers."
     }
   }
 ]

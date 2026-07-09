@@ -444,21 +444,15 @@ venv\Scripts\python.exe test_phase4_live.py  # E2E tests (calls actual LLM)
 
 ---
 
-## 11. Recent Changes (2026-07-06)
+## 11. Recent Changes (2026-07-08)
 
-- **Caching Alignment**: Standardized the caching architecture to support both environment-switchable Redis and FileBasedCache backends. Aligned caching TTLs with the system architecture specifications: OHLCV (`6 Hours`), Indicators (`6 Hours`), News (`30 Minutes`), and LLM responses (`1 Hour`) to minimize Neon DB connection loads.
-- **Golden Prompt Matching**: Added `golden_prompts.json` and a two-pass `golden_matcher.py` (regex matches checked first globally, then falling back to sequence matcher ratios to prevent false positive shadowings). Matched templates are injected into `views.py` before prompting.
-- **Historical Comparison RAG**: Extended `db_service.py` to compute multi-year backtests. Implemented `historical_tool` in `agent.py` to compile relative changes and wired temporal intent detection in `query_router.py` to upgrade routed queries to agents handling comparison tasks. Added automatic latest-row fallback in `get_price_change_summary` to prevent crashes when todays data hasn't yet loaded.
-- **Evaluation Completion**: Added `eval_historical.py`, `eval_followup.py`, and `eval_golden.py` checking performance across historical data, multi-turn contexts, and ideal response structures. Added `historical_accuracy`, `historical_tool_routing`, and `no_advice_compliance` metrics to `eval_runner.py`.
-- **Richer News**: Scraping full article bodies for top results using `fetch_article()` with site-specific selectors, stripping boilerplates, and passing excerpts to the LLM context.
-- **Live SSE Agent Status Indicators**: Added real-time SSE progress events (e.g., "Fetching price data for NICA...") shown dynamically in the frontend message bubble with matching icons.
-- **Anti-Hallucination & Prompt Engineering**: Added grounding rules, a few-shot example, response prefilling, and chain-of-verification checks in the `<thinking>` block. Tagged XML blocks with symbols.
-- **Merged symbols support**: NCCB→KBL, MEGA→NIMB etc. transparently queried
-- **Context pollution fix**: Explicit symbols in query override stale URL param symbol
-- **CoT reasoning**: `<thinking>` blocks with collapsible UI
-- **XML-tagged RAG context**: `<sql_data>`, `<graph_data>`, `<news_data>`, `<vector_data>` tags with symbol attributes
-- **Multi-symbol signals**: PriceCard and SignalsTable render for all queried symbols
+- **Composite Signal-based Stock Screener**: Expanded `get_stocks_by_price_filter` to support technical signal ranking (`rank_by_signals=True`). Calculates a composite score based on RSI (40%), MACD (30%), and EMA-20 (30%) under NEPSE market practices. Stocks are ordered by score descending and labeled with `🟢 Buy` (composite >= 0.65), `🟡 Neutral` (composite 0.40 - 0.64), or `🔴 Sell/Avoid` (composite < 0.40). Default screening limit raised from 8 to 15.
+- **Route-Aware Prompting**: Replaced static system instructions in `build_rag_prompt` with dynamic, route-aware guides. The `vector_only` route permits structured formatting (headings, bullet/numbered lists, and formulas) for educational queries, while `screener` guides tabular signal presentation. Other routes maintain the clean "flowing prose" standard.
+- **Extended Educational Vector Retrieval**: Updated `vector_tool` and `vector_node` to trigger `extended=True` for the `vector_only` route. It retrieves up to 6 chunks (up from 3) and increases the maximum text limit per chunk to 1000 characters (up from 400) to capture full explanations and math formulas.
+- **Answer-Focused Collapsible UI Layout**: Modified `MessageBubble.jsx` to identify "answer-focused" queries (e.g. historical, comparative, or educational). In this mode, the primary LLM answer text renders first with an `.answer-highlight` styled border, while the secondary `PriceCard` and `SignalsTable` are moved below in a collapsible "Current Market Data" section.
+- **Expanded Knowledge Base**: Expanded `docs/indicator_explanations.txt` from 10 to 25 technical indicators with detailed mathematical formulas, explanations, and NEPSE-specific edge cases.
 
 ---
 
-*Last updated: 2026-07-06*
+*Last updated: 2026-07-08*
+

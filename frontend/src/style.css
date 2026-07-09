@@ -877,3 +877,52 @@
   gap: 0.65rem;
   width: 100%;
 }
+
+/* ── Markdown Tables & Wrapper (Issue 4) ───────────────────────────────── */
+.table-wrapper {
+  overflow-x: auto;
+  margin: 1.25rem 0;
+  border: 1px solid var(--chat-border);
+  border-radius: var(--chat-radius-lg);
+  background: var(--chat-surface-2);
+  box-shadow: var(--chat-shadow-sm);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.82rem;
+  font-family: var(--chat-font-body);
+}
+
+th, td {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--chat-divider);
+}
+
+th {
+  background: var(--chat-surface-offset);
+  color: var(--chat-text);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:nth-child(even) td {
+  background: var(--chat-surface-2);
+}
+
+tr:nth-child(odd) td {
+  background: var(--chat-surface);
+}
+
+tr:hover td {
+  background: var(--chat-surface-offset-2);
+  transition: background var(--chat-transition);
+}

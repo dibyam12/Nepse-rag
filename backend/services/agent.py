@@ -272,6 +272,7 @@ async def sql_tool(symbol: str, days: int = 7) -> tuple[str, list[dict], dict]:
         bb_middle  = indicators.get('bb_middle')
         vwap       = indicators.get('vwap')
         pct_change = indicators.get('pct_change')
+        mfi        = indicators.get('mfi')
 
         week52_high = range_52w.get('week52_high') if isinstance(range_52w, dict) else None
         week52_low  = range_52w.get('week52_low')  if isinstance(range_52w, dict) else None
@@ -290,6 +291,7 @@ async def sql_tool(symbol: str, days: int = 7) -> tuple[str, list[dict], dict]:
         else:
             macd_text = "N/A"
 
+        mfi_text = f"{mfi:.1f}" if mfi is not None else "N/A"
         pct_text = f"{pct_change:+.1f}%" if pct_change is not None else "N/A"
         vol_text = f"{volume:,}"
 
@@ -306,7 +308,7 @@ async def sql_tool(symbol: str, days: int = 7) -> tuple[str, list[dict], dict]:
         lines  = [
             header,
             f"SQL DATA: {disp_symbol} — Close: {close:.2f}, Open: {open_val:.2f}, High: {high:.2f}, Low: {low:.2f}, Volume: {vol_text}. Date: {date_val}. Change: {pct_text}.",
-            f"Indicators: RSI is {rsi_text}, MACD is {macd_text}.",
+            f"Indicators: RSI is {rsi_text}, MACD is {macd_text}, MFI is {mfi_text}.",
         ]
         if ema_20 is not None and ema_50 is not None:
             lines.append(f"EMA-20: {ema_20:.0f} | EMA-50: {ema_50:.0f}")
@@ -344,6 +346,7 @@ async def sql_tool(symbol: str, days: int = 7) -> tuple[str, list[dict], dict]:
         if bb_middle  is not None: signals["BB_middle"] = round(bb_middle, 1)
         if bb_lower   is not None: signals["BB_lower"]  = round(bb_lower, 1)
         if vwap       is not None: signals["VWAP"]      = round(vwap, 1)
+        if mfi        is not None: signals["MFI"]       = round(mfi, 1)
         if pct_change is not None: signals["pct_change"] = round(pct_change, 2)
         if week52_high is not None: signals["week52_high"] = week52_high
         if week52_low  is not None: signals["week52_low"]  = week52_low
@@ -705,7 +708,7 @@ async def route_node(state: AgentState) -> dict:
 async def sql_node(state: AgentState) -> dict:
     if state.get("route") == 'screener':
         from services.db_service import get_stocks_by_price_filter
-        stocks = await asyncio.to_thread(
+        stocks_str, stocks_list = await asyncio.to_thread(
             get_stocks_by_price_filter,
             sector=state.get("sector"),
             max_price=state.get("price_below"),
@@ -714,7 +717,8 @@ async def sql_node(state: AgentState) -> dict:
             rank_by_signals=state.get("rank_by_signals", False),
         )
         return {
-            "sql_output": stocks,
+            "sql_output": stocks_str,
+            "signals": stocks_list,
             "citations": state.get("citations", []),
             "tools_called": state.get("tools_called", []) + ["sql_tool"],
         }

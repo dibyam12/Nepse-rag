@@ -242,6 +242,9 @@ const useChatStore = create((set, get) => ({
                 set({ lastSymbol: data.data[0] });
               }
               break;
+            case 'clear_context_symbol':
+              set({ lastSymbol: null });
+              break;
             case 'signals':
               signals = data.data;
               if (signals?.symbol) {
@@ -256,6 +259,9 @@ const useChatStore = create((set, get) => ({
               break;
             case 'route':
               routeUsed = data.data;
+              if (routeUsed === 'screener' || routeUsed === 'compare') {
+                set({ lastSymbol: null });
+              }
               break;
             case 'tools':
               toolsUsed = data.data;

@@ -97,7 +97,8 @@ _EXCLUDED_WORDS = frozenset({
     # Trading terms (not tickers)
     "BUY", "SELL", "HOLD", "LONG", "SHORT", "BULL", "BEAR",
     # Indicator abbreviations (not tickers)
-    "RSI", "MACD", "EMA", "SMA", "ATR", "OBV", "VWAP", "BB",
+    "RSI", "MACD", "EMA", "SMA", "ATR", "OBV", "VWAP", "BB", "BETA", "MFI",
+    "ADX", "CCI", "ROC", "CMF", "PPO", "SAR", "BBW",
     # Institution abbreviations
     "AGM", "NRB", "SEBON", "CDSC", "GDP", "NPR",
     "CEO", "CFO", "USA", "NEPSE",
@@ -115,7 +116,41 @@ MERGED_SYMBOLS_MAP = {
 }
 
 
-# ── Temporal Patterns ─────────────────────────────────────────
+# ── Sector Keyword → DB Sector Name Mapping (module-level) ────────────────
+# Ordered from most-specific to least-specific to avoid prefix collisions.
+# Used in: screener routing, sector follow-up fallback, block-intent detection.
+SECTOR_KEYWORDS: list[tuple[str, str]] = [
+    ('development banks', 'Development Banks'),
+    ('development bank', 'Development Banks'),
+    ('commercial banks', 'Commercial Banks'),
+    ('commercial bank', 'Commercial Banks'),
+    ('finance companies', 'Finance Companies'),
+    ('finance company', 'Finance Companies'),
+    ('hotels & tourism', 'Hotels & Tourism'),
+    ('hotels and tourism', 'Hotels & Tourism'),
+    ('hotels', 'Hotels & Tourism'),
+    ('hotel', 'Hotels & Tourism'),
+    ('tourism', 'Hotels & Tourism'),
+    ('hydropowers', 'Hydropower'),
+    ('hydropower', 'Hydropower'),
+    ('hydro', 'Hydropower'),
+    ('life insurance', 'Insurance (Life)'),
+    ('non-life insurance', 'Insurance (Non-Life)'),
+    ('non life insurance', 'Insurance (Non-Life)'),
+    ('insurance', 'Insurance (Life)'),
+    ('manufacturing & processing', 'Manufacturing & Processing'),
+    ('manufacturing and processing', 'Manufacturing & Processing'),
+    ('manufacturing', 'Manufacturing & Processing'),
+    ('microfinances', 'Microfinance'),
+    ('microfinance', 'Microfinance'),
+    ('banking', 'Commercial Banks'),
+    ('banks', 'Commercial Banks'),
+    ('bank', 'Commercial Banks'),
+    ('finance', 'Finance Companies'),
+]
+
+
+
 TEMPORAL_PATTERNS = [
     (r'(\d+)\s*years?\s*ago',       'years_ago'),    # "3 years ago"
     (r'price\s*(?:in|of|from)\s*(\d{4})', 'year'),   # "price in 2023"
@@ -168,6 +203,7 @@ class RouteDecision:
     sector: str = None
     temporal_params: dict = field(default_factory=dict)
     rank_by_signals: bool = False
+    block_context_symbol: bool = False
 
 
 _KNOWN_SYMBOLS = None
@@ -296,95 +332,23 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
     Returns:
         RouteDecision with route, symbols, and tools_needed.
     """
-    # --- Screener route: "recommend banks below 200", "stocks under 300", etc. ---
-    SCREENER_PATTERNS = [
-        r'\brecommend\b.*\b(bank|stock|share|company)\b',
-        r'\b(bank|stock|share|company)\b.*\brecommend\b',
-        r'\bbelow\s+\d+\b',
-        r'\bunder\s+\d+\b',
-        r'\babove\s+\d+\b',
-        r'\bwatch.?list\b',
-        r'\bscreen\b',
-        r'\bfilter\b.*\b(price|npr|rupee)\b',
-        r'\baffordable\b',
-        r'\bcheap(er)?\b',
-        r'\blist\b.*\bstock',
-        r'\bstocks?\b.*\b(between|from)\b.*\d+',
-        r'\bbest\b.*\b(buy|stock|invest)',
-        r'\bprofitable\b',
-        r'\bgood\s+to\s+buy\b',
-        r'\btop\b.*\b(stock|share|pick)',
-        r'\bstock.*\b(pick|recommend)',
-    ]
-
-    # Ranking intent — user wants buy/sell/profitable ordering
-    RANKING_KEYWORDS = [
-        r'\bbest\b', r'\bprofitable\b', r'\branking\b', r'\branked\b',
-        r'\border\b', r'\bgood\s+to\s+buy\b', r'\bbuy\b',
-        r'\brecommend\b', r'\btop\b', r'\bpick\b',
-        r'\bworth\b', r'\binvest\b',
-    ]
-
-    if any(re.search(p, question, re.IGNORECASE) for p in SCREENER_PATTERNS):
-        price_below = None
-        price_above = None
-
-        m = re.search(r'\bbelow\s+(\d+)\b', question, re.IGNORECASE)
-        if m:
-            price_below = int(m.group(1))
-
-        m = re.search(r'\bunder\s+(\d+)\b', question, re.IGNORECASE)
-        if m:
-            price_below = int(m.group(1))
-
-        m = re.search(r'\babove\s+(\d+)\b', question, re.IGNORECASE)
-        if m:
-            price_above = int(m.group(1))
-
-        # "between X and Y" pattern
-        m = re.search(r'\bbetween\s+(\d+)\s+and\s+(\d+)\b', question, re.IGNORECASE)
-        if m:
-            val1, val2 = int(m.group(1)), int(m.group(2))
-            price_above = min(val1, val2)
-            price_below = max(val1, val2)
-
-        # Extract sector if mentioned
-        sector = None
-        sector_keywords = {
-            'commercial bank': 'Commercial Banks',
-            'development bank': 'Development Banks',
-            'finance': 'Finance',
-            'insurance': 'Life Insurance',
-            'hydropower': 'Hydropower',
-            'microfinance': 'Microfinance',
-            'manufacturing': 'Manufacturing And Processing',
-        }
-        for kw, sector_name in sector_keywords.items():
-            if kw in question.lower():
-                sector = sector_name
-                break
-
-        # Detect ranking intent
-        rank_by_signals = any(
-            re.search(p, question, re.IGNORECASE) for p in RANKING_KEYWORDS
-        )
-
-        logger.info(
-            "Query routed to screener: '%s' (sector=%s, price_below=%s, price_above=%s, rank=%s)",
-            question[:60], sector, price_below, price_above, rank_by_signals,
-            extra={"event": "query_route", "route": "screener", "symbols": []},
-        )
-        return RouteDecision(
-            route='screener',
-            symbols=[],
-            tools_needed=['sql_tool'],
-            price_below=price_below,
-            price_above=price_above,
-            sector=sector,
-            rank_by_signals=rank_by_signals,
-        )
-
     q_lower = question.lower()
+    symbols = extract_symbols(question)
+
+    # Determine if this query has sector/market/list/compare intent
+    contains_symbol_ref = False
+    has_block_intent = False
+    if not symbols:
+        _BLOCK_KEYWORDS = [
+            r'\bmarket\s*terms?\b', r'\bmarket\b', r'\bsectors?\b', r'\bindex\b', r'\bnepse\b', r'\bindustr(y|ies)\b',
+            r'\bbanks?\b', r'\bfinance\b', r'\binsurance\b', r'\bhydropower\b', r'\bhydro\b', r'\bmicrofinance\b',
+            r'\bmanufacturing\b', r'\btourism\b', r'\bhotels?\b', r'\bmutual\s+funds?\b', r'\binvestments?\b',
+            r'\blist\s+of\b', r'\ball\s+stocks\b', r'\bwhich\s+companies\b', r'\bwhich\s+shares\b', r'\bcompanies\b', r'\bshares\b'
+        ]
+        # Pronoun/follow-up indicators to preserve current symbol context
+        contains_symbol_ref = any(re.search(rf"\b{w}\b", q_lower) for w in ["it", "its", "this", "them", "they", "itself", "peer", "peers", "relative"])
+        if any(re.search(p, q_lower) for p in _BLOCK_KEYWORDS) and not contains_symbol_ref:
+            has_block_intent = True
 
     # 0. Chat — casual conversation detected FIRST, no stock data needed
     for pat in CHAT_PATTERNS:
@@ -394,15 +358,131 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
                 question[:60],
                 extra={"event": "query_route", "route": ROUTE_CHAT, "symbols": []},
             )
-            return RouteDecision(route=ROUTE_CHAT, symbols=[], tools_needed=[])
+            return RouteDecision(route=ROUTE_CHAT, symbols=[], tools_needed=[], block_context_symbol=True)
 
-    # Extract symbols from question text
-    symbols = extract_symbols(question)
+    # --- Screener route: check only if no stock symbols are present to avoid collisions ---
+    if not symbols:
+        SCREENER_PATTERNS = [
+            r'\brecommend\b.*\b(bank|stock|share|company)\b',
+            r'\b(bank|stock|share|company)\b.*\brecommend\b',
+            r'\bbelow\s+\d+\b',
+            r'\bunder\s+\d+\b',
+            r'\babove\s+\d+\b',
+            r'\bwatch.?list\b',
+            r'\bscreen\b',
+            r'\bfilter\b.*\b(price|npr|rupee)\b',
+            r'\baffordable\b',
+            r'\bcheap(er)?\b',
+            r'\blist\b.*\bstock',
+            r'\bstocks?\b.*\b(between|from)\b.*\d+',
+            r'\bbest\b.*\b(buy|stock|invest)',
+            r'\bprofitable\b',
+            r'\bgood\s+to\s+buy\b',
+            r'\btop\b.*\b(stock|share|pick)',
+            r'\bstock.*\b(pick|recommend)',
+            # Plural & combination patterns (Issue 3 & 5)
+            r'\b(recommend|suggest|top|best|buy|invest|profitable|watchlist|screen|filter|good|stocks?|companies|pick|shares?)\b.*\b(banks?|finance|insurance|hydropower|hydro|microfinance|manufacturing|sector)\b',
+            r'\b(banks?|finance|insurance|hydropower|hydro|microfinance|manufacturing|sector)\b.*\b(recommend|suggest|top|best|buy|invest|profitable|watchlist|screen|filter|good|pick)\b',
+            r'\bstocks?\b.*\blook\b.*\bgood\b',
+            r'\b(what|which)\s+stocks?\s+to\s+(buy|invest|watch)\b',
+            r'\b(best\s+buys?|top\s+buys?|profitable\s+stocks?)\b',
+            r'\b(recommend|suggest)\s+some\s+stocks?\b',
+        ]
+
+        # Ranking intent — user wants buy/sell/profitable ordering
+        RANKING_KEYWORDS = [
+            r'\bbest\b', r'\bprofitable\b', r'\branking\b', r'\branked\b',
+            r'\border\b', r'\bgood\s+to\s+buy\b', r'\bbuy\b',
+            r'\brecommend\b', r'\btop\b', r'\bpick\b',
+            r'\bworth\b', r'\binvest\b', r'\bgood\b', r'\blook\s+good\b',
+        ]
+
+        if any(re.search(p, question, re.IGNORECASE) for p in SCREENER_PATTERNS):
+            price_below = None
+            price_above = None
+
+            m = re.search(r'\bbelow\s+(\d+)\b', question, re.IGNORECASE)
+            if m:
+                price_below = int(m.group(1))
+
+            m = re.search(r'\bunder\s+(\d+)\b', question, re.IGNORECASE)
+            if m:
+                price_below = int(m.group(1))
+
+            m = re.search(r'\babove\s+(\d+)\b', question, re.IGNORECASE)
+            if m:
+                price_above = int(m.group(1))
+
+            # "between X and Y" pattern
+            m = re.search(r'\bbetween\s+(\d+)\s+and\s+(\d+)\b', question, re.IGNORECASE)
+            if m:
+                val1, val2 = int(m.group(1)), int(m.group(2))
+                price_above = min(val1, val2)
+                price_below = max(val1, val2)
+
+            # Extract sector if mentioned — reference module-level SECTOR_KEYWORDS
+            sector = None
+            for kw, sector_name in SECTOR_KEYWORDS:
+                if kw in q_lower:
+                    sector = sector_name
+                    break
+
+            # Detect ranking intent
+            rank_by_signals = any(
+                re.search(p, question, re.IGNORECASE) for p in RANKING_KEYWORDS
+            )
+
+            logger.info(
+                "Query routed to screener: '%s' (sector=%s, price_below=%s, price_above=%s, rank=%s)",
+                question[:60], sector, price_below, price_above, rank_by_signals,
+                extra={"event": "query_route", "route": "screener", "symbols": []},
+            )
+            return RouteDecision(
+                route='screener',
+                symbols=[],
+                tools_needed=['sql_tool'],
+                price_below=price_below,
+                price_above=price_above,
+                sector=sector,
+                rank_by_signals=rank_by_signals,
+                block_context_symbol=True,
+            )
+
+        # ── Sector-intent follow-up fallback ─────────────────────────────────
+        # Catches ALL conversational sector queries that lack explicit action words:
+        #   "what about the development bank sector?"
+        #   "and the finance ones?"
+        #   "show me microfinance"
+        #   "tell me about the hydropower sector"
+        #   "development banks please"
+        # These have has_block_intent=True (sector keyword detected) but didn't match
+        # SCREENER_PATTERNS (no buy/invest/list keyword). Route them to screener anyway.
+        if has_block_intent:
+            matched_sector = None
+            for kw, sector_name in SECTOR_KEYWORDS:
+                if kw in q_lower:
+                    matched_sector = sector_name
+                    break
+            if matched_sector:
+                logger.info(
+                    "Query routed to screener (sector follow-up): '%s' (sector=%s)",
+                    question[:60], matched_sector,
+                    extra={"event": "query_route", "route": "screener", "symbols": []},
+                )
+                return RouteDecision(
+                    route='screener',
+                    symbols=[],
+                    tools_needed=['sql_tool'],
+                    sector=matched_sector,
+                    rank_by_signals=False,
+                    block_context_symbol=True,
+                )
 
     # Only inject the context symbol if no symbols were explicitly found in the text
     if not symbols and symbol:
         sym_upper = symbol.upper()
         symbols.append(sym_upper)
+
 
     # Evaluate definitional vs data patterns first for the _decide helper
     PRICE_DATA_KEYWORDS = [
@@ -419,6 +499,13 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
     is_definitional = any(pat in q_lower for pat in definitional_patterns) and not symbols
     wants_data = _has_keyword(q_lower, PRICE_DATA_KEYWORDS)
 
+    # Check if this is an educational / indicator query with NO stock symbols
+    INDICATOR_KEYWORDS = [
+        "rsi", "macd", "ema", "sma", "atr", "obv", "vwap", "bb", "beta", "mfi",
+        "adx", "cci", "roc", "cmf", "ppo", "sar", "bbw", "bollinger", "indicator", "technical"
+    ]
+    has_indicator = any(rf"\b{re.escape(k)}\b" in q_lower or k in q_lower for k in INDICATOR_KEYWORDS)
+
     # Helper to build and log decision
     def _decide(route, tools):
         # Block vector_tool for COMPARE (never needed) or when explicitly asking
@@ -429,13 +516,15 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
             elif not is_definitional and (wants_data or _has_keyword(q_lower, ["news", "latest"])):
                 tools = [t for t in tools if t != "vector_tool"]
 
+        should_block = (route == 'screener') or (route == ROUTE_COMPARE and not contains_symbol_ref) or has_block_intent
         decision = RouteDecision(
             route=route, symbols=symbols, tools_needed=tools,
             temporal_params=extract_temporal_params(question),
+            block_context_symbol=should_block
         )
         logger.info(
-            "Query routed to %s: '%s' (symbols=%s, temporal=%s)",
-            route, question[:60], symbols, decision.temporal_params or None,
+            "Query routed to %s: '%s' (symbols=%s, temporal=%s, block_context=%s)",
+            route, question[:60], symbols, decision.temporal_params or None, decision.block_context_symbol,
             extra={"event": "query_route", "route": route, "symbols": symbols},
         )
         return decision
@@ -449,10 +538,8 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
         return _decide(ROUTE_FULL_AGENT,
                        ["sql_tool", "graph_tool", "news_tool", "vector_tool"])
 
-    # 3. Definitional queries — "what is X", "explain X", "define X"
-    #    Only route to vector_only if it's truly educational
-    #    (no stock symbol AND no request for live data)
-    if is_definitional and not symbols and not wants_data:
+    # 3. Definitional/Educational queries — "what is X", "explain X", "define X", or indicator query with no symbols
+    if (is_definitional or (has_indicator and not wants_data)) and not symbols:
         return _decide(ROUTE_VECTOR_ONLY, ["vector_tool"])
 
     # 4. SQL + Graph — technical analysis, price data
@@ -472,4 +559,5 @@ def classify_query(question: str, symbol: str = None) -> RouteDecision:
 
     # 6. Vector only — educational, definitional (default, no symbols)
     return _decide(ROUTE_VECTOR_ONLY, ["vector_tool"])
+
 

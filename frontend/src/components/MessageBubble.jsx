@@ -64,6 +64,45 @@ function extractThinking(content) {
   return { thinkingText, cleanText };
 }
 
+function MultiSignalsTable({ signalsList }) {
+  return (
+    <div className="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Price</th>
+            <th>Signal</th>
+            <th>RSI</th>
+            <th>MACD</th>
+            <th>MFI</th>
+          </tr>
+        </thead>
+        <tbody>
+          {signalsList.map((sig, idx) => {
+            const symbol = sig.symbol || 'N/A';
+            const price = sig.close != null ? `NPR ${sig.close.toFixed(2)}` : 'N/A';
+            const signalLabel = sig.signal_label || sig.Signal || 'Neutral';
+            const rsi = sig.rsi != null ? sig.rsi.toFixed(1) : (sig.RSI != null ? sig.RSI.toFixed(1) : 'N/A');
+            const macd = sig.macd != null ? sig.macd.toFixed(2) : (sig.MACD != null ? sig.MACD.toFixed(2) : 'N/A');
+            const mfi = sig.mfi != null ? sig.mfi.toFixed(1) : (sig.MFI != null ? sig.MFI.toFixed(1) : 'N/A');
+            return (
+              <tr key={symbol || idx}>
+                <td><strong>{symbol}</strong></td>
+                <td>{price}</td>
+                <td>{signalLabel}</td>
+                <td>{rsi}</td>
+                <td>{macd}</td>
+                <td>{mfi}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function MessageBubble({ message, userQuestion }) {
   const isUser = message.role === 'user';
 
@@ -193,8 +232,11 @@ export default function MessageBubble({ message, userQuestion }) {
                   />
                 )}
 
-                {/* Current market data — collapsed by default */}
-                {hasPriceCards && (
+                {/* Multi-stock: show table directly below the answer */}
+                {signalsList.length > 1 && <MultiSignalsTable signalsList={signalsList} />}
+
+                {/* Current market data — collapsed by default (only for single symbol) */}
+                {signalsList.length === 1 && hasPriceCards && (
                   <div className="current-data-section">
                     <button
                       className="current-data-toggle"
@@ -228,15 +270,19 @@ export default function MessageBubble({ message, userQuestion }) {
             ) : (
               /* ── DEFAULT MODE: PriceCard first, then LLM answer ── */
               <>
-                {/* Price card(s) — one per symbol */}
-                {signalsList.map((sig, idx) =>
-                  sig?.close != null ? (
-                    <PriceCard
-                      key={sig.symbol || idx}
-                      symbol={sig.symbol || symbol}
-                      signals={sig}
-                    />
-                  ) : null
+                {/* Price card(s) or MultiSignalsTable */}
+                {signalsList.length > 1 ? (
+                  <MultiSignalsTable signalsList={signalsList} />
+                ) : (
+                  signalsList.map((sig, idx) =>
+                    sig?.close != null ? (
+                      <PriceCard
+                        key={sig.symbol || idx}
+                        symbol={sig.symbol || symbol}
+                        signals={sig}
+                      />
+                    ) : null
+                  )
                 )}
 
                 {/* Main LLM text */}
@@ -247,8 +293,8 @@ export default function MessageBubble({ message, userQuestion }) {
                   />
                 )}
 
-                {/* Technical indicators (show for all symbols in the list) */}
-                {signalsList.map((sig, idx) => (
+                {/* Technical indicators (only show for single symbol in the list) */}
+                {signalsList.length === 1 && signalsList.map((sig, idx) => (
                   sig && Object.keys(sig).length > 1 ? (
                     <SignalsTable key={sig.symbol || idx} signals={sig} />
                   ) : null
@@ -291,6 +337,98 @@ function mdToHtml(text) {
     .replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/gs,     '<em>$1</em>')
     .replace(/`([^`]+)`/g,      '<code>$1</code>');
+
+  // 1. Markdown Table Parser (GFM syntax: | Symbol | Price |)
+  html = html.replace(/((?:^\|.+$\n?)+)/gm, (block) => {
+    const lines = block.trim().split('\n');
+    if (lines.length < 2) return block;
+
+    const isSeparator = /^\|(?:\s*:?-+:?\s*\|)+$/.test(lines[1].trim());
+    if (!isSeparator) return block;
+
+    const headers = lines[0]
+      .split('|')
+      .slice(1, -1)
+      .map(h => h.trim());
+
+    const rows = lines.slice(2).map(line => {
+      return line
+        .split('|')
+        .slice(1, -1)
+        .map(cell => cell.trim());
+    });
+
+    const thead = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>`;
+    const tbody = `<tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>`;
+
+    return `<div class="table-wrapper"><table>${thead}${tbody}</table></div>`;
+  });
+
+  // 2. Generic List-to-Table Fallback (Issue 4 & 8 structural fallback)
+  const mdLines = html.split('\n');
+  const processedLines = [];
+  let currentTableRows = [];
+
+  const isStockListLine = (lineStr) => {
+    const clean = lineStr.trim();
+    if (!clean) return false;
+    if (!/^(?:[-*+]|\d+\.)\s+/.test(clean)) return false;
+    if (!/\b[A-Z]{2,6}\b/.test(clean)) return false;
+    return /\b(?:rsi|macd|mfi|price|close|signal|🟢|🟡|🔴)\b/i.test(clean);
+  };
+
+  const renderTableFromRows = (rows) => {
+    if (rows.length === 0) return '';
+    const maxCols = Math.max(...rows.map(r => r.length));
+    let headers = ['Symbol', 'Price', 'Signal', 'RSI', 'MACD', 'MFI'];
+    if (maxCols < headers.length) {
+      headers = headers.slice(0, maxCols);
+    }
+    const thead = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>`;
+    const tbody = `<tbody>${rows.map(row => {
+      while (row.length < headers.length) row.push('');
+      return `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`;
+    }).join('')}</tbody>`;
+    return `<div class="table-wrapper"><table>${thead}${tbody}</table></div>`;
+  };
+
+  for (let i = 0; i < mdLines.length; i++) {
+    const line = mdLines[i];
+    if (isStockListLine(line)) {
+      const cleanLine = line.replace(/^(?:[-*+]|\d+\.)\s+/, '').trim();
+      let parts = [];
+      if (cleanLine.includes('|')) {
+        parts = cleanLine.split(/\s*\|\s*/);
+      } else if (cleanLine.includes('—')) {
+        parts = cleanLine.split(/\s*—\s*/);
+      } else if (cleanLine.includes(' - ')) {
+        parts = cleanLine.split(/\s+-\s+/);
+      } else {
+        const parenMatch = cleanLine.match(/\(([^)]+)\)/);
+        if (parenMatch) {
+          const symPart = cleanLine.replace(/\([^)]+\)/, '').trim();
+          const inner = parenMatch[1].split(/\s*,\s*/);
+          parts = [symPart, ...inner];
+        } else {
+          parts = cleanLine.split(/\s*,\s*/);
+        }
+      }
+      currentTableRows.push(parts.map(p => p.trim()));
+    } else {
+      if (line.trim() === '' && currentTableRows.length > 0 && i + 1 < mdLines.length && isStockListLine(mdLines[i + 1])) {
+        continue;
+      }
+      if (currentTableRows.length > 0) {
+        processedLines.push(renderTableFromRows(currentTableRows));
+        currentTableRows = [];
+      }
+      processedLines.push(line);
+    }
+  }
+  if (currentTableRows.length > 0) {
+    processedLines.push(renderTableFromRows(currentTableRows));
+  }
+  html = processedLines.join('\n');
 
   // Headings (h1–h4)
   html = html

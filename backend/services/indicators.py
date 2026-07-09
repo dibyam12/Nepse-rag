@@ -145,6 +145,24 @@ def compute_atr(df: pd.DataFrame, period: int = 14) -> float | None:
     except Exception as e:
         logger.warning(f"ATR computation failed: {e}")
         return None
+def compute_mfi(df: pd.DataFrame, period: int = 14) -> float | None:
+    """
+    Computes Money Flow Index for the most recent row.
+    Returns latest MFI value as float, or None if insufficient data.
+    Requires at least period+1 rows.
+    """
+    if len(df) < period + 1:
+        return None
+    try:
+        mfi = ta.mfi(df['high'], df['low'], df['close'], df['volume'], length=period)
+        if mfi is None:
+            return None
+        val = mfi.iloc[-1]
+        return round(float(val), 4) if pd.notna(val) else None
+    except Exception as e:
+        logger.warning(f"MFI computation failed: {e}")
+        return None
+
 
 
 def compute_obv(df: pd.DataFrame) -> float | None:
@@ -243,7 +261,7 @@ def compute_all_indicators(df: pd.DataFrame,
         'rsi': None, 'macd': None, 'macd_signal': None, 'macd_hist': None,
         'ema_20': None, 'ema_50': None,
         'bb_upper': None, 'bb_middle': None, 'bb_lower': None,
-        'atr': None, 'obv': None, 'vwap': None, 'beta': None,
+        'atr': None, 'obv': None, 'vwap': None, 'beta': None, 'mfi': None,
         'close': None, 'open': None, 'high': None, 'low': None,
         'volume': None, 'date': None, 'pct_change': None,
     }
@@ -291,5 +309,6 @@ def compute_all_indicators(df: pd.DataFrame,
     result['obv'] = compute_obv(df)
     result['vwap'] = compute_vwap(df)
     result['beta'] = compute_beta(df, market_df)
+    result['mfi'] = compute_mfi(df)
 
     return result

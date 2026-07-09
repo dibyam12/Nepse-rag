@@ -17,6 +17,7 @@
 | 5 | Frontend (React + Vite) | COMPLETE | 100% |
 | 6 | Evaluation & Documentation | COMPLETE | 100% |
 | 7 | Golden Prompts & Historical Comparison | COMPLETE | 100% |
+| 8 | Enhanced Screener, Route-Aware Prompts & Answer UI | COMPLETE | 100% |
 
 ---
 
@@ -208,6 +209,25 @@
 - [x] **Historical Comparison Integration**: Added temporal intent classification (detects "N years ago", "since YYYY", "price history") upgrading the route to `full_agent` or `compare` to ensure `historical_tool` executes.
 - [x] **Golden Quality Evaluator (`evaluation/eval_golden.py`)**: Automates unit testing for pattern matching and response structure compliance.
 
+## Phase 8: Enhanced Screener, Route-Aware Prompts & Answer-Focused UI — COMPLETE
+
+### What Was Done
+- [x] **Composite Signal-based Stock Screener (`services/db_service.py`)**:
+  - Implemented `_enrich_with_signals` to calculate a composite score from RSI (40%), MACD (30%), and EMA-20 (30%) under NEPSE market practices.
+  - Returns ranked list labeled with `🟢 Buy` (composite >= 0.65), `🟡 Neutral` (composite 0.40-0.64), or `🔴 Sell/Avoid` (composite < 0.40).
+  - Raised default screener limit to 15 stocks.
+- [x] **Route-Aware Prompts (`services/llm_client.py`)**:
+  - Added route-aware instructions in `build_rag_prompt`.
+  - Allowed structured formatting (headings, lists, and formulas) on `vector_only` route for educational queries, and signal formatting on `screener`.
+- [x] **Extended Retrieval for Educational Queries (`services/agent.py`)**:
+  - Implemented `extended` parameter in `vector_tool` to retrieve up to 6 chunks (up from 3) and increase chunk size to 1000 characters (up from 400).
+- [x] **Answer-Focused Collapsible Frontend Layout (`MessageBubble.jsx`, `ChatWindow.jsx`, `style.css`)**:
+  - Added answer-focused query detection.
+  - Primary text answer renders first with `.answer-highlight` styled border.
+  - Secondary `PriceCard` and `SignalsTable` render inside a collapsible "Current Market Data" section.
+- [x] **Expanded Knowledge Base**:
+  - Expanded `docs/indicator_explanations.txt` from 10 to 25 technical indicators with detailed formulas, explanations, and NEPSE-specific edge cases.
+
 ### Architecture Decisions to Document
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
@@ -278,6 +298,15 @@ nepse_rag/
 ---
 
 ## Change Log
+
+### 2026-07-09 — Stale Context Resolution, Multi-Stock Tables, Screener Signals, MFI Indicator, and Date Injection
+- **Stale stock-symbol context blocking & auto-clear (Issue 7)**: Added `block_context_symbol` parameter to `RouteDecision` inside `query_router.py` (triggered on market/sector/list keywords). Applied a narrowed pronoun heuristic to preserve symbol context during peer and sector comparisons (e.g., *"how does its price compare to the sector?"*). Configured the backend views to emit a `clear_context_symbol` SSE event when context symbol injection is blocked, and wired the React `chatStore.js` to auto-clear the context chip on this event or on screener/compare routes.
+- **Multi-Stock structured table rendering & prompt alignment (Issue 8)**: Enforced strict multi-stock markdown table instructions in prompt templates across all data routes in `llm_client.py`. Implemented a `MultiSignalsTable` React component inside `MessageBubble.jsx` to directly render tables from the `signals` array when multiple stocks are returned, replacing duplicate individual `PriceCard` and `SignalsTable` outputs. Unpacked `get_stocks_by_price_filter()` tuples in views and agent node blocks to supply raw stock dictionary lists under the `signals` payload. Broadened the list-to-table fallback parser in `mdToHtml()` to be line-based and support blank lines, commas, and parentheses.
+- **Server Date/Day Injection (Issue 1)**: Configured dynamic injection of `<system_date>` (using `datetime.now()`) into the LLM system prompt on every request. Instructed the model to answer today's date directly from this tag without deflection. Verified via `eval_screener.py`.
+- **MFI (Money Flow Index) Indicator (Issue 2)**: Added MFI calculation (`pandas_ta.mfi`) utilizing OHLCV inputs. Integrated it into the indicators return dictionary in `indicators.py`, the signals returned by `sql_tool` in `agent.py`, the `<sql_data>` XML prompt context, and the `SignalsTable.jsx` frontend card grid (with color-coded overbought/oversold status badges).
+- **Collision-Free Screener Routing (Issue 3 & 5)**: Prevented collisions by matching screener query patterns only when no specific ticker symbols are present. Expanded intent detection to capture sector-screening queries (e.g. "top commercial banks to buy") and generic buys (e.g. "which stocks look good right now"). Mapped plurals and fallbacks to exact SQLite sector names.
+- **Screener Formatting as Markdown Table (Issue 4)**: Instructed the model on the `screener` route to format multi-stock screening results exclusively as a markdown table with columns `Symbol | Price | Signal | RSI | MACD | MFI`. Built a custom regex table parser and list-to-table converter inside `mdToHtml()` in `MessageBubble.jsx` to render CSS-styled tables with zebra-striping and hover highlights.
+- **Educational Indicator Deflection Fix (Issue 6)**: Added indicator acronyms (`BETA`, `MFI`, `ADX`, `CCI`, `ROC`, `CMF`, `PPO`, `SAR`, `BBW`) to `_EXCLUDED_WORDS` to prevent false positive symbol matches. Routed educational questions with no symbols straight to `vector_only`. Verified via `eval_screener.py` tests.
 
 ### 2026-07-06 — Golden Prompts, Historical RAG, and Evaluation Suite Completion
 - **Caching Alignment**: Standardized the caching architecture to support both environment-switchable Redis and FileBasedCache backends. Aligned caching TTLs with the system architecture specifications: OHLCV (`6 Hours`), Indicators (`6 Hours`), News (`30 Minutes`), and LLM responses (`1 Hour`) to minimize Neon DB connection loads.

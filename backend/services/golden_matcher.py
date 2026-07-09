@@ -64,7 +64,8 @@ def _pattern_to_regex(pattern: str) -> str:
     escaped = re.escape(pattern.lower())
     # Then un-escape the placeholder patterns
     escaped = re.sub(r'\\{[^}]+\\}', r'\\S+', escaped)
-    return escaped
+    # Anchor the regex and allow optional trailing punctuation (like ?)
+    return r'^' + escaped + r'[^a-zA-Z0-9]*$'
 
 
 def _normalize_pattern(pattern: str, symbols: list[str]) -> str:

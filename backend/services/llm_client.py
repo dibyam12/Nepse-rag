@@ -379,11 +379,20 @@ def build_rag_prompt(
             history_block += f"<{role}>{content}</{role}>\n"
         history_block += "</conversation_history>\n\n"
 
+    # Dynamically fetch current server date and day (Issue 1)
+    from datetime import datetime
+    now = datetime.now()
+    date_str = now.strftime("%A, %Y-%m-%d")
+    system_date_block = f"<system_date>{date_str}</system_date>\n\n"
+
     if not outputs:
         return (
+            f"{system_date_block}"
             f"{history_block}"
             f"QUESTION: {question}\n\n"
-            "No live data was retrieved for this query. "
+            "INSTRUCTIONS:\n"
+            "- If asked for today's date, answer directly from <system_date>, do not say the information is unavailable.\n"
+            "- No live data was retrieved for this query. "
             "Do NOT invent prices, RSI values, or indicator numbers. "
             "Tell the user to check merolagani.com or sharesansar.com "
             "for current data. You may explain concepts generally.\n"
@@ -434,7 +443,9 @@ def build_rag_prompt(
             instructions = (
                 "INSTRUCTIONS:\n"
                 "- Answer using the context above.\n"
-                "- Use clear, structured formatting: headings, numbered lists, bullet points as appropriate.\n"
+                "- Always format multi-stock results as a markdown table with columns: Symbol | Price | Signal | RSI | MACD | MFI.\n"
+                "- Never use bullet lists or bold-per-line formatting for multi-stock results.\n"
+                "- Use clear, structured formatting: headings, numbered lists, bullet points as appropriate for other text.\n"
                 "- Include formulas, examples, and step-by-step explanations where relevant.\n"
                 "- Be comprehensive — the user is asking to learn, so cover all relevant points from the context.\n"
                 "- If the context doesn't fully cover the topic, say so and suggest checking NEPSE resources.\n"
@@ -444,19 +455,21 @@ def build_rag_prompt(
         elif route == 'screener':
             instructions = (
                 "INSTRUCTIONS:\n"
-                "- Present the stock list clearly and concisely.\n"
-                "- Use the Signal labels (🟢 Buy, 🟡 Neutral, 🔴 Sell/Avoid) and RSI/MACD data from the context.\n"
-                "- Group or rank stocks by their signal if ranking data is present.\n"
-                "- Briefly explain the ranking criteria (RSI, MACD, EMA-20 composite score).\n"
-                "- Keep each stock entry on one line; bold the symbol name.\n"
-                "- If no ranking data is present, summarize by sector and price range.\n"
+                "- If the context contains 'No stocks found for sector:', output exactly: 'I don't have any stocks currently tagged under that sector — you can check sharesansar.com's sector listings directly' and do not add any lists or other text.\n"
+                "- Never say 'I can't recommend' outright. Instead, say: 'I can't tell you to buy or sell, but here are some stocks you could add to your watchlist based on current technical signals:' and then list them from the <sql_data> screener block.\n"
+                "- Always format multi-stock results as a markdown table with columns: Symbol | Price | Signal | RSI | MACD | MFI.\n"
+                "- Never use bullet lists or bold-per-line formatting for multi-stock results.\n"
+                "- Use the Signal labels (🟢 Buy, 🟡 Neutral, 🔴 Sell/Avoid), RSI, MACD, and MFI data from <sql_data>.\n"
+                "- Briefly explain the ranking criteria (RSI, MACD, MFI, and EMA-20 composite score).\n"
                 "- End with: DISCLAIMER: This is for educational purposes only. Not financial advice.\n"
             )
         else:
             instructions = (
                 "INSTRUCTIONS:\n"
                 "- Answer using ONLY the context above and conversation_history for follow-ups.\n"
-                "- Write in flowing prose like a senior analyst — NO bullet points, NO headers, NO numbered lists.\n"
+                "- Always format multi-stock results as a markdown table with columns: Symbol | Price | Signal | RSI | MACD | MFI.\n"
+                "- Never use bullet lists or bold-per-line formatting for multi-stock results.\n"
+                "- Write in flowing prose like a senior analyst for individual stock analysis paragraphs (NO bullet points, NO headers, NO numbered lists for prose).\n"
                 "- Lead with the single most interesting insight, not a price recap.\n"
                 "- Weave indicators and news into ONE narrative paragraph per stock.\n"
                 "- The UI already shows price cards and news headlines — do NOT repeat raw numbers or list headlines.\n"
@@ -466,10 +479,13 @@ def build_rag_prompt(
             )
 
         return (
+            f"{system_date_block}"
             f"{history_block}"
             f"<context>\n{context}\n</context>\n\n"
             f"QUESTION: {question}\n\n"
-            f"{instructions}"
+            f"{instructions}\n"
+            "ADDITIONAL RULES:\n"
+            "- If asked for today's date, answer directly from <system_date>, do not say the information is unavailable.\n"
         )
 
     def _estimate_tokens(text: str) -> int:
